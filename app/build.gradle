@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'de.nova.squadron'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'de.nova.squadron'
+        minSdk 24
+        targetSdk 34
+        // Bei jedem GitHub-Build automatisch hochzählen, damit Updates sauber installieren
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer)
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+    }
+
+    signingConfigs {
+        // Fester Test-Schlüssel (kein Geheimnis, nur für Debug-Builds), damit neue Versionen
+        // über die alte installiert werden können, ohne vorher zu deinstallieren.
+        debug {
+            storeFile file('nova-debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    buildTypes {
+        debug { signingConfig signingConfigs.debug }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
