@@ -3069,7 +3069,10 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='
 
 // ================= Controller (Gamepad) mit Rumble =================
 const GP={prev:[],stickAim:false,lastR:0};
-function getPad(){ try{ const ps=navigator.getGamepads?navigator.getGamepads():[]; for(const p of ps) if(p&&p.connected) return p; }catch(e){} return null; }
+// In der Android-App liefert die App den Controller direkt (zuverlässiger als die Browser-Schnittstelle)
+const NP={connected:false,axes:[0,0,0,0],buttons:[],vibrationActuator:{playEffect:(t,o)=>{ try{ window.AndroidPad&&AndroidPad.rumble(o.strongMagnitude||0,o.weakMagnitude||0,o.duration|0); }catch(e){} return Promise.resolve('complete'); }}};
+window.__nativePad=(a,b)=>{ NP.axes=a; NP.buttons=b.map(v=>({pressed:!!v,value:v})); if(!NP.connected){ NP.connected=true; try{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); }catch(e){} } };
+function getPad(){ if(NP.connected) return NP; try{ const ps=navigator.getGamepads?navigator.getGamepads():[]; for(const p of ps) if(p&&p.connected) return p; }catch(e){} return null; }
 function rumble(strong,weak,ms){ const p=getPad(), a=p&&p.vibrationActuator; if(!a||!a.playEffect) return; const now=performance.now(); if(now-GP.lastR<70&&strong<.7) return; GP.lastR=now;
   try{ const r=a.playEffect('dual-rumble',{startDelay:0,duration:ms,strongMagnitude:Math.min(1,strong),weakMagnitude:Math.min(1,weak)}); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }
 window.addEventListener('gamepadconnected',()=>{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); });
