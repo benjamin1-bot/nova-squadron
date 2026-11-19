@@ -815,13 +815,22 @@ function makeMassif(W,H,D,y0,hx,hy,rx,ry){
     let n=0,a=1,f=.06,tt=0; for(let o=0;o<4;o++){ n+=vnoise(X*f+seed,Y*f,Z*f-seed)*a; tt+=a; a*=.5; f*=2.1; } n=n/tt-.5;
     X+=x*n*9; Y+=y*n*4+(t>.6?Math.max(0,n)*6:0); Z+=z*n*6;
     pos[i]=X; pos[i+1]=Y; pos[i+2]=Z; }
+  // Loch: innere Dreiecke weg, Randpunkte exakt auf eine glatte Ellipse schieben
+  const ex=rx*1.08, ey=ry*1.08, NB=72, fr=new Array(NB).fill(null), bk=new Array(NB).fill(null);
   const keep=[]; for(let i=0;i<idx.length;i+=3){ let cx=0,cy=0; for(let k=0;k<3;k++){ cx+=pos[idx[i+k]*3]; cy+=pos[idx[i+k]*3+1]; } cx/=3; cy/=3;
-    if(((cx-hx)/(rx*1.08))**2+((cy-hy)/(ry*1.08))**2<1) continue; keep.push(idx[i],idx[i+1],idx[i+2]); }
+    if(((cx-hx)/ex)**2+((cy-hy)/ey)**2<1) continue; keep.push(idx[i],idx[i+1],idx[i+2]); }
+  const used=new Set(keep);
+  for(const j of used){ const X=pos[j*3],Y=pos[j*3+1],Z=pos[j*3+2], u=(X-hx)/ex, v=(Y-hy)/ey, e=u*u+v*v;
+    if(e<1.04){ const th=Math.atan2(v,u), q=1/Math.sqrt(Math.max(e,1e-4)); pos[j*3]=hx+u*q*ex; pos[j*3+1]=hy+v*q*ey;
+      const bi=((Math.round((th+Math.PI)/(2*Math.PI)*NB))%NB+NB)%NB, arr=Z>=0?fr:bk; arr[bi]=arr[bi]===null?Z:(Z>=0?Math.min(arr[bi],Z):Math.max(arr[bi],Z)); } }
+  const fill=a=>{ const def=a.find(v=>v!==null)??0; for(let i=0;i<NB;i++) if(a[i]===null){ let l=i,r=i,dl=0,dr=0; while(a[(l+NB)%NB]===null&&dl<NB){ l--; dl++; } while(a[r%NB]===null&&dr<NB){ r++; dr++; }
+      const A=a[(l+NB)%NB]??def, Bv=a[r%NB]??def; a[i]=A+(Bv-A)*(dl/(dl+dr||1)); } };
+  const frF=fr.slice(), bkF=bk.slice(); fill(frF); fill(bkF);
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(keep); g.computeVertexNormals();
-  // Tunnelröhre (nach innen gerichtet), an den Enden aufgeweitet, damit sie im Fels verschwindet
-  const tb=new THREE.CylinderGeometry(1,1,1,28,10,true); tb.rotateX(Math.PI/2); const tp=tb.attributes.position;
-  for(let i=0;i<tp.count;i++){ const x=tp.getX(i),y=tp.getY(i),z=tp.getZ(i), e=Math.pow(Math.abs(z*2),6), k=(1+.18*e)*(1+(vnoise(x*1.5+seed,y*1.5,z*2)-.5)*.06);
-    tp.setXYZ(i,-(hx+x*rx*k),hy+y*ry*k,z*D*.92); }
+  // glatte Röhre genau zwischen vorderem und hinterem Lochrand
+  const tb=new THREE.CylinderGeometry(1,1,1,NB,8,true); tb.rotateX(Math.PI/2); const tp=tb.attributes.position;
+  for(let i=0;i<tp.count;i++){ const x=tp.getX(i),y=tp.getY(i),z=tp.getZ(i), th=Math.atan2(y,x), bi=((Math.round((th+Math.PI)/(2*Math.PI)*NB))%NB+NB)%NB, t=z+.5;
+    const zf=frF[bi], zb=bkF[bi]; tp.setXYZ(i,-(hx+x*ex),hy+y*ey,zb+(zf-zb)*t); }
   tb.scale(-1,1,1); tb.computeVertexNormals();
   return {g,tube:tb};
 }
@@ -830,10 +839,10 @@ function spawnMassif(s){
   const sz=rand(.75,1.35), W=rand(B.x*1.2,B.x*2)*sz, cx=side*rand(B.x*.3,B.x*.85), top=B.y+rand(4,26)*sz, H=top-(gy-8), D=rand(18,42)*sz;
   const rx=rand(5.2,8.5), ry=rand(4.4,7), hx=cx+rand(-W*.18,W*.18), hy=rand(-B.y*.35,B.y*.4);
   const {g,tube}=makeMassif(W,H,D,gy-8,hx-cx,hy,rx,ry), mat=worldIdx===2?M2.lava:pick([M.rock,M.rock2]);
-  const gg=new THREE.Group(), m1=new THREE.Mesh(g,mat), m2=new THREE.Mesh(tube,mat); m1.position.x=m2.position.x=cx; gg.add(m1); gg.add(m2);
+  const mat2=mat.clone(); mat2.side=THREE.DoubleSide; const gg=new THREE.Group(), m1=new THREE.Mesh(g,mat2), m2=new THREE.Mesh(tube,mat); m1.position.x=m2.position.x=cx; gg.add(m1); gg.add(m2);
   if(worldIdx===2){ const gl=glowSprite(0xff6020,rx*3,.5); gl.position.set(hx,hy,0); gg.add(gl); }
   addStatic(gg,s,0,0,null);
-  const iw=rx*.74, ih=ry*.74, hz=D*.42, L0=cx-W/2*.8, R0=cx+W/2*.8, T0=Math.min(top,hy+ih+ (top-hy)*.75), G0=gy;
+  const iw=rx*.74, ih=ry*.74, hz=D*.36, L0=cx-W/2*.8, R0=cx+W/2*.8, T0=Math.min(top,hy+ih+ (top-hy)*.75), G0=gy;
   if(hx-iw>L0) addObst(s,(L0+hx-iw)/2,(G0+T0)/2,(hx-iw-L0)/2,(T0-G0)/2,hz,'none');
   if(R0>hx+iw) addObst(s,(R0+hx+iw)/2,(G0+T0)/2,(R0-hx-iw)/2,(T0-G0)/2,hz,'none');
   addObst(s,hx,(hy+ih+T0)/2,iw,(T0-hy-ih)/2,hz,'none');
@@ -2249,7 +2258,42 @@ function moveBoss(b,dt,enr){
   else if(mv==='drift'){ tx=Math.sin(ft*.22)*B.x*.5; ty=2+Math.sin(ft*.31)*2.5; tz=-54+Math.sin(ft*.17)*6; }
   else { tx=Math.sin(ft*.35)*B.x*.75; ty=3+Math.sin(ft*.5)*3.5; tz=-48+Math.sin(ft*.21)*10; }
   if(enr) tz+=10;
-  const k=Math.min(1,dt*2); p.x+=(tx-p.x)*k; p.y+=(ty-p.y)*k; p.z+=(tz-p.z)*Math.min(1,dt*1.5);
+  // Seitenwechsel: der Boss zieht regelmäßig quer über den Schirm
+  b.swT=(b.swT??rand(3,5))-dt; if(b.swT<=0){ b.swT=rand(4.5,7); b.swX=(b.swX>0?-1:1)*rand(B.x*.45,B.x*.8); }
+  tx=tx*.35+(b.swX||0);
+  const k=Math.min(1,dt*1.6); p.x+=(tx-p.x)*k; p.y+=(ty-p.y)*k; p.z+=(tz-p.z)*Math.min(1,dt*1.5);
+}
+// Waffen abwechselnd aus- und einfahren (eingefahren = geschützt, feuert nicht)
+function updateBossArms(b,dt){
+  const ps=b.parts.filter(e=>e.alive&&e.kind!=='core'); if(!ps.length) return;
+  b.arT=(b.arT??6)-dt;
+  const setA=ps.filter((e,i)=>b.parts.indexOf(e)%2===0), setB=ps.filter((e,i)=>b.parts.indexOf(e)%2===1);
+  if(b.arT<=0){ b.arT=rand(6,8); b.arm=(b.arm||0)^1; if(setA.length&&setB.length){ toast(b.arm?'WAFFEN WECHSELN':'WAFFEN WECHSELN','#ffb060'); sfx.charge&&sfx.charge(); } }
+  const both=!setA.length||!setB.length;
+  for(const e of ps){ const out=both||((b.parts.indexOf(e)%2)===(b.arm||0));
+    e.armK=(e.armK??1)+((out?1:0)-(e.armK??1))*Math.min(1,dt*2.5);
+    const f=.42+.58*e.armK; e.mesh.position.copy(e.off).multiplyScalar(f);
+    if(e.armK<.8) e.invul=true; }
+}
+// Freie Laserstrahlen im Raum (ohne Ring): Warnlinie, dann Strahl der schwenkt
+const bBeams=[];
+function spawnBossBeam(){
+  const b={t:0,warn:1.1,dur:3.2,mode:pick(['slideV','slideH','rot']),a0:0,d0:0,sp:pick([-1,1])*rand(.8,1.2)};
+  if(b.mode==='slideV'){ b.a0=0; b.d0=(Math.random()<.5?-1:1)*B.y*.9; } else if(b.mode==='slideH'){ b.a0=Math.PI/2; b.d0=(Math.random()<.5?-1:1)*B.x*.85; } else { b.a0=rand(0,Math.PI); b.d0=0; }
+  b.o=new THREE.Mesh(hzBeamGeo,hzBeamO); b.i=new THREE.Mesh(hzBeamGeo,hzBeamI); b.p1=hzPod(); b.p2=hzPod(); scene.add(b.o); scene.add(b.i); bBeams.push(b);
+  toast('LASERSTRAHL – AUSWEICHEN!','#ff60e0'); sfx.charge&&sfx.charge();
+}
+function updateBossBeams(dt){
+  for(let i=bBeams.length-1;i>=0;i--){ const b=bBeams[i]; b.t+=dt; const act=b.t>b.warn, k=act?(b.t-b.warn)/b.dur:0;
+    let a=b.a0, d=b.d0; if(b.mode==='rot') a=b.a0+b.sp*k*2.2; else d=b.d0*(1-2*k);
+    const ux=Math.cos(a),uy=Math.sin(a),nx=-uy,ny=ux, L=Math.hypot(B.x,B.y)+10, z=ship.pos.z-6;
+    _ha.set(nx*d-ux*L,ny*d-uy*L,z); _hb.set(nx*d+ux*L,ny*d+uy*L,z); place(b.p1,_ha,null); place(b.p2,_hb,null);
+    if(act){ b.o.visible=b.i.visible=true; beamBetween(b.o,_ha,_hb,.8+.15*Math.sin(G.time*30)); beamBetween(b.i,_ha,_hb,.25);
+      if(state==='play'&&Math.abs(ship.pos.x*nx+ship.pos.y*ny-d)<1.5&&!(G.bbHitT>0)){ G.bbHitT=.6; damagePlayer(14); sparks(ship.pos,0xff60e0,12); } }
+    else { b.i.visible=Math.sin(b.t*30)>0; b.o.visible=false; beamBetween(b.i,_ha,_hb,.06); }
+    if(b.t>b.warn+b.dur||!G.boss||G.boss.state!=='fight'){ scene.remove(b.o); scene.remove(b.i); scene.remove(b.p1); scene.remove(b.p2); bBeams.splice(i,1); }
+  }
+  G.bbHitT=Math.max(0,(G.bbHitT||0)-dt);
 }
 function updateBoss(dt){
   const b=G.boss; if(!b) return; b.t+=dt; const p=b.pos, def=b.def, ab=def.abil||[];
@@ -2265,6 +2309,8 @@ function updateBoss(dt){
   } else if(b.state==='fight'){
     const enr=b.core&&!b.core.invul;
     b.ft+=dt*(enr?1.5:1); b.mT-=dt;
+    updateBossArms(b,dt);
+    b.lbT=(b.lbT??rand(6,9))-dt; if(b.lbT<=0&&b.mode==='normal'&&!bBeams.length){ b.lbT=rand(9,13)/(enr?1.4:1); spawnBossBeam(); }
     if(b.mode==='normal'){
       moveBoss(b,dt,enr);
       if(ab.includes('charge')){ b.chT-=dt; if(b.chT<=0){ b.mode='chargeTele'; b.mT=1.4; b.chX=ship.pos.x; b.chY=ship.pos.y; b.hitDone=false; toast('ACHTUNG – RAMMANGRIFF!','#ff6a6a'); sfx.alarm(); } }
@@ -2312,7 +2358,7 @@ function updateBoss(dt){
     b.spinBoost=Math.max(1,(b.spinBoost||1)-dt*.6);
     if(def.spin) b.rot.z+=def.spin*dt*(enr?1.6:1)*b.spinBoost;
     else if(b.mode==='flank') b.rot.y+=(-b.side*.9-b.rot.y)*Math.min(1,dt*2);
-    else { b.rot.y+=(0-b.rot.y)*Math.min(1,dt*2); b.rot.z=-Math.cos(b.ft*.35)*.14; }
+    else { const ty=Math.sin(b.ft*.42)*.38+(p.x/B.x)*-.25; b.rot.y+=(ty-b.rot.y)*Math.min(1,dt*2); b.rot.z+=(-Math.cos(b.ft*.35)*.32-(p.x-(b.lx??p.x))*.6-b.rot.z)*Math.min(1,dt*3); b.rot.x=Math.sin(b.ft*.3)*.12; b.lx=p.x; }
   } else if(b.state==='dying'){
     p.y-=dt*4; p.z+=dt*8; b.rot.z+=dt*.2; b.rot.x+=dt*.06;
     if(Math.random()<dt*12){ _q2.setFromEuler(b.rot); const q=new V3(rand(-12,12),rand(-1,3),rand(-5,6)).multiplyScalar(b.sc).applyQuaternion(_q2).add(p); emitL(q.x,q.y,q.z,rand(-2,2),rand(0,3),rand(-2,2),.85,pick([0x2a2522,0x3a3330]),rand(3,5),rand(1.2,2),1,2,SMOKE); }
@@ -2403,7 +2449,8 @@ function updateBossPart(e,dt){
   const b=e.boss, ud=e.mesh.userData;
   _q2.setFromEuler(b.rot); e.pos.copy(e.off).multiplyScalar(b.sc).applyQuaternion(_q2).add(b.pos);
   if(ud.shield) ud.shield.visible=e.invul;
-  e.mesh.scale.setScalar(1+Math.max(0,e.flash)*.2);
+  e.mesh.scale.setScalar((1+Math.max(0,e.flash)*.2)*(.35+.65*(e.armK??1)));
+  if(e.armK!==undefined&&e.kind!=='core') e.pos.copy(e.off).multiplyScalar(b.sc*(.42+.58*e.armK)).applyQuaternion(_q2).add(b.pos);
   if(ud.gl) ud.gl.scale.setScalar(ud.glS*(1+.35*Math.sin(G.time*9)));
   if(ud.aim) e.mesh.lookAt(shipMesh.position);
   if(ud.spin) ud.spin.rotation.z+=dt*3;
@@ -3287,7 +3334,7 @@ function updatePlay(dt){
   }
 
   updateWaves(dt); updateHazards(dt); if(window.__padKnob) window.__padKnob();
-  updateBoss(dt);
+  updateBoss(dt); updateBossBeams(dt);
   for(const e of enemies) if(e.alive) updateEnemy(e,dt);
   for(let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if(!e.alive||(e.gone&&!e.boss)){ if(e.alive&&!e.boss) scene.remove(e.mesh); if(e.extras) for(const x of e.extras) scene.remove(x); enemies.splice(i,1); } }
   for(const e of enemies){ if(!e.wp){ e.wp=new V3(); e.pwp=new V3(); e.wv=new V3(); } e.pwp.copy(e.wp); if(e.boss) e.mesh.getWorldPosition(e.wp); else e.wp.copy(e.mesh.position); if(dt>0&&e.pwp.lengthSq()>0) e.wv.subVectors(e.wp,e.pwp).divideScalar(dt); }
