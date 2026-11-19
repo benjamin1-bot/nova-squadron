@@ -41,6 +41,7 @@
   #mult{font-family:Orbitron;font-weight:700;font-size:12px;color:var(--or);opacity:.35;transition:opacity .2s;margin-bottom:3px}
   #tc{position:absolute;top:calc(var(--st) + 12px);left:50%;transform:translateX(-50%);text-align:center;width:min(36vw,360px)}
   #wave{font-family:Orbitron;font-size:12px;letter-spacing:3px;color:rgba(200,235,255,.7)}
+  #wname{font-family:Orbitron;font-size:8.5px;letter-spacing:2px;color:rgba(200,235,255,.5);margin-top:2px}
   #bossbar{margin-top:7px}
   #bossbar .lbl{font-family:Orbitron;font-size:10px;letter-spacing:3px;color:#ff8a7a;margin-bottom:4px}
   #tr{position:absolute;top:calc(var(--st) + 10px);right:calc(var(--sr) + 12px);display:flex;gap:8px}
@@ -177,7 +178,7 @@
     <div id="mult">x1</div>
   </div>
   <div id="tl">
-    <div id="wave">WELLE 1</div>
+    <div id="wave">WELLE 1</div><div id="wname"></div>
     <div id="pw" class="hidden"></div>
   </div>
   <div id="bossbar" class="hidden">
@@ -440,8 +441,8 @@ const ringTex = radialTex([[0,'rgba(255,255,255,0)'],[0.62,'rgba(255,255,255,0)'
 const glowMats = {};
 function glowSprite(color, scale, opacity=1){
   const key=color+'_'+opacity;
-  if(!glowMats[key]) glowMats[key]=new THREE.SpriteMaterial({map:glowTex,color,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity,fog:false});
-  const s=new THREE.Sprite(glowMats[key]); s.scale.setScalar(scale); return s;
+  if(!glowMats[key]) glowMats[key]=new THREE.SpriteMaterial({map:glowTex,color:new THREE.Color(color).multiplyScalar(1.5),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,opacity:Math.min(1,opacity*1.25),fog:false,toneMapped:false});
+  const s=new THREE.Sprite(glowMats[key]); s.scale.setScalar(scale*1.25); return s;
 }
 function crossTex(){
   const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d'); g.lineCap='round';
@@ -1408,17 +1409,19 @@ const sfx=(()=>{
     // leiser, weicher Laser
     // Laser: kurzes, gefiltertes "Zzt" statt Plopp
     laser(){ if(!ac||muted) return; const n=ac.currentTime; if(n-lastLaser<.08) return; lastLaser=n; lpTog^=1;
-      const t=n, o=ac.createOscillator(), f=ac.createBiquadFilter(), g=ac.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(lpTog?2100:1950,t); o.frequency.exponentialRampToValueAtTime(520,t+.09);
-      f.type='bandpass'; f.frequency.setValueAtTime(2600,t); f.frequency.exponentialRampToValueAtTime(900,t+.09); f.Q.value=1.2;
-      g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.05,t+.006); g.gain.exponentialRampToValueAtTime(.0001,t+.1);
-      o.connect(f).connect(g).connect(sfxBus); o.start(t); o.stop(t+.12); noise(.05,.018,'highpass',4500,0,0,.003); },
+      const t=n, f=ac.createBiquadFilter(), g=ac.createGain(); f.type='lowpass'; f.frequency.setValueAtTime(3200,t); f.frequency.exponentialRampToValueAtTime(700,t+.12); f.Q.value=2.5;
+      for(const d of [-12,12]){ const o=ac.createOscillator(); o.type='sawtooth'; o.detune.value=d; o.frequency.setValueAtTime(lpTog?1250:1150,t); o.frequency.exponentialRampToValueAtTime(220,t+.12); o.connect(f); o.start(t); o.stop(t+.14); }
+      g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.075,t+.005); g.gain.exponentialRampToValueAtTime(.0001,t+.13); f.connect(g).connect(sfxBus);
+      tone('sine',260,70,.09,.12); },
     hit(){ if(!ac) return; const n=ac.currentTime; if(n-lastHit<.04) return; lastHit=n; noise(.04,.03,'bandpass',2200); },
     clang(){ noise(.2,.15,'bandpass',900,300); tone('triangle',180,90,.25,.1); },
     boom(s){ if(!ac) return; const n=ac.currentTime; if(n-lastBoom<.05) return; lastBoom=n; const v=Math.min(1.6,.6+s*.5);
       // Explosion: rumpelndes Grollen + Knistern statt Plopp
-      noise(.9+.6*s,.42*v,'lowpass',2600,90,0,.012); noise(.45+.3*s,.22*v,'bandpass',600,140,.02,.02); noise(.35,.12*v,'highpass',2500,900,0,.006);
-      for(let k=0;k<3;k++) noise(.08,.1*v,'bandpass',rand(800,2000),0,.05+k*rand(.05,.12),.003);
-      tone('sine',62,28,.7+.3*s,.22*v); },
+      // Druckwelle: tiefer Schlag + langes Grollen, kaum Höhen
+      tone('sine',110,32,.5+.25*s,.5*v); tone('triangle',70,24,1+.4*s,.32*v);
+      noise(1.3+.7*s,.55*v,'lowpass',900,45,0,.008); noise(.9+.5*s,.3*v,'lowpass',260,40,.03,.05);
+      noise(.18,.16*v,'lowpass',2200,300,0,.003);
+      for(let k=0;k<2;k++) noise(.25,.06*v,'lowpass',1200,200,.15+k*rand(.08,.18),.01); },
     missile(){ noise(.4,.08,'bandpass',500,2800); },
     pickup(){ tone('sine',600,1200,.12,.12); tone('sine',900,1800,.15,.09,.08); },
     hurt(){ tone('sawtooth',220,60,.28,.13); noise(.2,.12,'lowpass',900,200); },
@@ -1618,7 +1621,7 @@ function clearFutureWrecks(){
 const groundMat=tri(new THREE.MeshStandardMaterial({vertexColors:true,map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.12,roughness:.9,metalness:0}),.05);
 const lavaMat=new THREE.MeshBasicMaterial({color:0xc04010}); const waterMats={};
 const underMat=new THREE.MeshStandardMaterial({color:0x444444,roughness:1}); const under=new THREE.Group(); { const pl=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),underMat); pl.rotation.x=-Math.PI/2; under.add(pl); } under.visible=false; scene.add(under);
-function updateUnder(){ under.visible=!!W0.surface; if(!under.visible) return; const sf=W0.surface; underMat.color.setHex(sf.water||(sf.lava?0x8a2a08:sf.mid)); _hp.set(0,-(B.y+8)-(sf.water?-.3:sf.lava?1.4:2.5),-200); place(under,_hp,null); }
+function updateUnder(){ under.visible=!!W0.surface; if(!under.visible) return; const sf=W0.surface; underMat.color.setHex(W0.fog); _hp.set(0,-(B.y+8)-40,-200); place(under,_hp,null); }
 const _ca=new THREE.Color(), _cb=new THREE.Color(), _cc=new THREE.Color();
 function groundH(x,sa,sf){
   const ax=Math.abs(x), wallStart=B.x+7;
@@ -1840,7 +1843,8 @@ function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
   SU.top.value.setHex(w.sky[0]); SU.mid.value.setHex(w.sky[1]); SU.bot.value.setHex(w.surface?w.fog:w.sky[2]); bakeSky(); if(w.surface) scene.background.setHex(w.fog);
   SKY.stars.visible=w.stars!==false; for(const n of SKY.nebs) n.visible=w.stars!==false;
   hemi.groundColor.setHex(w.surface?w.surface.high:0x1a0f22); hemi.intensity=w.hemiI||.55;
-  renderer.toneMappingExposure=w.exp||1.12; if(bloom) bloom.strength=w.bloom!==undefined?w.bloom:.45;
+  { const wn=document.getElementById('wname'); if(wn) wn.textContent=(i+1)+' · '+w.name; }
+  renderer.toneMappingExposure=w.exp||1.12; if(bloom){ bloom.strength=(w.bloom!==undefined?w.bloom:.45)*1.7+.15; bloom.threshold=.7; }
   for(const c of cubes) scene.remove(c.mesh); cubes.length=0;
   sun.color.setHex(w.sun); hemi.color.setHex(w.hemi); rim.color.setHex(w.rim);
   SKY.nm.color.setHex(w.neb); SKY.sunG.material.color.setHex(w.sun);
@@ -3157,7 +3161,7 @@ function puModel(k){
   else { for(const a of [0,Math.PI/3,2*Math.PI/3]){ const sp=mesh(geo.octa,mat,.3,1.5,.3); sp.rotation.z=a; g.add(sp); } const sp2=mesh(geo.octa,mat,.3,.3,1.5); g.add(sp2); g.add(mesh(geo.sphere,Bm(0xf0d0ff),.45,.45,.45)); }
   return g;
 }
-function rollPickup(){ if(G.hull<45&&Math.random()<.35) return 'R'; const t=Math.random(); return t<.18?'R':t<.33?'M':t<.5?'P':t<.66?'X':t<.8?'Z':t<.96?'S':'N'; }
+function rollPickup(){ if(G.hull<35&&Math.random()<.18) return 'R'; const t=Math.random(); return t<.08?'R':t<.33?'M':t<.5?'P':t<.66?'X':t<.8?'Z':t<.96?'S':'N'; }
 function spawnPickup(at,kind){
   const d=PU[kind], g=new THREE.Group(), model=puModel(kind); model.scale.setScalar(2.3); outline(model,.05); g.add(model);
   const gl=glowSprite(d.col,9,.75); g.add(gl); g.add(glowSprite(0xffffff,3,.55));
@@ -3300,8 +3304,8 @@ function updateWaves(dt){
   if(G.passage){ if(ENV.s>G.passage.end){ G.passage=null; if(state==='play'){ addScore(1500,true); toast('PASSAGE GESCHAFFT  +1.500','#ffd24a'); } startWave(); } return; }
   if(G.wave>0&&!G.queue.length&&!G.boss&&!enemies.some(e=>!e.env&&!e.haz)){
     G.interWave+=dt;
-    if(G.interWave>2.6){ G.interWave=0; if(state==='play') addScore(250*G.wave,true);
-      if((G.wave+1)%3!==0&&(G.wave===1||Math.random()<.45)&&!(G.warp>0)) startPassage(); else startWave(); }
+    if(G.interWave>1.1){ G.interWave=0; if(state==='play') addScore(250*G.wave,true);
+      if((G.wave+1)%3!==0&&(G.wave===1||Math.random()<.3)&&!(G.warp>0)) startPassage(); else startWave(); }
   } else G.interWave=0;
 }
 
