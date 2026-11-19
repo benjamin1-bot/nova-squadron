@@ -826,16 +826,16 @@ function makeMassif(W,H,D,y0,hx,hy,rx,ry){
   return {g,tube:tb};
 }
 function spawnMassif(s){
-  const gy=-(B.y+8), W=2*B.x+84, top=B.y+26, H=top-(gy-8), D=rand(14,20);
-  const rx=rand(6.2,7.5), ry=rand(5,6.2), hx=Math.random()<.3?rand(-2,2):(Math.random()<.5?-1:1)*rand(B.x*.3,B.x*.6), hy=rand(-B.y*.35,B.y*.4);
-  const {g,tube}=makeMassif(W,H,D,gy-8,hx,hy,rx,ry), mat=worldIdx===2?M2.lava:pick([M.rock,M.rock2]);
-  const gg=new THREE.Group(); gg.add(new THREE.Mesh(g,mat)); gg.add(new THREE.Mesh(tube,mat));
+  const gy=-(B.y+8), side=Math.random()<.5?-1:1;
+  const W=rand(B.x*1.35,B.x*1.9), cx=side*rand(B.x*.35,B.x*.85), top=B.y+rand(8,26), H=top-(gy-8), D=rand(26,40);
+  const rx=rand(6,7.2), ry=rand(5,6), hx=cx+rand(-W*.18,W*.18), hy=rand(-B.y*.35,B.y*.4);
+  const {g,tube}=makeMassif(W,H,D,gy-8,hx-cx,hy,rx,ry), mat=worldIdx===2?M2.lava:pick([M.rock,M.rock2]);
+  const gg=new THREE.Group(), m1=new THREE.Mesh(g,mat), m2=new THREE.Mesh(tube,mat); m1.position.x=m2.position.x=cx; gg.add(m1); gg.add(m2);
   if(worldIdx===2){ const gl=glowSprite(0xff6020,rx*3,.5); gl.position.set(hx,hy,0); gg.add(gl); }
   addStatic(gg,s,0,0,null);
-  const iw=rx*.74, ih=ry*.74, ext=60, hz=D*.45;
-  const L0=-B.x-30, R0=B.x+30, T0=top, G0=gy;
-  addObst(s,(L0+hx-iw)/2,(G0+T0)/2,(hx-iw-L0)/2,(T0-G0)/2,hz,'none');
-  addObst(s,(R0+hx+iw)/2,(G0+T0)/2,(R0-hx-iw)/2,(T0-G0)/2,hz,'none');
+  const iw=rx*.74, ih=ry*.74, hz=D*.42, L0=cx-W/2*.8, R0=cx+W/2*.8, T0=Math.min(top,hy+ih+ (top-hy)*.75), G0=gy;
+  if(hx-iw>L0) addObst(s,(L0+hx-iw)/2,(G0+T0)/2,(hx-iw-L0)/2,(T0-G0)/2,hz,'none');
+  if(R0>hx+iw) addObst(s,(R0+hx+iw)/2,(G0+T0)/2,(R0-hx-iw)/2,(T0-G0)/2,hz,'none');
   addObst(s,hx,(hy+ih+T0)/2,iw,(T0-hy-ih)/2,hz,'none');
   addObst(s,hx,(G0+hy-ih)/2,iw,(hy-ih-G0)/2,hz,'none');
 }
@@ -1591,7 +1591,7 @@ function spawnPillar(s,forceArch){
   if(forceArch!==true&&(forceArch===false||Math.random()<.5)){
     const x=rand(-B.x*.65,B.x*.65), top=rand(-B.y*.2,B.y*.6), hy=(top-gy)/2;
     addObst(s,x,gy+hy,2.8,hy,2.8,'rock');
-  } else if(true){ curW=null; w.s0=s-14; w.s1=s+14; curW=w; spawnMassif(s); }
+  } else if(true){ w.s0=s-24; w.s1=s+24; spawnMassif(s); }
   else {
     const gap=rand(8,12), cx=rand(-B.x*.35,B.x*.35), by=rand(B.y*.05,B.y*.5), top=B.y+16, ph=(by-gy)/2, th=(top-by)/2;
     const L=cx-gap-1.5, Rr=cx+gap+1.5, apex=by+4.5;
@@ -2692,13 +2692,13 @@ function findLock(dir){
   for(const e of enemies){
     if(!e.alive||e.invul) continue;
     if(G.autoAim&&e.env) continue;
-    const dz=ship.pos.z-e.pos.z; if(dz<(G.autoAim?18:6)||dz>260) continue;
+    const dz=ship.pos.z-e.pos.z; if(dz<(G.autoAim?12:6)||dz>260) continue;
     const rx=ship.pos.x+dir.x/(-dir.z)*dz, ry=ship.pos.y+dir.y/(-dir.z)*dz;
     let s;
     if(G.autoAim){ // nur was klar vor dir und im Bild ist, in einem engen Kegel um die Flug-/Zielrichtung
-      if(e.wp){ _pv.copy(e.wp).project(camera); if(_pv.z>1||Math.abs(_pv.x)>.9||Math.abs(_pv.y)>.88) continue; }
-      const ang=Math.hypot(e.pos.x-rx,e.pos.y-ry)/dz, lim=.3+e.radius/dz; if(ang>lim) continue;
-      s=ang/lim*(e===G.lastLock?.6:1);
+      if(e.wp){ _pv.copy(e.wp).project(camera); if(_pv.z>1||Math.abs(_pv.x)>.96||Math.abs(_pv.y)>.94) continue; }
+      const sticky=e===G.lastLock, ang=Math.hypot(e.pos.x-rx,e.pos.y-ry)/dz, lim=(sticky?.62:.44)+e.radius*1.5/dz; if(ang>lim) continue;
+      s=ang/lim*(sticky?.55:1);
     } else s=Math.hypot(e.pos.x-rx,e.pos.y-ry)/(.8+dz*.018+e.radius*.7);
     if(s<bs){bs=s;best=e;}
   }
