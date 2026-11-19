@@ -262,11 +262,12 @@ THREE.ShaderChunk.lights_fragment_end = `{
   vec3 _dd=reflectedLight.directDiffuse; float _l=max(max(_dd.r,_dd.g),_dd.b);
   if(_l>1e-4){ float _k=_l*3.; float _q=(floor(_k)+smoothstep(.42,.58,fract(_k)))/3.; reflectedLight.directDiffuse=_dd*(max(_q,.55*_l)/_l); }
   vec3 _sp=reflectedLight.directSpecular; float _ls=max(max(_sp.r,_sp.g),_sp.b);
-  if(_ls>1e-4) reflectedLight.directSpecular=_sp/_ls*smoothstep(.16,.24,_ls)*.6;
+  if(_ls>1e-4) reflectedLight.directSpecular=_sp/_ls*smoothstep(.2,.3,_ls)*min(_ls,.22);
   float _rim=smoothstep(.6,.68,1.-max(dot(geometry.normal,geometry.viewDir),0.));
-  reflectedLight.directDiffuse+=material.diffuseColor*_rim*.38;
+  reflectedLight.directDiffuse+=material.diffuseColor*_rim*.18;
 }
 `+THREE.ShaderChunk.lights_fragment_end;
+THREE.ShaderChunk.aomap_fragment='reflectedLight.indirectSpecular*=.45;\n'+THREE.ShaderChunk.aomap_fragment;
 const canvas = $('c');
 let renderer;
 try { renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'}); }
@@ -2440,6 +2441,16 @@ function findLock(dir){
     const s=Math.hypot(e.pos.x-rx,e.pos.y-ry)/(.8+dz*.018+e.radius*.7);
     if(s<bs){bs=s;best=e;}
   }
+  if(best) return best;
+  // Gegner direkt neben / knapp vor dem Schiff: automatisch anvisieren
+  let bn=1e9;
+  for(const e of enemies){
+    if(!e.alive||e.invul||e.boss) continue;
+    const dz=ship.pos.z-e.pos.z; if(dz<-12||dz>=6) continue;
+    const lx=e.pos.x-ship.pos.x, ly=e.pos.y-ship.pos.y, d=Math.hypot(lx,ly,dz); if(d>34) continue;
+    const sc=d-(lx*ship.aim.x+ly*ship.aim.y)/Math.max(1,Math.hypot(lx,ly))*8;
+    if(sc<bn){ bn=sc; best=e; }
+  }
   return best;
 }
 
@@ -2811,7 +2822,7 @@ function updatePlay(dt){
   // Schussrichtung in Weltkoordinaten (gerade Linie)
   localDirToWorld(aimDir,ENV.s-ship.pos.z,_wDir); L2W(ship.pos.x,ship.pos.y,ship.pos.z,_shipW);
   shotDir.copy(_wDir);
-  if(lock&&lock.wp){ _tmp.subVectors(lock.wp,_shipW).normalize(); shotDir.lerp(_tmp,lock.boss?.92:.5).normalize(); }
+  if(lock&&lock.wp){ _tmp.subVectors(lock.wp,_shipW).normalize(); const dzL=ship.pos.z-lock.pos.z; shotDir.lerp(_tmp,lock.boss?.92:dzL<6?1:.5).normalize(); }
   if(alive){
     G.fireT-=dt;
     if(G.fireT<=0){
