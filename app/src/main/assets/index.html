@@ -2704,7 +2704,7 @@ function updatePlay(dt){
   if(alive){
     chNear.position.copy(_shipW).addScaledVector(_wDir,22);
     chFar.position.copy(_shipW).addScaledVector(_wDir,60); chArc.position.copy(chFar.position);
-    chFarMat.color.setHex(lock?0x50ff60:0xffffff);
+    G.hitT=Math.max(0,(G.hitT||0)-dt); chFarMat.color.setHex(lock||G.hitT>0?0xff3030:0x50ff60);
     if(lock&&lock.wp){ lockMk.visible=true; lockMk.position.copy(lock.wp); const pul=1+.12*Math.sin(G.time*10); lockMk.scale.setScalar(.085*pul*(innerWidth<innerHeight?1.5:1)); } else lockMk.visible=false;
   }
 
@@ -2719,7 +2719,7 @@ function updatePlay(dt){
     const b=pBullets[i]; b.prev.copy(b.pos); b.pos.addScaledVector(b.vel,dt); b.life-=dt;
     let hit=null;
     for(const e of enemies){ if(!e.alive||!e.wp) continue; if(segDist(b.prev,b.pos,e.wp)<e.radius){ hit=e; break; } }
-    if(hit){ hitEnemy(hit,1,worldToLocalPt(b.pos)); }
+    if(hit){ hitEnemy(hit,1,worldToLocalPt(b.pos)); G.hitT=.3; }
     if(!hit) for(const o of obst){ if(!o.wc||b.pos.distanceToSquared(o.wc)>o.r2) continue; _v.copy(b.pos).sub(o.wc).applyQuaternion(o.qi);
       if(Math.abs(_v.x)<o.hx&&Math.abs(_v.y)<o.hy&&Math.abs(_v.z)<o.hz+1.5){ sparksW(b.pos,0xffc070,4); hit=true; break; } }
     if(hit||b.life<=0){ scene.remove(b.mesh); pBullets.splice(i,1); }
