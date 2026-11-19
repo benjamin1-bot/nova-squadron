@@ -521,7 +521,7 @@ function rockTex(){
     const px=x*k, py=y*k;
     const wx=fbm2(n,px+3.1,py+1.7,4), wy=fbm2(n,px+8.3,py+2.8,4);
     const q=fbm2(n,px+wx*2.6,py+wy*2.6,5);
-    const band=q*9, f=band-Math.floor(band), ridge=Math.pow(Math.abs(f-.5)*2,6);
+    const band=q*3, f=band-Math.floor(band), ridge=Math.pow(Math.abs(f-.5)*2,10)*.5;
     const pit=Math.max(0,.36-fbm2(n,px*2+5,py*2+9,3))*2.4;
     let v=.56+(q-.5)*1.35-ridge*.4-pit*.7+wx*.14;
     const warm=fbm2(n,px+11,py+4,2);
@@ -530,6 +530,12 @@ function rockTex(){
     const hv=clamp((q*.9+ (1-ridge)*.25 - pit*.6)*255,0,255); e[i]=e[i+1]=e[i+2]=hv; e[i+3]=255;
   }
   g.putImageData(id,0,0); h.putImageData(ib,0,0);
+  for(let i=0;i<70;i++){ const r=Math.pow(Math.random(),2.2)*34+3, x=Math.random()*S, y=Math.random()*S;
+    for(const [ox,oy] of [[0,0],[S,0],[-S,0],[0,S],[0,-S]]){ const cx=x+ox, cy=y+oy; if(cx<-r||cx>S+r||cy<-r||cy>S+r) continue;
+      let gr=g.createRadialGradient(cx-r*.15,cy-r*.15,r*.1,cx,cy,r); gr.addColorStop(0,'rgba(40,28,18,.55)'); gr.addColorStop(.75,'rgba(60,44,30,.35)'); gr.addColorStop(.9,'rgba(235,215,185,.45)'); gr.addColorStop(1,'rgba(235,215,185,0)');
+      g.fillStyle=gr; g.beginPath(); g.arc(cx,cy,r,0,7); g.fill();
+      gr=h.createRadialGradient(cx,cy,r*.1,cx,cy,r); gr.addColorStop(0,'rgba(0,0,0,.7)'); gr.addColorStop(.8,'rgba(40,40,40,.4)'); gr.addColorStop(.92,'rgba(255,255,255,.6)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+      h.fillStyle=gr; h.beginPath(); h.arc(cx,cy,r,0,7); h.fill(); } }
   const map=new THREE.CanvasTexture(c), bump=new THREE.CanvasTexture(b); for(const t of [map,bump]){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; }
   return {map,bump};
 }
@@ -739,7 +745,29 @@ function updateRings(dt){
     r.s.position.addScaledVector(r.b,dt); r.s.scale.setScalar(1+k*14*r.size); r.s.material.opacity=Math.max(0,(1-k))*.9; if(r.life<=0) r.s.visible=false; }
 }
 const EXCOL=[0xfff0c8,0xffd890,0xffc14a,0xff8a2a,0xff4a2a];
+const fireTex=(()=>{ const S=128,c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d');
+  for(let i=0;i<26;i++){ const a=Math.random()*6.283, d=Math.random()*S*.22, x=S/2+Math.cos(a)*d, y=S/2+Math.sin(a)*d, r=S*(.12+Math.random()*.2);
+    const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,'rgba(255,255,255,.55)'); gr.addColorStop(.5,'rgba(255,255,255,.25)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); }
+  return new THREE.CanvasTexture(c); })();
+const fires=[], firePool=[];
+function fireball(w,size,delay,vel){
+  let sp=firePool.pop(); if(!sp) sp=new THREE.Sprite(new THREE.SpriteMaterial({map:fireTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false,toneMapped:false}));
+  sp.material.rotation=rand(0,6.28); sp.visible=false; scene.add(sp);
+  fires.push({sp,w:w.clone(),v:vel.clone(),t:-delay,dur:rand(.55,.85)*(.8+size*.15),s:size*rand(2.2,3.4),rs:rand(-1.5,1.5)});
+}
+const _fc=new THREE.Color(), FC=[[1,1,.92],[1,.85,.45],[1,.5,.12],[.75,.18,.04],[.18,.06,.03]];
+function updateFires(dt){
+  for(let i=fires.length-1;i>=0;i--){ const f=fires[i]; f.t+=dt; if(f.t<0) continue; const k=f.t/f.dur;
+    if(k>=1){ scene.remove(f.sp); firePool.push(f.sp); fires.splice(i,1); continue; }
+    f.sp.visible=true; f.w.addScaledVector(f.v,dt); f.sp.position.copy(f.w);
+    f.sp.scale.setScalar(f.s*(.35+1.1*Math.pow(k,.45))); f.sp.material.rotation+=f.rs*dt;
+    const ci=Math.min(3.999,k*4), a=FC[Math.floor(ci)], b=FC[Math.floor(ci)+1], u=ci-Math.floor(ci);
+    _fc.setRGB(a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u).multiplyScalar(1.6); f.sp.material.color.copy(_fc); f.sp.material.opacity=Math.min(1,(1-k)*1.6); }
+}
+const _fw=new V3(), _fv=new V3();
 function explosion(p,size=1,tint,inh=.8){
+  { railAt(ENV.s,FR); const n=Math.round(4+size*3); for(let i=0;i<n;i++){ L2W(p.x+rand(-1,1)*size*1.3,p.y+rand(-1,1)*size*1.3,p.z+rand(-1,1)*size,_fw);
+      _fv.copy(FR.F).multiplyScalar(ENV.speed*inh).add(new V3(rand(-2,2),rand(-1,3),rand(-2,2)).multiplyScalar(size)); fireball(_fw,size*(i?rand(.6,1):1.2),i?rand(0,.18):0,_fv); } }
   if(state==='play'){ const d=Math.hypot(p.x-ship.pos.x,p.y-ship.pos.y,p.z-ship.pos.z); if(d<90){ const k=(1-d/90)*Math.min(1,size*.35); if(k>.05) rumble(k*.8,k,90+size*50); } }
   const n=Math.floor(24+28*size);
   for(let i=0;i<n;i++){
@@ -1006,7 +1034,7 @@ const engGlows=[], flames=[], navL=[];
   }
   g.scale.setScalar(.75); shipMesh.add(g);
   shipMesh.add(mesh(geo.sphere,M.shield,2.6,1.6,3.2));
-  surfaceDetail(shipMesh,28,.5,M.shipDark,8,0x40e8ff); outline(shipMesh,.05); scene.add(shipMesh);
+  outline(shipMesh,.05); scene.add(shipMesh);
 })();
 const engineLight=new THREE.PointLight(0xff5a3a,.7,9); engineLight.position.set(0,0,2.5); shipMesh.add(engineLight);
 const ship={pos:new V3(), vel:new V3(), target:new THREE.Vector2(), tRaw:new THREE.Vector2(), aim:new THREE.Vector2(), rot:new THREE.Euler(), tx:0, ty:0};
@@ -3574,7 +3602,7 @@ function updatePlay(dt){
   }
 
   updateWaves(dt); updateHazards(dt); if(window.__padKnob) window.__padKnob();
-  updateBoss(dt); updateBossBeams(dt);
+  updateBoss(dt); updateBossBeams(dt); updateFires(dt);
   for(const e of enemies) if(e.alive) updateEnemy(e,dt);
   for(let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if(!e.alive||(e.gone&&!e.boss)){ if(e.alive&&!e.boss) scene.remove(e.mesh); if(e.extras) for(const x of e.extras) scene.remove(x); enemies.splice(i,1); } }
   for(const e of enemies){ if(!e.wp){ e.wp=new V3(); e.pwp=new V3(); e.wv=new V3(); } e.pwp.copy(e.wp); if(e.boss) e.mesh.getWorldPosition(e.wp); else e.wp.copy(e.mesh.position); if(dt>0&&e.pwp.lengthSq()>0) e.wv.subVectors(e.wp,e.pwp).divideScalar(dt); }
