@@ -387,11 +387,12 @@ function railPush(){
 }
 function railSeg(){
   const long = Math.random()<.45, r = Math.random(), sg = () => Math.random()<.5?-1:1;
-  rail.left = long ? rand(200,420) : rand(60,150);
+  rail.left = long ? rand(200,420) : rand(60,150); const cv=(typeof W0!=='undefined'&&W0.curv)||1, pv=(typeof W0!=='undefined'&&W0.pitchK)||1;
   if(r<.2){ rail.tY=0; rail.tP=rail.pitch*.3; }
   else if(r<.52){ rail.tY=sg()*(long?rand(.0015,.0035):rand(.004,.0075)); rail.tP=rand(-.08,.08); }
   else if(r<.78){ rail.tY=rand(-.0015,.0015); rail.tP=(rail.pitch>0?-1:1)*rand(.15,.38); }
   else { rail.tY=sg()*rand(.003,.0065); rail.tP=sg()*rand(.12,.3); }
+  rail.tY*=cv; rail.tP*=pv;
 }
 function railGen(toS){
   if(!rail.P.length) railPush();
@@ -1687,28 +1688,28 @@ function updateEnvSpawn(dt){
 
 // ================= Welten (Sektoren) =================
 const WORLDS=[
- {name:'ASTEROIDENGÜRTEL KEPLER', fog:0x123444, dens:.0040, sky:[0x0c3444,0x3a2270,0x06101a], neb:0x9fffe8, sun:0xfff0dc, hemi:0xa8d8ff, rim:0x60c0ff, motes:0x7ff0ff,
+ {name:'ASTEROIDENGÜRTEL KEPLER', ev:'crossrocks', curv:1, evName:'QUERSCHLÄGER-ASTEROIDEN', fog:0x123444, dens:.0040, sky:[0x0c3444,0x3a2270,0x06101a], neb:0x9fffe8, sun:0xfff0dc, hemi:0xa8d8ff, rim:0x60c0ff, motes:0x7ff0ff,
   planet:[[120,170,230],[40,60,120]], ring:true, rock:[0xd8b88c,0xaa8a64], rockE:0, decor:{rock:.6,chunk:.25,girder:.15}, wrecks:.6, tube:'rock', fx:null,
   tunnel:{key:'rock',every:[1300,1900],len:[300,420]}},
- {name:'EISPLANET HEL', exp:.8, bloom:.3, hemiI:.5, fog:0x1d6a96, dens:.005, sky:[0x08244a,0x2a8ab8,0x0e4a70], neb:0x40d8ff, sun:0xd8f6ff, hemi:0x60c8f0, rim:0x40f0ff, motes:0xffffff, stars:false,
+ {name:'EISPLANET HEL', ev:'icefall', curv:1.3, pitchK:.5, evName:'EISZAPFEN STÜRZEN HERAB', exp:.8, bloom:.3, hemiI:.5, fog:0x1d6a96, dens:.005, sky:[0x08244a,0x2a8ab8,0x0e4a70], neb:0x40d8ff, sun:0xd8f6ff, hemi:0x60c8f0, rim:0x40f0ff, motes:0xffffff, stars:false,
   planet:[[230,240,255],[150,180,220]], ring:true, rock:[0x8ae4ff,0x4aa8d8], rockE:0x06304a, decor:{ice:.8,rock:.2}, wrecks:0, tube:'ice', fx:'snow',
   surface:{low:0x7fe0ff,high:0x0c3462,mid:0x2c90c4,canyon:1}, tunnel:{key:'ice',every:[900,1300],len:[320,460]}},
- {name:'LAVAPLANET SURTR', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
+ {name:'LAVAPLANET SURTR', ev:'eruption', curv:1.2, pitchK:.5, evName:'LAVA-AUSBRÜCHE', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
   planet:null, ring:false, rock:[0x4a3a34,0x3a2e2a], rockE:0x3a0c00, decor:{lava:.8,rock:.2}, wrecks:0, tube:'lava', fx:'embers',
   surface:{low:0xc85014,high:0x1e1410,mid:0x3a2218,canyon:1.1}, tunnel:{key:'lava',every:[1000,1400],len:[300,440]}},
- {name:'KRISTALLNEBEL', fog:0x2e0e44, dens:.0044, sky:[0x12052a,0x8a2898,0x0a0418], neb:0xff70ff, sun:0xffd0ff, hemi:0xd8a0ff, rim:0x60ffe0, motes:0xff80ff,
+ {name:'KRISTALLNEBEL', ev:'crystalring', curv:.8, pitchK:1.3, evName:'KRISTALLWIRBEL', fog:0x2e0e44, dens:.0044, sky:[0x12052a,0x8a2898,0x0a0418], neb:0xff70ff, sun:0xffd0ff, hemi:0xd8a0ff, rim:0x60ffe0, motes:0xff80ff,
   planet:[[120,220,200],[50,70,110]], ring:true, rock:[0xa898c0,0x8070a0], rockE:0x180628, decor:{crystal:.6,rock:.3,chunk:.1}, wrecks:0, tube:'crystal', fx:null,
   tunnel:{key:'crystal',every:[800,1200],len:[340,480]}},
- {name:'ORBITALSTATION ORION', fog:0x10244a, dens:.0042, sky:[0x041030,0x1c4880,0x020610], neb:0x6080ff, sun:0xfff0e0, hemi:0xa0b0e0, rim:0x40a0ff, motes:0x60a0ff,
+ {name:'ORBITALSTATION ORION', ev:'turrets', curv:.35, pitchK:.3, evName:'ABWEHRGESCHÜTZE DER STATION', fog:0x10244a, dens:.0042, sky:[0x041030,0x1c4880,0x020610], neb:0x6080ff, sun:0xfff0e0, hemi:0xa0b0e0, rim:0x40a0ff, motes:0x60a0ff,
   planet:[[110,160,230],[30,50,90]], ring:true, rock:[0xb0b0b8,0x8a8a92], rockE:0, decor:{tower:.4,girder:.3,chunk:.3}, wrecks:.6, tube:'mix', fx:null, deck:true},
- {name:'GEWITTERNEBEL', fog:0x164a3c, dens:.0056, sky:[0x041a14,0x1e6a54,0x020a08], neb:0x60ffb0, sun:0xc0ffe0, hemi:0x90d0b0, rim:0x40ffb0, motes:0x80ffd0,
+ {name:'GEWITTERNEBEL', ev:'lightning', curv:1.1, evName:'BLITZEINSCHLÄGE', fog:0x164a3c, dens:.0056, sky:[0x041a14,0x1e6a54,0x020a08], neb:0x60ffb0, sun:0xc0ffe0, hemi:0x90d0b0, rim:0x40ffb0, motes:0x80ffd0,
   planet:[[90,170,130],[20,50,40]], ring:false, rock:[0x8a9a90,0x6a7a70], rockE:0, decor:{rock:.6,chunk:.3,girder:.1}, wrecks:.7, tube:'mix', fx:'storm'},
- {name:'EREIGNISHORIZONT', fog:0x120a20, dens:.004, sky:[0x020104,0x2c1236,0x000000], neb:0xffa060, sun:0xffd8a0, hemi:0x9080b0, rim:0xff8040, motes:0xffb070,
+ {name:'EREIGNISHORIZONT', ev:'gravity', curv:1.5, pitchK:1.2, evName:'SOG DES SCHWARZEN LOCHS', fog:0x120a20, dens:.004, sky:[0x020104,0x2c1236,0x000000], neb:0xffa060, sun:0xffd8a0, hemi:0x9080b0, rim:0xff8040, motes:0xffb070,
   planet:null, ring:false, blackhole:true, rock:[0x8a8078,0x6a6460], rockE:0x140600, decor:{rock:.5,chunk:.35,girder:.15}, wrecks:.8, tube:'mix', fx:null},
- {name:'WÜSTENPLANET ARRAKON', exp:.82, bloom:.25, hemiI:.6, fog:0xb08a62, dens:.005, sky:[0x2a5590,0xd8b080,0x8a6038], neb:0xffd070, sun:0xfff0c0, hemi:0xffe8b0, rim:0xffa040, motes:0xffe090, stars:false,
+ {name:'WÜSTENPLANET ARRAKON', ev:'sandstorm', curv:1.4, pitchK:.4, evName:'SANDSTÜRME', exp:.82, bloom:.25, hemiI:.6, fog:0xb08a62, dens:.005, sky:[0x2a5590,0xd8b080,0x8a6038], neb:0xffd070, sun:0xfff0c0, hemi:0xffe8b0, rim:0xffa040, motes:0xffe090, stars:false,
   planet:[[240,220,200],[200,170,150]], ring:false, rock:[0xd8b878,0xb89858], rockE:0, decor:{rock:1}, wrecks:0, tube:'rock', fx:'dust',
   surface:{low:0xd0aa74,high:0x7a4628,mid:0xa87048,canyon:1.25}},
- {name:'SMARAGDGÜRTEL', fog:0x2a6a30, dens:.0045, sky:[0x08301a,0x52b84a,0x0a2a10], neb:0x90ff90, sun:0xfff8d8, hemi:0xc0ffc0, rim:0x80ff80, motes:0x90ffa0,
+ {name:'SMARAGDGÜRTEL', ev:'spores', curv:.9, evName:'SPORENKAPSELN', fog:0x2a6a30, dens:.0045, sky:[0x08301a,0x52b84a,0x0a2a10], neb:0x90ff90, sun:0xfff8d8, hemi:0xc0ffc0, rim:0x80ff80, motes:0x90ffa0,
   planet:[[210,100,80],[120,50,40]], ring:false, rock:[0xdcbc8c,0xb4946c], rockE:0, decor:{rock:.65,crystal:.35}, wrecks:0, tube:'rock', fx:null, crys:'green',
   tunnel:{key:'emerald',every:[1000,1500],len:[320,440]}}
 ];
@@ -1774,7 +1775,7 @@ const M2={
   crysG:new THREE.MeshStandardMaterial({color:0x50ff70,emissive:0x10902a,emissiveIntensity:1,metalness:.2,roughness:.2,flatShading:true})
 };
 const crystalGeo=new THREE.ConeGeometry(.5,1,5);
-function applyWorld(i){
+function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
   worldIdx=((i%WORLDS.length)+WORLDS.length)%WORLDS.length; const w=WORLDS[worldIdx]; W0=w;
   scene.fog.color.setHex(w.fog); scene.fog.density=w.dens; scene.background.setHex(w.sky[2]);
   const SU=skyBake.src.uniforms; SU.nA.value.setHex(w.neb).multiplyScalar(.55); SU.nB.value.setHex(w.rim).multiplyScalar(.5); SU.nI.value=w.stars===false?.25:1;
@@ -1800,6 +1801,41 @@ function applyWorld(i){
 }
 function pickW(o){ let t=Math.random()*Object.values(o).reduce((a,b)=>a+b,0); for(const k in o){ t-=o[k]; if(t<=0) return k; } return Object.keys(o)[0]; }
 let stormT=3, flashV=0;
+// ---------- Welt-Ereignisse: jede Welt spielt sich anders ----------
+const iceMat=new THREE.MeshStandardMaterial({color:0xaef0ff,emissive:0x2080b0,emissiveIntensity:.5,metalness:.1,roughness:.15,transparent:true,opacity:.92});
+const lavaBall=new THREE.MeshBasicMaterial({color:0xff8a20,toneMapped:false});
+const sporeMat=new THREE.MeshStandardMaterial({color:0x60ff70,emissive:0x20a030,emissiveIntensity:.9,roughness:.6});
+const strikes=[];
+function worldEvents(dt){
+  if(state!=='play'||G.boss||G.warp>0||G.passage||ENV.calm) return;
+  const ev=W0.ev; G.evT=(G.evT??3)-dt; if(G.evT>0) return;
+  if(ev==='crossrocks'){ G.evT=rand(1.2,2.2); const sd=Math.random()<.5?-1:1, r=rand(1.8,3.2), m=new THREE.Mesh(pick(rocks),M.rock); m.scale.setScalar(r);
+    const e=addEnemy('thrown',m,{hp:Math.ceil(r*2),maxHp:Math.ceil(r*2),radius:r*.95,score:40,collide:24,bs:r,env:true}); e.pos.set(sd*(B.x+30),rand(-B.y*.7,B.y*.7),rand(-120,-70)); e.vel.set(-sd*rand(16,26),rand(-2,2),ENV.speed*.85); e.spin=new V3(rand(-2,2),rand(-2,2),rand(-2,2)); }
+  else if(ev==='icefall'){ G.evT=rand(1.4,2.4); for(let i=0;i<2;i++){ const m=new THREE.Mesh(geo.cone,iceMat); m.scale.set(2.2,9,2.2); m.rotation.x=Math.PI;
+      const e=addEnemy('thrown',m,{hp:3,maxHp:3,radius:2.2,score:50,collide:24,bs:1,env:true}); e.pos.set(clamp(ship.pos.x+rand(-12,12),-B.x,B.x),B.y+22,rand(-110,-70)); e.vel.set(0,-rand(14,20),ENV.speed*.75); e.spin=new V3(0,rand(-1,1),0); } }
+  else if(ev==='eruption'){ G.evT=rand(1.6,2.6); const x=rand(-B.x*.8,B.x*.8); for(let i=0;i<4;i++) later(i*.12,()=>{ const g=new THREE.Group(); g.add(mesh(geo.sphere,lavaBall,1.3,1.3,1.3)); g.add(glowSprite(0xff6010,7,.9));
+      const e=addEnemy('thrown',g,{hp:2,maxHp:2,radius:1.6,score:30,collide:18,bs:1,env:true}); e.pos.set(x+rand(-3,3),-B.y-10,rand(-80,-60)); e.vel.set(rand(-4,4),rand(20,28),ENV.speed*.7); e.grav=14; e.spin=new V3(); }); toast('AUSBRUCH!','#ff8040'); }
+  else if(ev==='crystalring'){ G.evT=rand(5,7); const n=7, a0=rand(0,6), z=rand(-200,-160), w=Math.random()<.5?-1:1; for(let i=0;i<n;i++){ const m=new THREE.Mesh(geo.octa,pick([M2.crysA,M2.crysB])); m.scale.set(1.6,4,1.6);
+      const e=addEnemy('crys',m,{hp:3,maxHp:3,radius:2.4,score:40,collide:22,bs:1,env:true}); e.ca=a0+i/n*Math.PI*2; e.cw=w*.9; e.cz=z; e.pos.set(0,0,z); } }
+  else if(ev==='turrets'){ G.evT=rand(2.6,4); const sd=Math.random()<.5?-1:1, g=new THREE.Group(); g.add(mesh(geo.box,M.stationDark,4,2,4)); const bar=mesh(geo.cyl,M.stationOr,1,4,1,0,1.4,1.4); bar.rotation.x=Math.PI/2; g.add(bar); g.add(glowSprite(0xff3020,3,.8));
+    const e=addEnemy('gturret',g,{hp:8,maxHp:8,radius:2.6,score:150,collide:20,bs:1}); e.pos.set(sd*(B.x+3),rand(-B.y*.6,-B.y*.1),-170); e.fireT=rand(1,2); }
+  else if(ev==='lightning'){ G.evT=rand(1.8,3); const x=clamp(ship.pos.x+rand(-6,6),-B.x,B.x); const o=new THREE.Mesh(hzBeamGeo,new THREE.MeshBasicMaterial({color:0xb0ffe0,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false})); scene.add(o); strikes.push({x,t:0,o}); }
+  else if(ev==='gravity'){ G.evT=rand(5,8); G.gPull=(Math.random()<.5?-1:1)*rand(9,14); G.gT=3.5; toast(G.gPull>0?'SOG NACH RECHTS!':'SOG NACH LINKS!','#ffb070'); }
+  else if(ev==='sandstorm'){ G.evT=rand(7,10); G.gPull=(Math.random()<.5?-1:1)*rand(7,11); G.gT=4; G.sandT=4; toast('SANDSTURM!','#ffd080'); }
+  else if(ev==='spores'){ G.evT=rand(1.6,2.6); const g=new THREE.Group(); g.add(mesh(geo.sphere,sporeMat,2,2.4,2)); for(let k=0;k<6;k++){ const sp=mesh(geo.cone,sporeMat,.5,1.6,.5); const a=k/6*Math.PI*2; sp.position.set(Math.cos(a)*1.9,Math.sin(a)*1.9,0); sp.rotation.z=a-Math.PI/2; g.add(sp); } g.add(glowSprite(0x60ff70,5,.6));
+    const e=addEnemy('spore',g,{hp:3,maxHp:3,radius:2.4,score:80,collide:18,bs:1,env:true}); e.pos.set(rand(-B.x*.8,B.x*.8),rand(-B.y*.7,B.y*.7),-180); }
+}
+function updateWorldEvents(dt){
+  worldEvents(dt);
+  for(let i=strikes.length-1;i>=0;i--){ const k=strikes[i]; k.t+=dt; const z=ship.pos.z-4;
+    _ha.set(k.x,B.y+30,z); _hb.set(k.x,-B.y-30,z); const strike=k.t>.9&&k.t<1.15;
+    beamBetween(k.o,_ha,_hb,strike?1.4:.08); k.o.visible=strike||Math.sin(k.t*30)>0;
+    if(strike&&!k.hit&&state==='play'&&Math.abs(ship.pos.x-k.x)<2.2){ k.hit=true; damagePlayer(18); G.trauma=.8; }
+    if(strike&&!k.fl){ k.fl=true; G.warpFx=Math.max(G.warpFx||0,.35); sfx.boom&&sfx.boom(.6); }
+    if(k.t>1.3){ scene.remove(k.o); strikes.splice(i,1); } }
+  if(G.gT>0){ G.gT-=dt; if(state==='play') ship.tRaw.x+=G.gPull*dt; }
+  if(G.sandT>0){ G.sandT-=dt; scene.fog.density=(W0.dens||.005)*(1+1.6*Math.min(1,G.sandT)); } else if(W0.ev==='sandstorm') scene.fog.density=W0.dens||.005;
+}
 function updateWorldFx(dt){
   const w=W0;
   if(blackHole.visible) blackHole.userData.disk.rotation.z+=dt*.05;
@@ -1845,7 +1881,7 @@ function updateWarp(dt){
   if(G.warp<3.0&&!G.inHyper&&G.warp>.45){ G.inHyper=true; G.warpFx=1; for(const e of enemies) if(!e.boss&&e.alive&&!e.haz){ e.alive=false; scene.remove(e.mesh); } }
   if(G.inHyper&&G.warp<=.45){ G.inHyper=false; G.warpFx=1; }
   if(!G.warpApplied&&G.warp<1.7){ G.warpApplied=true; if(!G.inHyper) G.warpFx=1; applyWorld(worldIdx+1); G.worldNo=(G.worldNo||1)+1; }
-  if(G.warp<=0){ G.warp=0; ENV.calm=false; banner('SEKTOR '+G.worldNo,W0.name); slotProgress(); }
+  if(G.warp<=0){ G.warp=0; ENV.calm=false; banner('SEKTOR '+G.worldNo,W0.name+(W0.evName?' · '+W0.evName:'')); slotProgress(); }
   return true;
 }
 
@@ -2116,22 +2152,22 @@ const BOSSES=[
  {name:'FESTUNG', tip:'SCHILD-PAUSEN NUTZEN!', shape:'sphere', hull:0x9a9aa6, glow:0x40c8ff, move:'drift', core:'wall', hp:1.2, abil:['reflect', 'arms'], p2:['orbitals'],
   parts:[['gen',-5.2,0,5.4,0],['gen',5.2,0,5.4,0],['turret',0,5,5,1],['turret',-4.4,-3.2,5.2,1],['turret',4.4,-3.2,5.2,1],['core',0,0,7.4,2]]},
  // 10: Felsregen
- {name:'ASTEROIDENBRECHER', tip:'FELSBROCKEN ABSCHIESSEN!', shape:'trident', hull:0xa89a78, glow:0xffb040, move:'hover', core:'ring', hp:1.2, abil:['rockrain', 'boulder'], p2:['charge'],
+ {name:'ASTEROIDENBRECHER', tip:'FELSBROCKEN ABSCHIESSEN!', shape:'drill', hull:0xa89a78, glow:0xffb040, move:'hover', core:'ring', hp:1.2, abil:['rockrain', 'boulder'], p2:['charge'],
   parts:[['rock',-8,0,11.6,0],['rock',8,0,11.6,0],['turret',0,2.4,5,0],['core',0,0,12.8,1]]},
  // 11: Raketenschwärme
- {name:'RAKETENKREUZER', tip:'RAKETENSCHWÄRME!', shape:'slab', hull:0x7f907f, glow:0xff8030, move:'strafe', core:'homing', hp:1.25, abil:['barrage', 'arms'], p2:['flank'],
+ {name:'RAKETENKREUZER', tip:'RAKETENSCHWÄRME!', shape:'cruiser', hull:0x7f907f, glow:0xff8030, move:'strafe', core:'homing', hp:1.25, abil:['barrage', 'arms'], p2:['flank'],
   parts:[['homing',-8,.6,6.3,0],['homing',8,.6,6.3,0],['homing',-4.2,3.4,2.2,0],['homing',4.2,3.4,2.2,0],['core',0,-.2,6.6,1]]},
  // 12: Seitenangriffe mit Lasern und Spirale
- {name:'SENSE', tip:'ANGRIFF VON DER SEITE!', shape:'crescent', hull:0xa07090, glow:0xff40a0, move:'strafe', core:'spiral', hp:1.25, abil:['flank', 'xbeams'], p2:['decoys'],
+ {name:'SENSE', tip:'ANGRIFF VON DER SEITE!', shape:'scythe', hull:0xa07090, glow:0xff40a0, move:'strafe', spin:.3, core:'spiral', hp:1.25, abil:['flank', 'xbeams'], p2:['decoys'],
   parts:[['laser',-10,0,1.9,0],['laser',10,0,1.9,0],['spiral',0,10,1.9,0],['core',0,4,2,1]]},
  // 13: Traktorstrahl
- {name:'GRAVITRON', tip:'SCHUTZKUGELN ZUERST!', shape:'ring', hull:0x6f80a8, glow:0x4080ff, move:'hover', core:'ring', hp:1.3, spin:.25, abil:['tractor', 'orbitals'], p2:['boulder'],
+ {name:'GRAVITRON', tip:'SCHUTZKUGELN ZUERST!', shape:'gyro', hull:0x6f80a8, glow:0x4080ff, move:'hover', core:'ring', hp:1.3, abil:['tractor', 'orbitals'], p2:['boulder'],
   parts:[['turret',0,9,1.6,0],['turret',-7.8,-4.5,1.6,0],['turret',7.8,-4.5,1.6,0],['core',0,0,3.4,1]]},
  // 14: Flak-Bomben im Kreis
- {name:'FLAKKREUZER', tip:'NUR BEI OFFENER LUKE!', shape:'disc', hull:0x968470, glow:0xff7040, move:'circle', core:'bombs', hp:1.3, abil:['salvo', 'hatch'], p2:['beams'],
+ {name:'FLAKKREUZER', tip:'NUR BEI OFFENER LUKE!', shape:'tower', hull:0x968470, glow:0xff7040, move:'circle', core:'bombs', hp:1.3, abil:['salvo', 'hatch'], p2:['beams'],
   parts:[['flak',-6,1.4,6.5,0],['flak',6,1.4,6.5,0],['spiral',0,1.6,8,0],['core',0,-.4,9.4,1]]},
  // 15: Endgegner mit allem
- {name:'DREADNOUGHT OMEGA', tip:'DER ENDGEGNER!', shape:'sphere', hull:0x5a3a9a, glow:0x40ff80, move:'hover', core:'beam', hp:1.5, big:1.25, abil:['charge', 'tractor', 'arms', 'revive'], p2:['xbeams', 'decoys', 'barrage'],
+ {name:'DREADNOUGHT OMEGA', tip:'DER ENDGEGNER!', shape:'dread', hull:0x5a3a9a, glow:0x40ff80, move:'hover', core:'beam', hp:1.5, big:1.25, abil:['charge', 'tractor', 'arms', 'revive'], p2:['xbeams', 'decoys', 'barrage'],
   parts:[['gen',-5.2,0,5.4,0],['gen',5.2,0,5.4,0],['laser',0,5,5,1],['homing',-4.4,-3.2,5.2,1],['hangar',4.4,-3.2,5.2,1],['core',0,0,7.4,2]]},
 ];
 
@@ -2189,6 +2225,47 @@ function bossHull(def){
         const arm=mesh(geo.cyl,dm,1.1,len,1.1); arm.position.copy(mid); arm.quaternion.setFromUnitVectors(WUP,b.clone().sub(a).normalize()); add(arm);
         add(mesh(geo.sphere,hm,1.9,1.9,1.9,hx,hy,hz-.4)); }
       eglow(0,0,-4.5,6); half=new V3(3,3,4); break;
+    case 'cruiser': // langer Raketenkreuzer mit Startschächten
+      add(mesh(geo.box,hm,9,3.2,34,0,0,-4)); add(mesh(geo.box,lm,6,2,14,0,2.4,-8)); add(mesh(geo.box,dm,3,5,4,0,4.6,-12));
+      { const bow=mesh(geo.cone4,hm,9,10,3.2,0,0,17.5); bow.rotation.x=Math.PI/2; bow.rotation.y=Math.PI/4; add(bow); }
+      for(const s of [-1,1]){ add(mesh(geo.box,dm,4,3,22,s*8,.4,-2)); for(let k=0;k<6;k++){ add(mesh(geo.cyl,gm,.7,.4,.7,s*8,2.1,-10+k*3.2)); }
+        const en=mesh(geo.cyl,dm,3,4,3,s*3,0,-22); en.rotation.x=Math.PI/2; add(en); eglow(s*3,0,-24.5,7); }
+      greeble(24,-4,4,1.6,-18,10); half=new V3(4.5,2,17); break;
+    case 'drill': // Bergbauschiff mit zwei rotierenden Bohrern
+      add(mesh(geo.cyl,hm,9,22,9,0,0,0)).rotation.x=Math.PI/2; add(mesh(geo.box,dm,14,3,10,0,-3,-2));
+      g.userData.spin=[];
+      for(const s of [-1,1]){ const arm=mesh(geo.box,dm,6,2,4,s*5,0,6); add(arm);
+        const d=new THREE.Group(); d.position.set(s*8,0,9); const c=mesh(geo.cone,hm,5,12,5,0,0,6); c.rotation.x=Math.PI/2; d.add(c);
+        for(let k=0;k<5;k++){ const r=mesh(geo.ring,gm,2.4-k*.4,2.4-k*.4,6,0,0,2+k*2.2); d.add(r); } add(d); g.userData.spin.push([d,'z',5]); }
+      for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; add(mesh(geo.box,lm,1,1,18,Math.cos(a)*4.4,Math.sin(a)*4.4,-1)); }
+      eglow(0,0,-12,9); half=new V3(4.5,4.5,11); break;
+    case 'scythe': // riesige rotierende Sichelklinge
+      add(new THREE.Mesh(new THREE.TorusGeometry(11,1.2,8,48,Math.PI*1.5),hm)).scale.set(1,1,.6);
+      { const e=new THREE.Mesh(new THREE.TorusGeometry(12.3,.35,4,48,Math.PI*1.5),gm); add(e); }
+      for(let i=0;i<9;i++){ const a=i/9*Math.PI*1.5; const sp=mesh(geo.cone4,dm,1.4,4.5,1.4,Math.cos(a)*13.6,Math.sin(a)*13.6,0); sp.rotation.z=a-Math.PI/2; add(sp); }
+      add(mesh(geo.sphere,hm,4,4,4,0,0,0)); add(mesh(geo.box,dm,1,11,1.4,0,-5.5,0)); eglow(0,0,-3,8); half=null; break;
+    case 'tower': // schwebende Festungsturm-Plattform
+      for(let k=0;k<4;k++){ add(mesh(geo.cyl,k%2?dm:hm,16-k*3.2,2.6,16-k*3.2,0,-3+k*2.6,4)); }
+      add(mesh(geo.cyl,dm,3,10,3,0,8,4)); add(mesh(geo.sphere,gm,1.2,1.2,1.2,0,13.4,4));
+      for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; add(mesh(geo.box,lm,1.4,4,1.4,Math.cos(a)*8,-4.5,4+Math.sin(a)*8)); }
+      for(const s of [-1,1]) add(mesh(geo.box,dm,5,2,5,s*6,1.4,6.5));
+      eglow(0,-6,4,10); half=new V3(6,4,6); break;
+    case 'gyro': // drei ineinander drehende Ringe
+      g.userData.spin=[];
+      add(mesh(geo.sphere,hm,3.4,3.4,3.4)); add(mesh(geo.sphere,gm,1.6,1.6,1.6,0,0,2.6));
+      [[11,'x',.9],[8.5,'y',-1.3],[6,'x',1.8]].forEach(([r,ax,sp],i)=>{ const rg=new THREE.Group(); rg.add(new THREE.Mesh(new THREE.TorusGeometry(r,.8,10,40),i%2?dm:hm));
+        rg.add(new THREE.Mesh(new THREE.TorusGeometry(r,.22,4,40),gm)); for(let k=0;k<6;k++){ const a=k/6*Math.PI*2; rg.add(mesh(geo.box,dm,1.4,1.4,2,Math.cos(a)*r,Math.sin(a)*r,0)); }
+        add(rg); g.userData.spin.push([rg,ax,sp]); });
+      half=new V3(3,3,3); break;
+    case 'dread': // Endgegner: Pfeilförmiger Koloss mit Wirbelsäule und Flügeln
+      add(mesh(geo.sphere,hm,7.5,7.5,8));
+      { const nose=mesh(geo.cone,hm,10,16,6,0,0,15); nose.rotation.x=Math.PI/2; add(nose); }
+      for(let k=0;k<6;k++) add(mesh(geo.box,k%2?dm:hm,5-k*.5,4-k*.4,3.6,0,0,-7-k*3.6));
+      for(const s of [-1,1]){ const w=mesh(geo.box,hm,22,1.4,14,s*16,0,-2); w.rotation.y=-s*.35; w.rotation.z=s*.12; add(w);
+        const w2=mesh(geo.box,dm,14,1,6,s*20,-1.4,-8); w2.rotation.y=-s*.5; add(w2); add(mesh(geo.box,gm,.3,.3,12,s*26,.8,-4));
+        for(let k=0;k<3;k++){ const sp=mesh(geo.cone4,dm,1.6,6,1.6,s*(9+k*5),3.5,-4-k*2); add(sp); } }
+      g.userData.spin=[]; { const ring=new THREE.Group(); ring.add(new THREE.Mesh(new THREE.TorusGeometry(9.5,.5,8,40),gm)); for(let k=0;k<10;k++){ const a=k/10*Math.PI*2; ring.add(mesh(geo.box,dm,1.4,1.4,1.4,Math.cos(a)*9.5,Math.sin(a)*9.5,0)); } ring.position.z=-1; add(ring); g.userData.spin.push([ring,'z',.8]); }
+      eglow(0,0,-28,12); half=new V3(6,6,10); break;
   }
   return {g,half};
 }
@@ -2408,6 +2485,7 @@ function updateBoss(dt){
       if(b.mT<=0){ b.mode='normal'; b.flT=rand(8,11); }
     }
     b.spinBoost=Math.max(1,(b.spinBoost||1)-dt*.6);
+    if(b.mesh.userData.spin) for(const [o,ax,sp] of b.mesh.userData.spin) o.rotation[ax]+=sp*dt*(enr?1.7:1);
     if(def.spin) b.rot.z+=def.spin*dt*(enr?1.6:1)*b.spinBoost;
     else if(b.mode==='flank') b.rot.y+=(-b.side*.9-b.rot.y)*Math.min(1,dt*2);
     else { const ty=Math.sin(b.ft*.42)*.38+(p.x/B.x)*-.25; b.rot.y+=(ty-b.rot.y)*Math.min(1,dt*2); b.rot.z+=(-Math.cos(b.ft*.35)*.32-(p.x-(b.lx??p.x))*.6-b.rot.z)*Math.min(1,dt*3); b.rot.x=Math.sin(b.ft*.3)*.12; b.lx=p.x; }
@@ -2649,7 +2727,7 @@ function updateNewEnemy(e,dt,p,px){
       p.addScaledVector(e.vel,dt); e.vel.x+=(ship.pos.x-p.x)*.25*dt; e.vel.y+=(ship.pos.y-p.y)*.25*dt; e.rot.y+=dt; e.rot.x+=dt*.7;
       e.mesh.userData.light.visible=Math.sin(G.time*12)>0; return true; }
     case 'thrown': {
-      p.addScaledVector(e.vel,dt); e.rot.x+=e.spin.x*dt; e.rot.y+=e.spin.y*dt; return true; }
+      if(e.grav) e.vel.y-=e.grav*dt; p.addScaledVector(e.vel,dt); e.rot.x+=e.spin.x*dt; e.rot.y+=e.spin.y*dt; if(p.y<-B.y-30||p.z>60) e.gone=true; return true; }
   }
   return false;
 }
@@ -2729,6 +2807,9 @@ function updateEnemy(e,dt){
       e.rot.z+=dt*.6; e.mesh.userData.ring.rotation.x+=dt*1.5;
       break;}
     case 'emitter': case 'switch': case 'panel': case 'gatehalf': break;
+    case 'crys':{ e.ca+=e.cw*dt; e.cz+=sp*dt; p.set(Math.cos(e.ca)*B.x*.62,Math.sin(e.ca)*B.y*.7,e.cz); e.rot.z=e.ca; e.rot.y+=dt*2; break;}
+    case 'gturret':{ p.z+=sp*dt; e.fireT-=dt; if(e.fireT<=0&&p.z<-25){ e.fireT=rand(1.4,2.2)/diff(); enemyShoot(p,bulletSpeed()*.85,1,0); } e.rot.y=Math.atan2(ship.pos.x-p.x,ship.pos.z-p.z); break;}
+    case 'spore':{ p.z+=sp*.8*dt; e.rot.y+=dt; e.rot.x+=dt*.6; if(p.z>ship.pos.z-26&&!e.popped){ e.popped=true; for(let k=0;k<6;k++){ const a=k/6*Math.PI*2; spawnEBullet(p,new V3(Math.cos(a)*7,Math.sin(a)*7,16),undefined); } killEnemy(e,true); } break;}
     case 'orb':{ const b=e.ob; if(!b||G.boss!==b||b.state!=='fight'){ e.gone=true; break; }
       const a=e.oa+b.t*(b.def.spin?1.1:.7), R=(9+e.or)*b.sc; p.set(b.pos.x+Math.cos(a)*R,b.pos.y+Math.sin(a)*R*.8,b.pos.z+6);
       e.fireT-=dt; if(e.fireT<=0){ e.fireT=rand(3.5,6)/diff(); enemyShoot(p,bulletSpeed()*.7,1,0); }
@@ -3508,7 +3589,7 @@ function updateArrows(){
 }
 
 function hud(){
-  setT($('score'),'⚙ '+String(Math.min(999999,G.score)).padStart(6,'0'));
+  setT($('score'),'⚙ '+String(Math.min(99999999,G.score)).padStart(8,'0'));
   const beat=G.score>hiscore&&hiscore>0; setT($('hirow'),beat?'★ NEUER REKORD':'REKORD '+fmt(Math.max(hiscore,G.score)));
   if(beat&&!G.beatShown){ G.beatShown=true; $('hirow').classList.add('beat'); toast('★ NEUER REKORD! ★','#ffd24a'); sfx.fanfare(); }
   const mu=$('mult'); setT(mu,'x'+G.mult+' KOMBO'); mu.style.opacity=G.mult>1?1:.35;
@@ -3541,7 +3622,7 @@ function loop(now){
     updateEnvSpawn(dt);
     if(state==='play'||state==='dying'){ updatePlay(dt); hud(); }
     else updateIdle(dt);
-    updateWorldFx(dt); updateCubes(dt); updatePops(dt); updateCameraDust(dt); updatePS(PS,dt); updatePS(SMOKE,dt); updateChunks(dt); updateRings(dt); updateCamera(dt); updateArrows();
+    updateWorldFx(dt); updateWorldEvents(dt); updateCubes(dt); updatePops(dt); updateCameraDust(dt); updatePS(PS,dt); updatePS(SMOKE,dt); updateChunks(dt); updateRings(dt); updateCamera(dt); updateArrows();
     if(planet) planet.rotation.y+=dt*.01;
     autoQuality(dt);
   }
