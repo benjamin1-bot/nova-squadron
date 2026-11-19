@@ -816,19 +816,19 @@ function makeMassif(W,H,D,y0,hx,hy,rx,ry){
     X+=x*n*9; Y+=y*n*4+(t>.6?Math.max(0,n)*6:0); Z+=z*n*6;
     pos[i]=X; pos[i+1]=Y; pos[i+2]=Z; }
   const keep=[]; for(let i=0;i<idx.length;i+=3){ let cx=0,cy=0; for(let k=0;k<3;k++){ cx+=pos[idx[i+k]*3]; cy+=pos[idx[i+k]*3+1]; } cx/=3; cy/=3;
-    if(((cx-hx)/rx)**2+((cy-hy)/ry)**2<1) continue; keep.push(idx[i],idx[i+1],idx[i+2]); }
+    if(((cx-hx)/(rx*1.08))**2+((cy-hy)/(ry*1.08))**2<1) continue; keep.push(idx[i],idx[i+1],idx[i+2]); }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(keep); g.computeVertexNormals();
   // Tunnelröhre (nach innen gerichtet), an den Enden aufgeweitet, damit sie im Fels verschwindet
   const tb=new THREE.CylinderGeometry(1,1,1,28,10,true); tb.rotateX(Math.PI/2); const tp=tb.attributes.position;
-  for(let i=0;i<tp.count;i++){ const x=tp.getX(i),y=tp.getY(i),z=tp.getZ(i), e=Math.pow(Math.abs(z*2),4), k=(.96+.7*e)*(1+(vnoise(x*3+seed,y*3,z*4)-.5)*.25);
-    tp.setXYZ(i,-(hx+x*rx*k),hy+y*ry*k,z*D*1.9); }
+  for(let i=0;i<tp.count;i++){ const x=tp.getX(i),y=tp.getY(i),z=tp.getZ(i), e=Math.pow(Math.abs(z*2),6), k=(1+.18*e)*(1+(vnoise(x*1.5+seed,y*1.5,z*2)-.5)*.06);
+    tp.setXYZ(i,-(hx+x*rx*k),hy+y*ry*k,z*D*.92); }
   tb.scale(-1,1,1); tb.computeVertexNormals();
   return {g,tube:tb};
 }
 function spawnMassif(s){
   const gy=-(B.y+8), side=Math.random()<.5?-1:1;
-  const W=rand(B.x*1.35,B.x*1.9), cx=side*rand(B.x*.35,B.x*.85), top=B.y+rand(8,26), H=top-(gy-8), D=rand(26,40);
-  const rx=rand(6,7.2), ry=rand(5,6), hx=cx+rand(-W*.18,W*.18), hy=rand(-B.y*.35,B.y*.4);
+  const sz=rand(.75,1.35), W=rand(B.x*1.2,B.x*2)*sz, cx=side*rand(B.x*.3,B.x*.85), top=B.y+rand(4,26)*sz, H=top-(gy-8), D=rand(18,42)*sz;
+  const rx=rand(5.2,8.5), ry=rand(4.4,7), hx=cx+rand(-W*.18,W*.18), hy=rand(-B.y*.35,B.y*.4);
   const {g,tube}=makeMassif(W,H,D,gy-8,hx-cx,hy,rx,ry), mat=worldIdx===2?M2.lava:pick([M.rock,M.rock2]);
   const gg=new THREE.Group(), m1=new THREE.Mesh(g,mat), m2=new THREE.Mesh(tube,mat); m1.position.x=m2.position.x=cx; gg.add(m1); gg.add(m2);
   if(worldIdx===2){ const gl=glowSprite(0xff6020,rx*3,.5); gl.position.set(hx,hy,0); gg.add(gl); }
@@ -2638,7 +2638,7 @@ function updateEnemy(e,dt){
   if(!e.boss){
     e.mesh.scale.setScalar(e.bs*(1+Math.max(0,e.flash)*.18));
     place(e.mesh,p,e.rot);
-    if(p.z>75||p.z<-490||Math.abs(p.x)>160) e.gone=true;
+    if(!e.haz&&(p.z>75||p.z<-490||Math.abs(p.x)>160)) e.gone=true;
     // beschädigte Gegner qualmen
     if(!e.env&&e.hp<e.maxHp*.5&&e.maxHp>1&&Math.random()<dt*14) emitL(p.x,p.y,p.z,rand(-1,1),rand(0,2),rand(-1,1),.9,0x2e2a28,rand(.8,1.4),rand(.6,1),1,2,SMOKE);
   }
