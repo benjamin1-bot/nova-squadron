@@ -1904,7 +1904,11 @@ const lavaBall=new THREE.MeshBasicMaterial({color:0xff8a20,toneMapped:false});
 const sporeMat=new THREE.MeshStandardMaterial({color:0x60ff70,emissive:0x20a030,emissiveIntensity:.9,roughness:.6});
 const strikes=[];
 function worldEvents(dt){
+  if(G.forkPU&&ENV.s>G.forkPU.s-200){ spawnPickup(new V3(B.x*.55,0,-200),pick(['P','X','Z','S'])); G.forkPU=null; }
   if(state!=='play'||G.boss||G.warp>0||G.passage||ENV.calm) return;
+  const inTun=ENV.wrecks.find(w=>w.tunnel&&ENV.s>w.s0+20&&ENV.s<w.s1-60);
+  if(inTun){ G.colT=(G.colT??4)-dt; if(G.colT<=0){ G.colT=rand(5,8); toast('EINSTURZ!','#ffb060'); G.trauma=Math.min(1,G.trauma+.5); for(let i=0;i<6;i++) later(i*.15,()=>{ if(state!=='play') return; const r=rand(1.4,2.4), m=new THREE.Mesh(pick(rocks),W0.gmat==='ice'?M2.iceRock:M.rock2); m.scale.setScalar(r);
+      const e=addEnemy('thrown',m,{hp:3,maxHp:3,radius:r*.95,score:40,collide:22,bs:r,env:true}); e.pos.set(clamp(ship.pos.x+rand(-10,10),-B.x,B.x),B.y+4,rand(-90,-50)); e.vel.set(0,-rand(12,18),ENV.speed*.7); e.spin=new V3(rand(-2,2),rand(-2,2),0); }); } return; }
   const ev=W0.ev; G.evT=(G.evT??3)-dt; if(G.evT>0) return;
   if(ev==='crossrocks'){ G.evT=rand(1.2,2.2); const sd=Math.random()<.5?-1:1, r=rand(1.8,3.2), m=new THREE.Mesh(pick(rocks),M.rock); m.scale.setScalar(r);
     const e=addEnemy('thrown',m,{hp:Math.ceil(r*2),maxHp:Math.ceil(r*2),radius:r*.95,score:40,collide:24,bs:r,env:true}); e.pos.set(sd*(B.x+30),rand(-B.y*.7,B.y*.7),rand(-120,-70)); e.vel.set(-sd*rand(16,26),rand(-2,2),ENV.speed*.85); e.spin=new V3(rand(-2,2),rand(-2,2),rand(-2,2)); }
@@ -2824,6 +2828,44 @@ function spawnOvertaker(){ const e=addEnemy('over',makeFighter(M.eRed),{hp:3,max
 function spawnLayer(){ const g=makeShieldship(); g.remove(g.userData.bub); const e=addEnemy('layer',g,{hp:6,maxHp:6,radius:3,score:260,collide:30}); const sd=Math.random()<.5?-1:1; e.sd=sd; e.pos.set(-sd*(B.x+30),rand(-B.y*.4,B.y*.5),-60); e.mT=.6;
   introduce('layer','MINENLEGER – MINEN ABSCHIESSEN'); }
 const WORLD_ENEMY=['over','form','cloak','brander','layer','form','over','cloak','layer','form','cloak','over','brander','layer'];
+// ---------- Großkampfschiff zieht seitlich vorbei und feuert ----------
+function spawnCapital(){
+  const sd=Math.random()<.5?-1:1, g=new THREE.Group(), hm=TM(T.boss,{color:M.eHull.color.getHex(),metalness:.45,roughness:.55},.12,.05);
+  g.add(mesh(geo.box,hm,14,10,120)); g.add(mesh(geo.box,M.bossDark,10,6,90,0,7,-10)); g.add(mesh(geo.box,M.bossLit,6,8,14,0,12,-30));
+  { const bow=mesh(geo.cone4,hm,14,30,10,0,0,74); bow.rotation.x=Math.PI/2; bow.rotation.y=Math.PI/4; g.add(bow); }
+  for(let k=0;k<4;k++){ const en=mesh(geo.cyl,M.bossDark,4,8,4,(k%2?3:-3),(k<2?3:-3),-62); en.rotation.x=Math.PI/2; g.add(en); const fl=glowSprite(0x60c8ff,12,.9); fl.position.set(en.position.x,en.position.y,-68); g.add(fl); }
+  for(let k=0;k<14;k++){ const l=glowSprite(0xffe0a0,1.6,.9); l.position.set(-sd*7.2,rand(-3,3),rand(-50,50)); g.add(l); }
+  const e=addEnemy('capital',g,{hp:9999,maxHp:9999,radius:1,score:0,collide:0,env:true,invul:true}); e.sd=sd; e.pos.set(sd*(B.x+34),rand(-4,8),-420); e.fireT=1;
+  e.turrets=[];
+  for(let k=0;k<4;k++){ const tg=new THREE.Group(); tg.add(mesh(geo.cyl,M.bossDark,2.4,1.6,2.4)); const bar=mesh(geo.cyl,M.eDark,.5,4,.5,0,.6,2); bar.rotation.x=Math.PI/2; tg.add(bar); tg.add(glowSprite(0xff3020,3,.9));
+    const t=addEnemy('capturret',tg,{hp:6,maxHp:6,radius:2.6,score:300,collide:0}); t.cap=e; t.oz=-36+k*24; t.fireT=rand(1,3); e.turrets.push(t); }
+  banner('GROSSKAMPFSCHIFF','GESCHÜTZTÜRME ABSCHIESSEN!',true); sfx.alarm&&sfx.alarm();
+}
+// ---------- Mini-Boss in der Mitte jeder Welt ----------
+function spawnMiniBoss(){
+  const g=makeShieldship(); g.remove(g.userData.bub); g.scale.setScalar(2.4); g.add(glowSprite(M.eRed.color.getHex(),9,.7));
+  const e=addEnemy('mini',g,{hp:Math.round(46*(1+G.wave*.05)),maxHp:Math.round(46*(1+G.wave*.05)),radius:5.5,score:2500,collide:40}); e.pos.set(0,4,-320); e.holdZ=-55; e.fireT=2; e.pat=0;
+  banner('MINI-BOSS','ABFANGJÄGER '+['ALPHA','BRAVO','DELTA','SIGMA'][G.worldNo%4],true); sfx.alarm&&sfx.alarm();
+}
+// ---------- Weggabelung: links Bonus, rechts Ausrüstung mit Minen ----------
+function spawnFork(s){
+  const L=90, surf=!!W0.surface, gy=-(B.y+8), top=B.y+12, hw=B.x*.18;
+  const w={s0:s-6,s1:s+L+6,name:null,told:true,pillar:true}; ENV.wrecks.push(w); curW=w;
+  for(let k=0;k<5;k++) addObst(s+k*L/4,0,(gy+top)/2,hw,(top-gy)/2,L/8+1,'none');
+  curW=null;
+  const wall=new THREE.Group();
+  if(surf){ for(let k=0;k<7;k++){ const r=new THREE.Mesh(pick(spires),W0.gmat==='lava'?M2.lava:W0.gmat==='ice'?M2.iceRock:M.rock); const h=top-gy+rand(4,14); r.scale.set(hw*2.2,h,hw*2); r.position.set(rand(-1,1),gy+h*.42,-k*L/6); r.rotation.y=rand(0,6); wall.add(r); } }
+  else { wall.add(mesh(geo.box,M.stationHex,hw*2,top-gy,L,0,(gy+top)/2,-L/2)); wall.add(mesh(geo.box,M.stationOr,hw*2+.6,2,L,0,top,-L/2)); wall.add(mesh(geo.box,M.stationOr,hw*2+.6,2,L,0,gy,-L/2));
+    for(let k=0;k<6;k++){ const l=glowSprite(k%2?0x40ff80:0xffb040,4,.9); l.position.set(0,(gy+top)/2,-k*L/5); wall.add(l); } }
+  { const sg=new THREE.Group(); sg.add(mesh(geo.box,M.stationDark,10,3,.6)); sg.add(mesh(geo.box,Bm(0x60ff90),4,1.6,.7,-2.6,0,0)); sg.add(mesh(geo.box,Bm(0xffb040),4,1.6,.7,2.6,0,0)); sg.position.set(0,top+4,6); wall.add(sg); }
+  addStatic(wall,s,0,0,null,L);
+  // links: Energiewürfel-Spur
+  for(let i=0;i<8;i++){ const x=-B.x*.55+Math.sin(i*.8)*3, y=Math.cos(i*.7)*B.y*.4; const g=new THREE.Group(), c=new THREE.Mesh(cubeGeo,cubeMat); g.add(c); g.add(glowSprite(0x60e8ff,3,.55));
+    const ss=s+6+i*10; placeAbs(g,ss,x,y,null); scene.add(g); cubes.push({mesh:g,cube:c,s:ss,x,y,set:{n:8,got:0,missed:false}}); }
+  // rechts: Minen + Ausrüstung am Ende
+  later(.1,()=>{ for(let i=0;i<5;i++){ const m=spawnMine(new V3(B.x*.55+rand(-4,4),rand(-B.y*.5,B.y*.5),-(s-ENV.s)-10-i*16)); m.vel.set(0,0,0); m.env=true; } });
+  G.forkPU={s:s+L-10}; banner('WEGGABELUNG','LINKS: ENERGIE-BONUS · RECHTS: AUSRÜSTUNG',false);
+}
 function spawnWorldEnemy(){ const t=WORLD_ENEMY[worldIdx%14]; if(t==='form') spawnFormation(); else if(t==='cloak') spawnCloaker(); else if(t==='over') spawnOvertaker(); else if(t==='layer') spawnLayer(); else { spawnBrander(); spawnBrander(); } }
 function spawnBrander(){
   const e=addEnemy('brander',makeBrander(),{hp:2,maxHp:2,radius:1.8,score:120,collide:35});
@@ -2884,6 +2926,16 @@ function updateNewEnemy(e,dt,p,px){
       swarmPath(e.sw,G.time-e.sw.t0-e.idx*.22,p);
       e.rot.y=Math.atan2(p.x-px,1)*.8; e.rot.z=clamp(-(p.x-px)/dt*.05,-1,1);
       return true; }
+    case 'capital':{ p.z+=ENV.speed*.55*dt; p.x+=(e.sd*(B.x+34)-p.x)*Math.min(1,dt); e.rot.y=0;
+      for(const t of e.turrets) if(t.alive){ t.pos.set(p.x-e.sd*8,p.y+6,p.z+t.oz); }
+      if(p.z>-40&&p.z<20&&!e.passed){ e.passed=true; G.trauma=Math.min(1,G.trauma+.4); sfx.whoosh&&sfx.whoosh(); }
+      if(p.z>160) { for(const t of e.turrets) if(t.alive){ t.alive=false; scene.remove(t.mesh); } e.gone=true; } return true; }
+    case 'capturret':{ if(!e.cap||!e.cap.alive){ e.gone=true; return true; } e.rot.y=Math.atan2(ship.pos.x-p.x,ship.pos.z-p.z); e.fireT-=dt;
+      if(e.fireT<=0&&p.z<-15&&p.z>-260){ e.fireT=rand(1.4,2.2)/diff(); enemyShoot(p,bulletSpeed()*.9,1,0); } return true; }
+    case 'mini':{ p.z+=(e.holdZ-p.z)*Math.min(1,dt*.8); p.x=Math.sin(e.t*.6)*B.x*.6; p.y=4+Math.sin(e.t*.9)*B.y*.35; e.rot.y=Math.atan2(ship.pos.x-p.x,ship.pos.z-p.z); e.rot.z=Math.sin(e.t*.6)*.4;
+      e.fireT-=dt; if(e.fireT<=0&&p.z>-120){ e.pat=(e.pat+1)%3; e.fireT=(e.pat===2?3:1.6)/diff();
+        if(e.pat===0) ringBurst(p,12,bulletSpeed()*.7,e.t); else if(e.pat===1) enemyShoot(p,bulletSpeed(),3,.12); else { spawnHoming(p,1); spawnHoming(p,-1); } }
+      if(e.hp<e.maxHp*.5&&Math.random()<dt*6) emitL(p.x+rand(-3,3),p.y+rand(-2,2),p.z,rand(-1,1),rand(2,4),0,.9,0x3a3330,rand(1.5,2.5),1.2,1.2,2.4,SMOKE); return true; }
     case 'form':{ p.x+=e.sd*22*dt; p.y+=(e.y0+e.oy+Math.sin(e.t*2)*1.5-p.y)*Math.min(1,dt*2); p.z+=(e.z0-p.z)*Math.min(1,dt*2); e.rot.set(0,-e.sd*.4,e.sd*.35);
       e.fireT-=dt; if(e.fireT<=0&&Math.abs(p.x)<B.x){ e.fireT=rand(2,3.2)/diff(); enemyShoot(p,bulletSpeed()*.85,1,0); } if(Math.abs(p.x)>B.x+60) e.gone=true; return true; }
     case 'cloak':{ p.z+=(e.holdZ-p.z)*Math.min(1,dt*1.2); p.x+=Math.sin(e.t*.9)*6*dt; p.y+=Math.cos(e.t*.7)*4*dt; e.rot.y=Math.atan2(ship.pos.x-p.x,ship.pos.z-p.z);
@@ -3225,6 +3277,7 @@ function hitEnemy(e,dmg,at){
 function killEnemy(e,collision){
   if(!e.alive) return; e.alive=false;
   if(e.haz&&e.haz.onKill) e.haz.onKill(e);
+  if(e.type==='mini'){ explosion(e.pos,3.2); spawnPickup(e.pos.clone(),pick(['P','X','Z'])); later(.2,()=>spawnPickup(e.pos.clone().add(new V3(4,0,0)),'M')); toast('MINI-BOSS ZERSTÖRT!','#ffd24a'); }
   if(e.type==='fuel'){ shockwave(e.pos.clone(),4,1,0xff6020); for(const o of enemies) if(o!==e&&o.alive&&!o.boss&&o.pos.distanceTo(e.pos)<14) later(.05,()=>killEnemy(o,false)); if(state==='play'&&ship.pos.distanceTo(e.pos)<9) damagePlayer(14); explosion(e.pos,2.6); }
   const sizes={fighter:1.3,flanker:1.2,chaser:1.3,escort:1.3,interceptor:1,heavy:2.2,asteroid:1.1,debris:.9,bomber:2,sniper:1.2,drone:.8,brander:2.2,shieldship:2,spinner:1.7,hmis:.7,mine:1.2,thrown:1.4,bpart:e.kind==='core'?3:1.8};
   if(e.extras) for(const x of e.extras) scene.remove(x);
@@ -3400,6 +3453,8 @@ function buildWave(n){
   if(n>=5) for(let i=0;i<1+Math.floor((n-5)/3);i++) add(R2(4,dur-3),spawnSpinner);
   if(n>=7) for(let i=0;i<1+Math.floor((n-7)/3);i++) add(R2(5,dur-3),spawnShieldship);
   for(let i=0;i<1+Math.floor(n/3);i++) add(R2(2,dur-2),spawnWorldEnemy);
+  if(n%3===2) add(dur*.55,spawnMiniBoss);
+  if(!W0.surface&&n%3===1&&Math.random()<.7) add(R2(4,dur*.6),spawnCapital);
   const nh=n>=3?Math.floor((n-1)/3):0; for(let i=0;i<nh;i++) add(5+i*(dur/Math.max(1,nh)),spawnHeavy);
   return q.sort((a,b)=>a.t-b.t);
 }
@@ -3416,7 +3471,7 @@ function updateWaves(dt){
   if(G.wave>0&&!G.queue.length&&!G.boss&&!enemies.some(e=>!e.env&&!e.haz)){
     G.interWave+=dt;
     if(G.interWave>1.1){ G.interWave=0; if(state==='play') addScore(250*G.wave,true);
-      if((G.wave+1)%3!==0&&(G.wave===1||Math.random()<.3)&&!(G.warp>0)) startPassage(); else startWave(); }
+      if((G.wave+1)%3!==0&&(G.wave===1||Math.random()<.3)&&!(G.warp>0)) startPassage(); else { if((G.wave+1)%3!==0&&Math.random()<.35&&!(G.warp>0)) spawnFork(ENV.s+260); startWave(); } }
   } else G.interWave=0;
 }
 
