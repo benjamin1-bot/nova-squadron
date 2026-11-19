@@ -138,6 +138,7 @@
   .slname{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:7px}
   .slname input{pointer-events:auto;font-family:Orbitron;font-size:13px;letter-spacing:2px;text-transform:uppercase;width:170px;text-align:center;color:#fff;background:rgba(0,10,20,.6);border:1px solid rgba(255,210,74,.5);border-radius:8px;padding:6px}
   .slname span{color:#ffd24a}
+  .padfocus{outline:3px solid #ffd24a !important;outline-offset:3px;box-shadow:0 0 18px rgba(255,210,74,.7) !important}
   #aimopt.on{color:#04121c;background:#ffd24a;border-color:#ffd24a}
   .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 4px 0 8px;vertical-align:middle}
   .hs{margin-top:12px;font-family:Orbitron;font-size:12px;letter-spacing:3px;color:rgba(255,200,120,.85)}
@@ -225,7 +226,7 @@
       <b>Knöpfe rechts</b>: <span class="k">↻ Rolle</span> (wehrt Schüsse ab), <span class="k">◆ Raketen</span>, <span class="y">☢ Atombombe</span> (zerstört alles im Bild)<br>
       Gegner kommen von vorn, von der Seite und <b>von hinten</b> (rote Pfeile). Im Wrack-Rumpf den Trägern ausweichen!<br>
       Energiewürfel einsammeln für Bonuspunkte!<br>Tastatur: <b>WASD</b> steuern, <b>Pfeile</b> zielen, <b>Leertaste</b> Raketen, <b>Shift</b> Rolle, <b>P</b> Pause<br>
-      <b>🎮 Controller</b>: linker Stick steuern · rechter Stick zielen · A/RB Raketen · B/LB Rolle · Y Atombombe · Start Pause (mit Rumble)<br>
+      <b>🎮 Controller</b>: im Menü Steuerkreuz/Stick + A wählen, B zurück · im Spiel: linker Stick steuern · rechter Stick zielen · A/RB Raketen · B/LB Rolle · Y Atombombe · Start Pause (mit Rumble)<br>
       <b>🎯 Auto-Zielen</b> (für Kinder): nur grob in die Nähe steuern, gezielt wird automatisch.<br>
       Extras: <span style="color:#00ff9c">✚ Reparatur</span> · <span style="color:#ffa020">▮▮▮ Raketen</span> · <span style="color:#4aa8ff">Laser+</span> · <span style="color:#39ff14">Streufeuer+</span> · <span style="color:#ff40dc">Plasma+</span> (Waffe wird stärker, Schaden senkt die Stufe) · <span style="color:#40f4ff">◎ Schild</span> · <span style="color:#ffe640">☢ Atombombe +1</span>
     </div>
@@ -3388,12 +3389,24 @@ function pollPad(dt){
     if(just(1)||just(4)||just(6)) doRoll();
     if(just(3)) fireNuke();
     if(just(9)) pause(true);
-  } else if(state==='pause'){ if(just(9)||just(0)) pause(false); else if(just(1)||just(8)) $('pmenubtn').click(); }
-  else if(state==='menu'){
-    if(just(0)) $('startbtn').click(); if(just(9)||just(2)){ const c=$('contbtn'); if(!c.classList.contains('hidden')) c.click(); else $('startbtn').click(); }
-    if(just(3)) $('aimopt').click();
-    if(just(14)||just(15)){ const n=(slotIdx+(just(15)?1:2))%3; const el=$('slotRow').children[n]; if(el) el.click(); }
-  } else if(state==='over'){ if(just(0)||just(9)) $('againbtn').click(); else if(just(1)) $('menubtn').click(); }
+  } else { // Menüs: mit Steuerkreuz / linkem Stick wählen, A drücken, B zurück
+    const ov=state==='pause'?$('pausem'):state==='over'?$('over'):state==='menu'?$('menu'):null;
+    if(ov){ const items=[...ov.querySelectorAll('button')].filter(el=>el.offsetParent!==null&&!el.classList.contains('hidden'));
+      if(!items.includes(GP.foc)){ if(GP.foc) GP.foc.classList.remove('padfocus'); GP.foc=items.find(el=>el.id==='contbtn')||items.find(el=>el.id==='startbtn'||el.id==='resumebtn'||el.id==='againbtn')||items[0]; if(GP.foc) GP.foc.classList.add('padfocus'); }
+      const ax=p.axes[0]||0, ay=p.axes[1]||0; let dx=(b(15)?1:0)-(b(14)?1:0), dy=(b(13)?1:0)-(b(12)?1:0);
+      if(!dx&&!dy&&Math.hypot(ax,ay)>.6){ if(Math.abs(ax)>Math.abs(ay)) dx=Math.sign(ax); else dy=Math.sign(ay); }
+      GP.navT=(GP.navT||0)-dt;
+      if((dx||dy)&&GP.navT<=0&&GP.foc){ GP.navT=GP.navDir===dx+','+dy?.16:.3; GP.navDir=dx+','+dy;
+        const r0=GP.foc.getBoundingClientRect(), c0={x:r0.left+r0.width/2,y:r0.top+r0.height/2}; let best=null,bs=1e9;
+        for(const el of items){ if(el===GP.foc) continue; const r=el.getBoundingClientRect(), vx=r.left+r.width/2-c0.x, vy=r.top+r.height/2-c0.y;
+          const along=dx?vx*dx:vy*dy, side=dx?Math.abs(vy):Math.abs(vx); if(along<=4) continue; const sc=along+side*2.2; if(sc<bs){ bs=sc; best=el; } }
+        if(best){ GP.foc.classList.remove('padfocus'); GP.foc=best; best.classList.add('padfocus'); best.scrollIntoView&&best.scrollIntoView({block:'nearest'}); sfx.click&&sfx.click(); } }
+      if(!dx&&!dy){ GP.navT=0; GP.navDir=''; }
+      if(just(0)&&GP.foc) GP.foc.click();
+      if(just(1)){ if(state==='pause') pause(false); else if(state==='over') $('menubtn').click(); }
+      if(just(9)){ if(state==='pause') pause(false); else if(state==='menu'){ const c=$('contbtn'); (!c.classList.contains('hidden')?c:$('startbtn')).click(); } else if(state==='over') $('againbtn').click(); }
+    } else if(GP.foc){ GP.foc.classList.remove('padfocus'); GP.foc=null; }
+  }
   GP.prev=p.buttons.map(x=>x.pressed);
 }
 function pause(on){
