@@ -2279,6 +2279,16 @@ const BOSSES=[
  // 15: Endgegner mit allem
  {name:'DREADNOUGHT OMEGA', tip:'DER ENDGEGNER!', shape:'dread', hull:0x5a3a9a, glow:0x40ff80, move:'hover', core:'beam', hp:1.5, big:1.25, abil:['charge', 'tractor', 'arms', 'revive'], p2:['xbeams', 'decoys', 'barrage'],
   parts:[['gen',-5.2,0,5.4,0],['gen',5.2,0,5.4,0],['laser',0,5,5,1],['homing',-4.4,-3.2,5.2,1],['hangar',4.4,-3.2,5.2,1],['core',0,0,7.4,2]]},
+
+ // Weltbosse
+ {name:'EISWURM JÖRMUN', tip:'SEGMENTE TREFFEN!', shape:'worm', hull:0x8ad0f0, glow:0x40e0ff, move:'drift', core:'spiral', hp:1.3, world:'GEFRORENER OZEAN NIFL', abil:['charge','rockrain'], p2:['flank','barrage'],
+  parts:[['turret',0,0,0,0,2],['turret',0,0,0,0,4],['spread',0,0,0,0,6],['homing',0,0,0,0,8],['core',0,0,1.5,1,0]]},
+ {name:'LAVA-GOLEM SURTUR', tip:'WEICH DEN FELSBROCKEN AUS!', shape:'golem', hull:0x4a3028, glow:0xff6010, move:'hover', core:'ring', hp:1.35, world:'LAVAPLANET SURTR', abil:['boulder','rockrain'], p2:['charge','orbitals'],
+  parts:[['rock',-11,2,3,0],['rock',11,2,3,0],['flak',0,8,3,0],['core',0,0,5,1]]},
+ {name:'KAMPFROBOTER VX-9', tip:'ARME ZUERST!', shape:'mech', hull:0x3a3a4a, glow:0xff30c0, move:'strafe', core:'beam', hp:1.4, world:'NEONSTADT VEGA-9', abil:['barrage','arms'], p2:['xbeams','salvo'],
+  parts:[['turret',-9,0,3,0],['turret',9,0,3,0],['homing',-5,6,1,0],['homing',5,6,1,0],['core',0,1,4.2,1]]},
+ {name:'PILZMUTTER', tip:'SPORENSÄCKE ZERSTÖREN!', shape:'mother', hull:0xa04090, glow:0x60ffd0, move:'drift', core:'swarm', hp:1.35, world:'PILZWALD MYKOS', abil:['orbitals','hatch'], p2:['barrage','decoys'],
+  parts:[['spiral',-8,-3,2,0],['spiral',8,-3,2,0],['spread',0,-7,2,0],['core',0,2,5,1]]},
 ];
 
 function bossHull(def){
@@ -2335,6 +2345,34 @@ function bossHull(def){
         const arm=mesh(geo.cyl,dm,1.1,len,1.1); arm.position.copy(mid); arm.quaternion.setFromUnitVectors(WUP,b.clone().sub(a).normalize()); add(arm);
         add(mesh(geo.sphere,hm,1.9,1.9,1.9,hx,hy,hz-.4)); }
       eglow(0,0,-4.5,6); half=new V3(3,3,4); break;
+    case 'worm': { // Segmentkörper, der sich windet
+      const segs=[]; g.userData.worm=segs;
+      const head=new THREE.Group(); head.add(mesh(geo.sphere,hm,4.6,4,5.4)); for(const s2 of [-1,1]){ const f=mesh(geo.cone4,dm,1.2,5,1.2,s2*3.2,-1.6,3.6); f.rotation.x=1.9; f.rotation.z=s2*.4; head.add(f); }
+      for(let k=0;k<6;k++){ const sp=mesh(geo.cone4,M2.iceRock||dm,.9,3.5,.9,0,0,0); const a=k/6*Math.PI*2; sp.position.set(Math.cos(a)*3.6,Math.sin(a)*3.2,-1); sp.rotation.z=a-Math.PI/2; head.add(sp); }
+      add(head); segs.push(head);
+      for(let i=1;i<10;i++){ const sg=new THREE.Group(), r=3.8-i*.22; sg.add(mesh(geo.sphere,i%2?hm:dm,r,r*.9,r)); sg.add(new THREE.Mesh(new THREE.TorusGeometry(r*.95,.35,6,16),gm)); for(let k=0;k<4;k++){ const sp=mesh(geo.cone4,dm,.6,2.2,.6); const a=k/4*Math.PI*2+i; sp.position.set(Math.cos(a)*r,Math.sin(a)*r,0); sp.rotation.z=a-Math.PI/2; sg.add(sp); } add(sg); segs.push(sg); }
+      half=null; break; }
+    case 'golem': { // Felsriese mit glühenden Rissen und schwingenden Armen
+      const rm=new THREE.MeshStandardMaterial({color:def.hull,roughness:.9,emissive:0x200400}); g.userData.spin=[];
+      add(new THREE.Mesh(pick(rocks),rm)).scale.set(9,8,6); { const h=new THREE.Mesh(pick(rocks),rm); h.scale.set(3.6,3.2,3.2); h.position.set(0,8,1); add(h); }
+      for(let i=0;i<14;i++){ const c=mesh(geo.box,gm,rand(.2,.4),rand(2,5),.3,rand(-6,6),rand(-5,5),5.6); c.rotation.z=rand(-1,1); add(c); }
+      add(mesh(geo.sphere,gm,.7,.5,.4,-1.2,8.6,3.8)); add(mesh(geo.sphere,gm,.7,.5,.4,1.2,8.6,3.8));
+      for(const s2 of [-1,1]){ const arm=new THREE.Group(); arm.position.set(s2*9,3,0); const up=new THREE.Mesh(pick(rocks),rm); up.scale.set(2.6,4,2.6); up.position.y=-3; arm.add(up); const fist=new THREE.Mesh(pick(rocks),rm); fist.scale.setScalar(3.2); fist.position.set(s2*2,-7,1); arm.add(fist); add(arm); g.userData.spin.push([arm,'x',0,s2]); }
+      eglow(0,0,6,12); half=new V3(7,7,5); break; }
+    case 'mech': { // Kampfroboter mit Kopf, Schultern, Armen und Beinen
+      g.userData.spin=[];
+      add(mesh(geo.box,hm,12,10,7,0,1,0)); add(mesh(geo.box,dm,8,4,7.4,0,-5,0)); add(mesh(geo.box,lm,6,3,1,0,2,3.8));
+      { const head=mesh(geo.box,hm,4.6,3.4,4,0,7.8,1); add(head); add(mesh(geo.box,gm,3.6,.7,.3,0,8.2,3.1)); }
+      for(const s2 of [-1,1]){ add(mesh(geo.box,dm,4.4,3.6,5.4,s2*8,4.4,0)); add(mesh(geo.box,gm,.3,2.6,.3,s2*8,6.6,2.8));
+        const arm=new THREE.Group(); arm.position.set(s2*9,2,0); arm.add(mesh(geo.box,hm,2.8,8,2.8,0,-3,0)); const gun=mesh(geo.cyl,dm,1.4,6,1.4,0,-6,2); gun.rotation.x=Math.PI/2; arm.add(gun); add(arm); g.userData.spin.push([arm,'x',0,s2]);
+        const leg=new THREE.Group(); leg.position.set(s2*3.4,-7,0); leg.add(mesh(geo.box,dm,3,7,3.4,0,-3.5,0)); leg.add(mesh(geo.box,hm,3.6,1.6,5,0,-7.4,1)); add(leg); g.userData.spin.push([leg,'x',0,-s2]); }
+      eglow(0,-9,-2,8); half=new V3(6,6,4); break; }
+    case 'mother': { // Riesenpilz mit schwingenden Tentakeln
+      g.userData.spin=[];
+      add(mesh(geo.sphere,hm,15,6,15,0,4,0)); add(mesh(geo.sphere,M.mushCap||hm,13,4,13,0,2.4,0)); add(mesh(geo.cyl,M2.fungus||dm,4,12,4,0,-4,0));
+      for(let i=0;i<16;i++){ const a=i/16*Math.PI*2; add(mesh(geo.sphere,gm,.7,.7,.7,Math.cos(a)*12.5,2.6,Math.sin(a)*12.5)); }
+      for(let i=0;i<6;i++){ const a=i/6*Math.PI*2, t=new THREE.Group(); t.position.set(Math.cos(a)*5,-8,Math.sin(a)*5); for(let k=0;k<5;k++) t.add(mesh(geo.sphere,i%2?hm:dm,.9-k*.12,1.2,.9-k*.12,0,-k*2,0)); add(t); g.userData.spin.push([t,'z',0,i]); }
+      eglow(0,-2,0,14); half=new V3(10,5,10); break; }
     case 'cruiser': // langer Raketenkreuzer mit Startschächten
       add(mesh(geo.box,hm,9,3.2,34,0,0,-4)); add(mesh(geo.box,lm,6,2,14,0,2.4,-8)); add(mesh(geo.box,dm,3,5,4,0,4.6,-12));
       { const bow=mesh(geo.cone4,hm,9,10,3.2,0,0,17.5); bow.rotation.x=Math.PI/2; bow.rotation.y=Math.PI/4; add(bow); }
@@ -2415,7 +2453,8 @@ function bossPart(kind,glow){
 function bossArrive(b){ const d=b.def; banner(d.name,'BOSS '+(b.idx+1)+'/'+BOSSES.length+' · '+(d.tip||'SCHWACHPUNKTE TREFFEN'),true); sfx.alarm(); }
 function spawnBoss(){
   G.bossCount++;
-  const idx=G.fixedBoss?(G.bossCount-1)%BOSSES.length:bagNext('bBag',BOSSES.length,G.lastBoss), cyc=Math.floor((G.bossCount-1)/BOSSES.length), def=BOSSES[idx];
+  if(!G.fixedBoss){ const wb=BOSSES.findIndex(d=>d.world===W0.name); if(wb>=0&&!(G.wbDone||(G.wbDone={}))[wb]&&Math.random()<.75){ G.wbDone[wb]=true; G.forceIdx=wb; } }
+  const idx=G.forceIdx!=null?G.forceIdx:G.fixedBoss?(G.bossCount-1)%BOSSES.length:bagNext('bBag',BOSSES.length,G.lastBoss); G.forceIdx=null; const _u=0, cyc=Math.floor((G.bossCount-1)/BOSSES.length), def=BOSSES[idx];
   G.lastBoss=idx;
   const {g,half}=bossHull(def), sc=(def.big||1)*1.3; surfaceDetail(g,110,1,M.bossDark,40,def.glow); g.scale.setScalar(sc);
   const behind=G.bossCount%2===0;
@@ -2424,11 +2463,11 @@ function spawnBoss(){
   scene.add(g); place(g,boss.pos,boss.rot);
   const hpMul=def.hp*(1+cyc*.6)*(1+G.wave*.04);
   const HP={turret:38,spread:42,spiral:46,homing:42,laser:46,flak:42,mine:38,rock:46,hangar:50,gen:55,core:170};
-  for(const [kind,x,y,z,grp] of def.parts){
+  for(const [kind,x,y,z,grp,seg] of def.parts){
     const pm=bossPart(kind,def.glow); pm.position.set(x,y,z); g.add(pm);
     const hp=Math.round(HP[kind]*hpMul);
     const e=addEnemy('bpart',pm,{boss,kind,off:new V3(x,y,z),grp,hp,maxHp:hp,radius:(kind==='core'?2.7:kind==='gen'||kind==='hangar'?2.5:2.2)*sc,
-      score:kind==='core'?3000:500,collide:0,fireT:rand(1.5,3),invul:false});
+      score:kind==='core'?3000:500,collide:0,fireT:rand(1.5,3),invul:false,seg});
     e.marker=addMarker(); boss.parts.push(e);
   }
   outline(g,.1);
@@ -2596,7 +2635,16 @@ function updateBoss(dt){
       if(b.mT<=0){ b.mode='normal'; b.flT=rand(8,11); }
     }
     b.spinBoost=Math.max(1,(b.spinBoost||1)-dt*.6);
-    if(b.mesh.userData.spin) for(const [o,ax,sp] of b.mesh.userData.spin) o.rotation[ax]+=sp*dt*(enr?1.7:1);
+    if(b.mesh.userData.spin) for(const [o,ax,sp,ph] of b.mesh.userData.spin){ if(sp) o.rotation[ax]+=sp*dt*(enr?1.7:1); else o.rotation[ax]=Math.sin(b.t*(enr?2.6:1.6)+(ph||0))*.55; }
+    if(b.mesh.userData.worm){ const sg=b.mesh.userData.worm; for(let i=0;i<sg.length;i++){ const ph=b.t*(enr?2.4:1.6)-i*.55; sg[i].position.set(Math.sin(ph)*(3+i*.9),Math.cos(ph*.8)*(2+i*.5)-i*.6,-i*3.4); sg[i].rotation.z=ph*.3; }
+      for(const e of b.parts) if(e.seg!=null&&e.seg>=0){ const sp=sg[e.seg].position; e.off.copy(sp); if(e.kind!=='core') e.off.z+=2.4; else e.off.z+=4.5; e.mesh.position.copy(e.off); } }
+    // Verwandlung beim Wutausbruch: Panzerung klappt auseinander
+    if(b.p2told&&!b.opened){ b.opened=true; b.openK=0; b.hullKids=b.mesh.children.filter(c=>!b.parts.some(e=>e.mesh===c)&&c!==b.warn&&c!==b.shield&&Math.abs(c.position.x)>1.2&&!(c.isSprite));
+      for(const c of b.hullKids) c.userData.p0=c.position.clone(); for(let i=0;i<6;i++) later(i*.12,()=>{ if(G.boss===b) explosion(new V3(b.pos.x+rand(-10,10),b.pos.y+rand(-6,6),b.pos.z+3),1.4); }); G.trauma=.8; }
+    if(b.opened&&b.openK<1){ b.openK=Math.min(1,b.openK+dt*.8); for(const c of b.hullKids) c.position.x=c.userData.p0.x+Math.sign(c.userData.p0.x)*2.6*b.openK; }
+    // Schadensstufen: Rauch und Funken, je kaputter desto mehr
+    { const hp=b.parts.reduce((a,e)=>a+(e.alive?e.hp:0),0)/b.maxHp; if(hp<.7&&Math.random()<dt*(1-hp)*12){ const q=new V3(b.pos.x+rand(-9,9)*b.sc*.7,b.pos.y+rand(-5,5)*b.sc*.7,b.pos.z+rand(-2,4));
+        emitL(q.x,q.y,q.z,rand(-2,2),rand(2,5),0,.9,pick([0x2a2522,0x3a3330]),rand(1.6,3),rand(1,1.6),1.2,2.4,SMOKE); if(Math.random()<.4) sparks(q,0xffb060,5); } }
     if(def.spin) b.rot.z+=def.spin*dt*(enr?1.6:1)*b.spinBoost;
     else if(b.mode==='flank') b.rot.y+=(-b.side*.9-b.rot.y)*Math.min(1,dt*2);
     else { const ty=Math.sin(b.ft*.42)*.38+(p.x/B.x)*-.25; b.rot.y+=(ty-b.rot.y)*Math.min(1,dt*2); b.rot.z+=(-Math.cos(b.ft*.35)*.32-(p.x-(b.lx??p.x))*.6-b.rot.z)*Math.min(1,dt*3); b.rot.x=Math.sin(b.ft*.3)*.12; b.lx=p.x; }
@@ -2691,6 +2739,7 @@ function updateBossPart(e,dt){
   _q2.setFromEuler(b.rot); e.pos.copy(e.off).multiplyScalar(b.sc).applyQuaternion(_q2).add(b.pos);
   if(ud.shield) ud.shield.visible=e.invul;
   e.mesh.scale.setScalar((1+Math.max(0,e.flash)*.2)*(.35+.65*(e.armK??1)));
+  if((e.kind==='turret'||e.kind==='spread'||e.kind==='flak')&&e.mesh.parent){ e.mesh.updateMatrixWorld(); e.mesh.lookAt(_shipW); }
   if(e.armK!==undefined&&e.kind!=='core'&&e.kind!=='orb') e.pos.copy(e.off).multiplyScalar(b.sc*(.42+.58*e.armK)).applyQuaternion(_q2).add(b.pos);
   if(ud.gl) ud.gl.scale.setScalar(ud.glS*(1+.35*Math.sin(G.time*9)));
   if(ud.aim) e.mesh.lookAt(shipMesh.position);
