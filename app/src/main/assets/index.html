@@ -120,6 +120,17 @@
     background:rgba(10,25,45,.55);border:1px solid rgba(95,227,255,.18);border-radius:14px;padding:12px 16px}
   .help b{color:var(--cy);font-weight:700}
   .help .k{color:var(--or)} .help .y{color:#ffe36a}
+  .slots{margin-bottom:10px;background:rgba(10,25,45,.55);border:1px solid rgba(95,227,255,.18);border-radius:14px;padding:8px 10px}
+  .sltitle{font-family:Orbitron;font-size:10px;letter-spacing:3px;color:rgba(200,235,255,.7);margin-bottom:6px}
+  #slotRow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .slot{pointer-events:auto;cursor:pointer;font-family:Orbitron;border:1px solid rgba(95,227,255,.3);border-radius:10px;background:rgba(5,15,30,.6);color:#bfe9ff;padding:6px 4px;line-height:1.35}
+  .slot b{display:block;font-size:12px;letter-spacing:1px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot i{font-style:normal;font-size:9px;letter-spacing:1px;color:rgba(255,200,120,.85)}
+  .slot.sel{border-color:#ffd24a;box-shadow:0 0 14px rgba(255,210,74,.45);background:rgba(60,45,10,.55)}
+  .slname{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:7px}
+  .slname input{pointer-events:auto;font-family:Orbitron;font-size:13px;letter-spacing:2px;text-transform:uppercase;width:170px;text-align:center;color:#fff;background:rgba(0,10,20,.6);border:1px solid rgba(255,210,74,.5);border-radius:8px;padding:6px}
+  .slname span{color:#ffd24a}
+  #aimopt.on{color:#04121c;background:#ffd24a;border-color:#ffd24a}
   .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 4px 0 8px;vertical-align:middle}
   .hs{margin-top:12px;font-family:Orbitron;font-size:12px;letter-spacing:3px;color:rgba(255,200,120,.85)}
   .stat{font-family:Orbitron;font-size:15px;letter-spacing:2px;margin:8px 0;color:rgba(220,240,255,.9)}
@@ -137,7 +148,7 @@
     .btn{width:56px;height:56px;font-size:19px} #misbtn{width:66px;height:66px} #br{gap:8px 10px;bottom:calc(var(--sb) + 10px)}
     .sbtn{width:36px;height:36px}
     .panel{max-width:900px;display:grid;grid-template-columns:1fr 1.25fr;gap:26px;align-items:center;text-align:center}
-    .title{font-size:44px} .tag{margin:8px 0 12px} .help{margin-top:0;font-size:13.5px;line-height:1.4}
+    .title{font-size:40px} .tag{margin:6px 0 8px} .help{margin-top:0;font-size:11.5px;line-height:1.35;padding:8px 12px} #menuHst{display:none}
     .big{padding:12px 30px;font-size:16px}
     #pausem .panel,#over .panel{display:block;max-width:470px}
     #over .title{font-size:30px} .stat{margin:4px 0} .stat b{font-size:20px} .hst{font-size:11px} .hst td{padding:2px 6px}
@@ -190,18 +201,24 @@
     <div>
       <div class="title">PRISM<br>WING</div>
       <div class="tag">FLUG DURCH DAS TRÜMMERFELD</div>
-      <button class="big" id="startbtn">STARTEN</button>
-      <div class="opts"><button class="opt" id="mopt">♫ MUSIK: AN</button><button class="opt" id="gopt">GRAFIK: AUTO</button></div>
+      <button class="big" id="startbtn">NEUES SPIEL</button>
+      <button class="big alt hidden" id="contbtn">WEITER</button>
+      <div class="opts"><button class="opt" id="mopt">♫ MUSIK: AN</button><button class="opt" id="gopt">GRAFIK: AUTO</button><button class="opt" id="aimopt">🎯 AUTO-ZIELEN: AUS</button></div>
       <div class="hs" id="hsmenu"></div>
       <div id="menuHst"></div>
       <div id="fshint" class="hidden" style="margin-top:8px;font-size:13px;color:rgba(210,235,255,.7)"></div>
     </div>
+    <div>
+    <div class="slots"><div class="sltitle">SPIELSTAND WÄHLEN</div><div id="slotRow"></div>
+      <div class="slname"><input id="slotName" maxlength="10" placeholder="NAME EINTRAGEN" autocomplete="off"><span>✎</span></div></div>
     <div class="help">
       <b>Links ziehen</b>: steuern · <b>Rechts ziehen</b>: Fadenkreuz zielen (Laser feuert automatisch)<br>
       <b>Knöpfe rechts</b>: <span class="k">↻ Rolle</span> (wehrt Schüsse ab), <span class="k">◆ Raketen</span>, <span class="y">☢ Atombombe</span> (zerstört alles im Bild)<br>
       Gegner kommen von vorn, von der Seite und <b>von hinten</b> (rote Pfeile). Im Wrack-Rumpf den Trägern ausweichen!<br>
       Energiewürfel einsammeln für Bonuspunkte!<br>Tastatur: <b>WASD</b> steuern, <b>Pfeile</b> zielen, <b>Leertaste</b> Raketen, <b>Shift</b> Rolle, <b>P</b> Pause<br>
-      Extras: <span style="color:#4dff8a">✚ Reparatur</span> · <span style="color:#ffa63d">▮▮▮ Raketen</span> · <span style="color:#7fc4ff">⋔ 3x Laser</span> · <span style="color:#7fe9ff">◎ Schutzschild</span> · <span style="color:#d49aff">✷ Nova-Bombe</span> (zerstört alles)
+      <b>🎯 Auto-Zielen</b> (für Kinder): nur grob in die Nähe steuern, gezielt wird automatisch.<br>
+      Extras: <span style="color:#00ff9c">✚ Reparatur</span> · <span style="color:#ffa020">▮▮▮ Raketen</span> · <span style="color:#4aa8ff">Laser+</span> · <span style="color:#39ff14">Streufeuer+</span> · <span style="color:#ff40dc">Plasma+</span> (Waffe wird stärker, Schaden senkt die Stufe) · <span style="color:#40f4ff">◎ Schild</span> · <span style="color:#ffe640">☢ Atombombe +1</span>
+    </div>
     </div>
   </div>
 </div>
@@ -930,6 +947,21 @@ function addHS(name,score,wave){
   const i=rankOf(score); hst.splice(i,0,{n:(name||'PILOT').toUpperCase().slice(0,10),s:score,w:wave}); hst=hst.slice(0,10);
   store.set('nova_hst',JSON.stringify(hst)); return i;
 }
+// ---------- Spielstände (3 Plätze) ----------
+let slots=[null,null,null]; try{ const v=JSON.parse(store.get('pw_slots','null')); if(Array.isArray(v)&&v.length===3) slots=v; }catch(e){}
+let slotIdx=parseInt(store.get('pw_slot','0'),10)||0; if(slotIdx<0||slotIdx>2) slotIdx=0;
+function curSlot(){ if(!slots[slotIdx]) slots[slotIdx]={name:'PILOT '+(slotIdx+1),best:0,world:0,worldNo:1,bc:0,auto:false}; return slots[slotIdx]; }
+function saveSlots(){ store.set('pw_slots',JSON.stringify(slots)); store.set('pw_slot',String(slotIdx)); }
+function renderSlots(){
+  const row=$('slotRow'); if(!row) return; row.innerHTML='';
+  slots.forEach((sl,i)=>{ const d=document.createElement('button'); d.className='slot'+(i===slotIdx?' sel':'');
+    d.innerHTML=sl?`<b>${esc(sl.name)}</b><i>SEKTOR ${sl.worldNo||1} · ${fmt(sl.best||0)}</i>`:`<b>+ NEU</b><i>PLATZ ${i+1}</i>`;
+    d.addEventListener('click',()=>{ slotIdx=i; curSlot(); saveSlots(); renderSlots(); }); row.appendChild(d); });
+  const c=curSlot(); $('slotName').value=c.name; G.autoAim=!!c.auto;
+  $('aimopt').textContent='🎯 AUTO-ZIELEN: '+(c.auto?'AN':'AUS'); $('aimopt').classList.toggle('on',!!c.auto);
+  $('contbtn').classList.toggle('hidden',!((c.worldNo||1)>1)); $('contbtn').textContent='WEITER · SEKTOR '+(c.worldNo||1);
+}
+function slotProgress(){ const c=curSlot(); if(G.worldNo>(c.worldNo||1)){ c.worldNo=G.worldNo; c.world=worldIdx; c.bc=G.bossCount; } if(G.score>(c.best||0)) c.best=G.score; saveSlots(); }
 showHS();
 function later(t,f){ G.timers.push({t,f}); }
 
@@ -1353,8 +1385,13 @@ function spawnDecor(s){
 function spawnGroundDecor(s,x,t){
   const gy=-(B.y+8)+groundH(x,s,W0.surface)-1, g=new THREE.Group(), sc=rand(1.5,4);
   if(t==='ice'){ for(let i=0;i<4+Math.random()*4;i++){ const h=rand(5,16); const sh=mesh(geo.octa,M2.ice,rand(1,2.4),h,rand(1,2.4),rand(-4,4),h*.45,rand(-4,4)); sh.rotation.set(rand(-.3,.3),rand(0,6),rand(-.3,.3)); g.add(sh); } }
-  else if(t==='lava'){ const r=new THREE.Mesh(pick(rocks),M2.lava); r.scale.set(sc*1.4,sc*2.6,sc*1.4); r.position.y=sc*1.6; g.add(r); const gl=glowSprite(0xff5010,sc*3,.6); gl.position.y=sc*3.5; g.add(gl); }
-  else { for(let i=0;i<1+Math.random()*3;i++){ const h=rand(6,22); const r=new THREE.Mesh(pick(rocks),M.rock2); r.scale.set(rand(2,4),h,rand(2,4)); r.position.set(rand(-4,4),h*.7,rand(-4,4)); g.add(r); } }
+  else { // gestapelte, kantige Felstürme statt flacher Platten
+    const mat=t==='lava'?M2.lava:Math.random()<.5?M.rock:M.rock2, towers=1+Math.floor(Math.random()*2);
+    for(let k=0;k<towers;k++){ const ox=rand(-5,5), oz=rand(-5,5), n=2+Math.floor(Math.random()*3); let y=0, w=rand(4,7);
+      for(let i=0;i<n;i++){ const r=new THREE.Mesh(pick(rocks),mat), hh=w*rand(.75,1.15); r.scale.set(w*rand(.9,1.15),hh,w*rand(.9,1.15)); r.position.set(ox+rand(-.8,.8),y+hh*.75,oz+rand(-.8,.8)); r.rotation.set(rand(-.3,.3),rand(0,6),rand(-.3,.3)); g.add(r); y+=hh*1.25; w*=rand(.62,.82); }
+      for(let i=0;i<3;i++){ const r=new THREE.Mesh(pick(rocks),mat), b=rand(1.2,2.6); r.scale.setScalar(b); r.position.set(ox+rand(-6,6),b*.5,oz+rand(-6,6)); g.add(r); } }
+    if(t==='lava'){ const gl=glowSprite(0xff5010,sc*3,.6); gl.position.y=2; g.add(gl); }
+  }
   addStatic(g,s,x,gy,new THREE.Euler(0,rand(0,6),0));
 }
 function spawnDerelict(s){
@@ -1386,16 +1423,18 @@ function addObst(s,x,y,hx,hy,hz,look){
     for(let i=0;i<Math.ceil(n*1.5);i++){ const r=new THREE.Mesh(pick(rocks),rm), sc=short*rand(.35,.6); r.scale.setScalar(sc);
       r.position.set(alongX?rand(-hx,hx):(Math.random()<.5?-1:1)*hx*.9,alongX?(Math.random()<.5?-1:1)*hy*.9:rand(-hy,hy),rand(-hz,hz)*.6); g.add(r); }
   }
-  else g.add(mesh(geo.box,M.wreckDark,hx*2,hy*2,hz*2));
-  if(look==='rock'){}
-  else if(hx>hy){
-    g.add(mesh(geo.box,M.hazard,hx*2,.25,.25,0,hy,hz)); g.add(mesh(geo.box,M.hazard,hx*2,.25,.25,0,-hy,hz));
-    const p=mesh(geo.cyl,M.rust,.6,hx*2,.6,0,hy+.6,0); p.rotation.z=Math.PI/2; g.add(p);
-  } else {
-    g.add(mesh(geo.box,M.hazard,.25,hy*2,.25,hx,0,hz)); g.add(mesh(geo.box,M.hazard,.25,hy*2,.25,-hx,0,hz));
-    g.add(mesh(geo.cyl,M.rust,.6,hy*2,.6,hx+.6,0,0));
+  else { // Stahl-Fachwerkträger: zwei Gurte, Querstreben, Diagonalen, Rohrleitung
+    const ax=hx>hy, L=ax?hx*2:hy*2, T=ax?hy:hx, b=new THREE.Group(); if(!ax) b.rotation.z=Math.PI/2; g.add(b);
+    const mat=Math.random()<.5?M.wreck:M.rust;
+    for(const sy of [-1,1]) for(const sz of [-1,1]) b.add(mesh(geo.box,M.wreckDark,L,T*.38,hz*.42,0,sy*T*.72,sz*hz*.72));
+    const n=Math.max(2,Math.round(L/(T*2.4)));
+    for(let i=0;i<=n;i++){ const x=-L/2+i*L/n; b.add(mesh(geo.box,mat,T*.32,T*2,hz*1.7,x,0,0));
+      if(i<n){ const d=mesh(geo.box,mat,T*.22,Math.hypot(L/n,T*1.44),T*.22,x+L/n/2,0,hz*.72); d.rotation.z=(i%2?1:-1)*Math.atan2(L/n,T*1.44); b.add(d);
+        const d2=d.clone(); d2.position.z=-hz*.72; d2.rotation.z=-d.rotation.z; b.add(d2); } }
+    const pp=mesh(geo.cyl,M.rust,T*.22,L*.96,T*.22,0,T*.95,hz*.2); pp.rotation.z=Math.PI/2; b.add(pp);
+    b.add(mesh(geo.box,M.hazard,T*.5,T*2.1,hz*1.8,-L/2+T*.25,0,0)); b.add(mesh(geo.box,M.hazard,T*.5,T*2.1,hz*1.8,L/2-T*.25,0,0));
+    if(Math.random()<.5){ const l=glowSprite(0xff5a20,1.6,.85); l.position.set(ax?L*.3:0,ax?T*1.1:L*.3,hz); g.add(l); }
   }
-  if(look!=='rock') for(let i=0;i<3;i++){ const l=glowSprite(0xff7a2a,2.2,.8); l.position.set(hx>hy?rand(-hx*.8,hx*.8):0,hx>hy?0:rand(-hy*.8,hy*.8),hz+.2); g.add(l); }
   addStatic(g,s,x,y,null);
   obst.push({s,x,y,hx,hy,hz,w:curW,wc:g.position.clone(),qi:g.quaternion.clone().invert(),r2:(hx+hy+hz+6)**2});
 }
@@ -1603,6 +1642,16 @@ const skyDome=new THREE.Mesh(new THREE.SphereGeometry(2200,32,16),new THREE.Shad
       c+=vec3(1.)*pow(max(0.,a-.62),2.)*1.4*nI;
       gl_FragColor=vec4(c,1.); }`}));
 skyDome.renderOrder=-10; sky.add(skyDome);
+// Nebel einmal pro Welt in eine Würfeltextur rendern – danach kostet der Himmel fast nichts
+const skyBake={scene:new THREE.Scene(), rt:null, cam:null, mat:null, src:skyDome.material};
+try{
+  skyBake.rt=new THREE.WebGLCubeRenderTarget(512,{generateMipmaps:false,minFilter:THREE.LinearFilter});
+  skyBake.cam=new THREE.CubeCamera(1,5000,skyBake.rt); skyBake.scene.add(new THREE.Mesh(skyDome.geometry,skyDome.material));
+  skyBake.mat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,uniforms:{env:{value:skyBake.rt.texture}},
+    vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+    fragmentShader:'uniform samplerCube env; varying vec3 vP; void main(){ gl_FragColor=vec4(textureCube(env,vP).rgb,1.); }'});
+}catch(e){ skyBake.rt=null; }
+function bakeSky(){ if(!skyBake.rt) return; try{ const tm=renderer.toneMapping; renderer.toneMapping=THREE.NoToneMapping; skyBake.cam.update(renderer,skyBake.scene); renderer.toneMapping=tm; skyDome.material=skyBake.mat; }catch(e){ skyDome.material=skyBake.src; } }
 function planetTexture(a,b){ return cloudPlanetTex(a,b);
   const pc=document.createElement('canvas'); pc.width=1024; pc.height=512; const p=pc.getContext('2d');
   for(let y=0;y<512;y++){ const v=.5+(Math.sin(y*.045)*.5+Math.sin(y*.016+1)*.35+Math.sin(y*.11)*.15)*.5;
@@ -1639,8 +1688,8 @@ const crystalGeo=new THREE.ConeGeometry(.5,1,5);
 function applyWorld(i){
   worldIdx=((i%WORLDS.length)+WORLDS.length)%WORLDS.length; const w=WORLDS[worldIdx]; W0=w;
   scene.fog.color.setHex(w.fog); scene.fog.density=w.dens; scene.background.setHex(w.sky[2]);
-  skyDome.material.uniforms.nA.value.setHex(w.neb).multiplyScalar(.55); skyDome.material.uniforms.nB.value.setHex(w.rim).multiplyScalar(.5); skyDome.material.uniforms.nI.value=w.stars===false?.25:1;
-  skyDome.material.uniforms.top.value.setHex(w.sky[0]); skyDome.material.uniforms.mid.value.setHex(w.sky[1]); skyDome.material.uniforms.bot.value.setHex(w.sky[2]);
+  const SU=skyBake.src.uniforms; SU.nA.value.setHex(w.neb).multiplyScalar(.55); SU.nB.value.setHex(w.rim).multiplyScalar(.5); SU.nI.value=w.stars===false?.25:1;
+  SU.top.value.setHex(w.sky[0]); SU.mid.value.setHex(w.sky[1]); SU.bot.value.setHex(w.sky[2]); bakeSky();
   SKY.stars.visible=w.stars!==false; for(const n of SKY.nebs) n.visible=w.stars!==false;
   hemi.groundColor.setHex(w.surface?w.surface.high:0x1a0f22); hemi.intensity=w.hemiI||.55;
   renderer.toneMappingExposure=w.exp||1.12; if(bloom) bloom.strength=w.bloom!==undefined?w.bloom:.45;
@@ -1683,7 +1732,7 @@ function updateWarp(dt){
   if(!(G.warp>0)) return false;
   G.warp-=dt; G.invul=Math.max(G.invul,.3);
   if(!G.warpApplied&&G.warp<1.7){ G.warpApplied=true; G.warpFx=1; applyWorld(worldIdx+1); G.worldNo=(G.worldNo||1)+1; }
-  if(G.warp<=0){ G.warp=0; ENV.calm=false; banner('SEKTOR '+G.worldNo,W0.name); }
+  if(G.warp<=0){ G.warp=0; ENV.calm=false; banner('SEKTOR '+G.worldNo,W0.name); slotProgress(); }
   return true;
 }
 
@@ -2546,7 +2595,7 @@ function findLock(dir){
     if(!e.alive||e.invul) continue;
     const dz=ship.pos.z-e.pos.z; if(dz<6||dz>260) continue;
     const rx=ship.pos.x+dir.x/(-dir.z)*dz, ry=ship.pos.y+dir.y/(-dir.z)*dz;
-    const s=Math.hypot(e.pos.x-rx,e.pos.y-ry)/(.8+dz*.018+e.radius*.7);
+    const s=G.autoAim?Math.hypot(e.pos.x-rx,e.pos.y-ry)/(dz*.95+e.radius*2+6)+dz*.0012:Math.hypot(e.pos.x-rx,e.pos.y-ry)/(.8+dz*.018+e.radius*.7);
     if(s<bs){bs=s;best=e;}
   }
   if(best) return best;
@@ -2715,13 +2764,13 @@ function playerDeath(){
   state='dying'; explosion(ship.pos,2.6,null,1); later(.25,()=>explosion(new V3(ship.pos.x+1,ship.pos.y,ship.pos.z-2),1.6,null,1));
   shipMesh.visible=false; G.trauma=1;
   later(1.8,()=>{
-    state='over'; $('hud').classList.add('hidden');
+    state='over'; $('hud').classList.add('hidden'); slotProgress();
     const rec=G.score>hiscore&&G.score>0;
     if(rec){ hiscore=G.score; store.set('nova_hs',String(hiscore)); }
     const rank=rankOf(G.score), qual=G.score>0&&rank<10;
     $('ovhs').textContent=rec?'★ NEUER REKORD! ★':qual?'PLATZ '+(rank+1)+' IN DER BESTENLISTE':'REKORD  '+fmt(hiscore);
     $('ovscore').textContent=fmt(G.score); $('ovwave').textContent=G.wave;
-    $('nameRow').classList.toggle('hidden',!qual); $('nameIn').value=store.get('nova_name','');
+    $('nameRow').classList.toggle('hidden',!qual); $('nameIn').value=curSlot().name;
     $('overHst').innerHTML=hstHTML(hst,10,-1); G.saved=!qual;
     $('over').classList.remove('hidden');
     if(rec) sfx.fanfare();
@@ -2857,18 +2906,24 @@ function goLandscape(force){
     if(p&&p.then) p.then(lock).catch(()=>{ if(force) toast('VOLLBILD HIER NICHT ERLAUBT','#ff9a8a'); }); else lock();
   }catch(e){}
 }
-function start(){
+function start(cont){
   if(state==='over'&&!G.saved) saveName();
-  sfx.init(); goLandscape(); resetGame(); applyWorld(0); G.worldNo=1; state='play';
-  later(.4,()=>toast('SEKTOR 1: '+W0.name,'#9fd8ff'));
+  const c=curSlot(); sfx.init(); goLandscape(); resetGame(); G.autoAim=!!c.auto;
+  if(cont===true&&(c.worldNo||1)>1){ applyWorld(c.world||0); G.worldNo=c.worldNo; G.bossCount=c.bc||0; G.wave=Math.min(12,(c.worldNo-1)*2); } else { applyWorld(0); G.worldNo=1; }
+  state='play';
+  later(.4,()=>toast('SEKTOR '+G.worldNo+': '+W0.name,'#9fd8ff'));
   ['menu','over','pausem'].forEach(id=>$(id).classList.add('hidden')); $('hud').classList.remove('hidden');
   later(1,startWave);
 }
-$('startbtn').addEventListener('click',start);
-$('againbtn').addEventListener('click',start);
-$('restartbtn').addEventListener('click',()=>{ sfx.resume(); start(); });
+$('startbtn').addEventListener('click',()=>start(false)); $('contbtn').addEventListener('click',()=>start(true));
+$('aimopt').addEventListener('click',()=>{ const c=curSlot(); c.auto=!c.auto; saveSlots(); renderSlots(); });
+$('slotName').addEventListener('input',()=>{ const c=curSlot(); c.name=($('slotName').value||'').toUpperCase().slice(0,10)||('PILOT '+(slotIdx+1)); saveSlots(); const b=$('slotRow').children[slotIdx]; if(b) b.querySelector('b').textContent=c.name; });
+['keydown','keyup'].forEach(ev=>$('slotName').addEventListener(ev,e=>e.stopPropagation()));
+renderSlots();
+$('againbtn').addEventListener('click',()=>start(false));
+$('restartbtn').addEventListener('click',()=>{ sfx.resume(); start(false); });
 $('resumebtn').addEventListener('click',()=>pause(false));
-$('menubtn').addEventListener('click',()=>{ if(!G.saved) saveName(); resetGame(); state='menu'; $('over').classList.add('hidden'); $('menu').classList.remove('hidden'); showHS(); });
+$('menubtn').addEventListener('click',()=>{ if(!G.saved) saveName(); resetGame(); state='menu'; $('over').classList.add('hidden'); $('menu').classList.remove('hidden'); showHS(); renderSlots(); });
 function saveName(){
   if(G.saved) return; G.saved=true;
   const n=($('nameIn').value||'PILOT').trim().toUpperCase().slice(0,10)||'PILOT'; store.set('nova_name',n);
@@ -2949,7 +3004,9 @@ function updatePlay(dt){
   // Schussrichtung in Weltkoordinaten (gerade Linie)
   localDirToWorld(aimDir,ENV.s-ship.pos.z,_wDir); L2W(ship.pos.x,ship.pos.y,ship.pos.z,_shipW);
   shotDir.copy(_wDir);
-  if(lock&&lock.wp){ _tmp.subVectors(lock.wp,_shipW).normalize(); const dzL=ship.pos.z-lock.pos.z; shotDir.lerp(_tmp,lock.boss?.92:dzL<6?1:.5).normalize(); }
+  if(lock&&lock.wp){ _tmp.subVectors(lock.wp,_shipW).normalize(); const dzL=ship.pos.z-lock.pos.z; shotDir.lerp(_tmp,G.autoAim||dzL<6?1:lock.boss?.92:.5).normalize();
+    if(G.autoAim&&dzL>=6&&!aimDrag){ const tx=(lock.pos.x-ship.pos.x)/dzL, ty=(lock.pos.y-ship.pos.y)/dzL; const f=Math.min(1,dt*10);
+      ship.aim.x+=(clamp((tx-ship.tx*.4)/.78,-1,1)-ship.aim.x)*f; ship.aim.y+=(clamp((ty-ship.ty*.4)/.58,-1,1)-ship.aim.y)*f; } }
   if(alive){
     G.fireT-=dt;
     if(G.fireT<=0){
