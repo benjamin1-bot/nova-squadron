@@ -2083,55 +2083,55 @@ const wpTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=12
   return new THREE.CanvasTexture(c); })();
 function addMarker(){ const m=new THREE.Sprite(new THREE.SpriteMaterial({map:wpTex,color:0xff5040,transparent:true,depthTest:false,depthWrite:false,sizeAttenuation:false,fog:false})); m.renderOrder=998; m.visible=false; scene.add(m); return m; }
 const lockMk=addMarker(); lockMk.material.color.setHex(0x40ff50);
-function removeBoss(b){ scene.remove(b.mesh); for(const p of b.parts){ if(p.marker) scene.remove(p.marker); if(p.beam) scene.remove(p.beam); } if(b.tbeam) scene.remove(b.tbeam); }
+function removeBoss(b){ scene.remove(b.mesh); if(b.clones) for(const c of b.clones) scene.remove(c); for(const p of b.parts){ if(p.marker) scene.remove(p.marker); if(p.beam) scene.remove(p.beam); } if(b.tbeam) scene.remove(b.tbeam); }
 
 // ================= 15 Bosse =================
 // Teile: [Art, x, y, z, Gruppe]  – Teile einer höheren Gruppe sind geschützt, bis alle der niedrigeren Gruppe zerstört sind.
 const BOSSES=[
  // 1: Breitseiten-Salven – alle Türme feuern nach rotem Warnblinken gleichzeitig
- {name:'SCHLACHTSCHIFF ARGUS', tip:'WEICH DEN SALVEN AUS!', shape:'slab', hull:0x6a5ab8, glow:0x40e8ff, move:'hover', core:'ring', hp:1, abil:['salvo'],
+ {name:'SCHLACHTSCHIFF ARGUS', tip:'WEICH DEN SALVEN AUS!', shape:'slab', hull:0x6a5ab8, glow:0x40e8ff, move:'hover', core:'ring', hp:1, abil:['salvo', 'arms'], p2:['beams'],
   parts:[['turret',-8,.6,6.3,0],['turret',8,.6,6.3,0],['turret',-4.2,3.4,2.2,0],['turret',4.2,3.4,2.2,0],['core',0,-.2,6.6,1]]},
  // 2: Trägerschiff – bleibt auf Abstand, schickt Jägerstaffeln und Minen
- {name:'SCHWARMMUTTER', tip:'ZERSTÖRE DIE HANGARS!', shape:'carrier', hull:0xa89878, glow:0xffa030, move:'far', core:'swarm', hp:.9, abil:['minefield'],
+ {name:'SCHWARMMUTTER', tip:'NUR WENN DIE LUKE OFFEN IST!', shape:'carrier', hull:0xa89878, glow:0xffa030, move:'far', core:'swarm', hp:.9, abil:['hatch', 'minefield'], p2:['barrage'],
   parts:[['hangar',-6.6,0,6,0],['hangar',6.6,0,6,0],['mine',-4,3.4,8,0],['mine',4,3.4,8,0],['core',0,-.6,13.4,1]]},
  // 3: Laserschiff – greift von der Seite an, Kern feuert einen großen Strahl
- {name:'LANZENTRÄGER', tip:'LASER: NICHT IN DER LINIE BLEIBEN!', shape:'trident', hull:0x5a68c8, glow:0xff40c0, move:'strafe', core:'beam', hp:1.05, abil:['flank'],
+ {name:'LANZENTRÄGER', tip:'LASER: NICHT IN DER LINIE BLEIBEN!', shape:'trident', hull:0x5a68c8, glow:0xff40c0, move:'strafe', core:'beam', hp:1.05, abil:['flank', 'beams'], p2:['xbeams'],
   parts:[['laser',-8,0,11.6,0],['laser',8,0,11.6,0],['turret',0,2.4,5,0],['core',0,0,12.8,1]]},
  // 4: Minenwände
- {name:'MINENLEGER', tip:'MINENGÜRTEL – LÜCKE SUCHEN!', shape:'disc', hull:0x7a8a72, glow:0xffe040, move:'hover', core:'wall', hp:1.05, abil:['minefield'],
+ {name:'MINENLEGER', tip:'MINENRING ABSCHIESSEN!', shape:'disc', hull:0x7a8a72, glow:0xffe040, move:'hover', core:'wall', hp:1.05, abil:['minefield', 'orbitals'], p2:['salvo'],
   parts:[['mine',-6,1.4,6.5,0],['mine',6,1.4,6.5,0],['turret',-3,1.6,7.5,0],['turret',3,1.6,7.5,0],['core',0,-.4,9.4,1]]},
  // 5: Spiralen, die sich immer schneller drehen
- {name:'SPIRALWÄCHTER', tip:'ACHTUNG – DREHT AUF!', shape:'ring', hull:0x7a50c0, glow:0x60ffd0, move:'circle', core:'spiral', hp:1.1, spin:.35, abil:['spinup'],
+ {name:'SPIRALWÄCHTER', tip:'ACHTUNG – DREHT AUF!', shape:'ring', hull:0x7a50c0, glow:0x60ffd0, move:'circle', core:'spiral', hp:1.1, spin:.35, abil:['spinup', 'orbitals'], p2:['xbeams'],
   parts:[['spiral',0,9,1.6,0],['spiral',-7.8,-4.5,1.6,0],['spiral',7.8,-4.5,1.6,0],['core',0,0,3.4,1]]},
  // 6: Rammangriffe
- {name:'RAMMBOCK', tip:'RAMMANGRIFF – AUSWEICHEN!', shape:'spike', hull:0xa87a66, glow:0xff6020, move:'hover', core:'ring', hp:1.1, abil:['charge'],
+ {name:'RAMMBOCK', tip:'RAMMANGRIFF – AUSWEICHEN!', shape:'spike', hull:0xa87a66, glow:0xff6020, move:'hover', core:'ring', hp:1.1, abil:['charge'], p2:['flyby', 'boulder'],
   parts:[['turret',-2.9,1.9,2.5,0],['turret',2.9,1.9,2.5,0],['spread',0,-2.9,5.5,0],['core',0,0,11.8,1]]},
  // 7: Köpfe werden wütender, je weniger übrig sind
- {name:'HYDRA', tip:'JEDER KOPF MACHT DIE ANDEREN WÜTENDER!', shape:'hydra', hull:0x78a888, glow:0x60ff90, move:'drift', core:'homing', hp:1.15, abil:['enrage'],
+ {name:'HYDRA', tip:'KÖPFE WACHSEN NACH!', shape:'hydra', hull:0x78a888, glow:0x60ff90, move:'drift', core:'homing', hp:1.15, abil:['enrage', 'revive'], p2:['barrage'],
   parts:[['turret',0,7.5,4.8,0],['spread',-7,-3.6,4.8,0],['homing',7,-3.6,4.8,0],['core',0,0,4.9,1]]},
  // 8: Teleport + Flak
- {name:'PHANTOM', tip:'ES TELEPORTIERT SICH!', shape:'crescent', hull:0x4a60b0, glow:0x60ffe0, move:'hover', core:'bombs', hp:1.15, abil:['blink'],
+ {name:'PHANTOM', tip:'FINDE DAS ECHTE SCHIFF!', shape:'crescent', hull:0x4a60b0, glow:0x60ffe0, move:'hover', core:'bombs', hp:1.15, abil:['blink', 'decoys'], p2:['beams'],
   parts:[['flak',-10,0,1.9,0],['flak',10,0,1.9,0],['turret',0,10,1.9,0],['core',0,4,2,1]]},
  // 9: Schildgeneratoren zuerst
- {name:'FESTUNG', tip:'ERST DIE SCHILDGENERATOREN!', shape:'sphere', hull:0x9a9aa6, glow:0x40c8ff, move:'drift', core:'wall', hp:1.2,
+ {name:'FESTUNG', tip:'SCHILD-PAUSEN NUTZEN!', shape:'sphere', hull:0x9a9aa6, glow:0x40c8ff, move:'drift', core:'wall', hp:1.2, abil:['reflect', 'arms'], p2:['orbitals'],
   parts:[['gen',-5.2,0,5.4,0],['gen',5.2,0,5.4,0],['turret',0,5,5,1],['turret',-4.4,-3.2,5.2,1],['turret',4.4,-3.2,5.2,1],['core',0,0,7.4,2]]},
  // 10: Felsregen
- {name:'ASTEROIDENBRECHER', tip:'FELSREGEN!', shape:'trident', hull:0xa89a78, glow:0xffb040, move:'hover', core:'ring', hp:1.2, abil:['rockrain'],
+ {name:'ASTEROIDENBRECHER', tip:'FELSBROCKEN ABSCHIESSEN!', shape:'trident', hull:0xa89a78, glow:0xffb040, move:'hover', core:'ring', hp:1.2, abil:['rockrain', 'boulder'], p2:['charge'],
   parts:[['rock',-8,0,11.6,0],['rock',8,0,11.6,0],['turret',0,2.4,5,0],['core',0,0,12.8,1]]},
  // 11: Raketenschwärme
- {name:'RAKETENKREUZER', tip:'RAKETEN ABSCHIESSEN!', shape:'slab', hull:0x7f907f, glow:0xff8030, move:'strafe', core:'homing', hp:1.25,
+ {name:'RAKETENKREUZER', tip:'RAKETENSCHWÄRME!', shape:'slab', hull:0x7f907f, glow:0xff8030, move:'strafe', core:'homing', hp:1.25, abil:['barrage', 'arms'], p2:['flank'],
   parts:[['homing',-8,.6,6.3,0],['homing',8,.6,6.3,0],['homing',-4.2,3.4,2.2,0],['homing',4.2,3.4,2.2,0],['core',0,-.2,6.6,1]]},
  // 12: Seitenangriffe mit Lasern und Spirale
- {name:'SENSE', tip:'ANGRIFF VON DER SEITE!', shape:'crescent', hull:0xa07090, glow:0xff40a0, move:'strafe', core:'spiral', hp:1.25, abil:['flank'],
+ {name:'SENSE', tip:'ANGRIFF VON DER SEITE!', shape:'crescent', hull:0xa07090, glow:0xff40a0, move:'strafe', core:'spiral', hp:1.25, abil:['flank', 'xbeams'], p2:['decoys'],
   parts:[['laser',-10,0,1.9,0],['laser',10,0,1.9,0],['spiral',0,10,1.9,0],['core',0,4,2,1]]},
  // 13: Traktorstrahl
- {name:'GRAVITRON', tip:'TRAKTORSTRAHL – GEGENSTEUERN!', shape:'ring', hull:0x6f80a8, glow:0x4080ff, move:'hover', core:'ring', hp:1.3, spin:.25, abil:['tractor'],
+ {name:'GRAVITRON', tip:'SCHUTZKUGELN ZUERST!', shape:'ring', hull:0x6f80a8, glow:0x4080ff, move:'hover', core:'ring', hp:1.3, spin:.25, abil:['tractor', 'orbitals'], p2:['boulder'],
   parts:[['turret',0,9,1.6,0],['turret',-7.8,-4.5,1.6,0],['turret',7.8,-4.5,1.6,0],['core',0,0,3.4,1]]},
  // 14: Flak-Bomben im Kreis
- {name:'FLAKKREUZER', tip:'FLAKBOMBEN ZERPLATZEN!', shape:'disc', hull:0x968470, glow:0xff7040, move:'circle', core:'bombs', hp:1.3, abil:['salvo'],
+ {name:'FLAKKREUZER', tip:'NUR BEI OFFENER LUKE!', shape:'disc', hull:0x968470, glow:0xff7040, move:'circle', core:'bombs', hp:1.3, abil:['salvo', 'hatch'], p2:['beams'],
   parts:[['flak',-6,1.4,6.5,0],['flak',6,1.4,6.5,0],['spiral',0,1.6,8,0],['core',0,-.4,9.4,1]]},
  // 15: Endgegner mit allem
- {name:'DREADNOUGHT OMEGA', tip:'DER ENDGEGNER!', shape:'sphere', hull:0x5a3a9a, glow:0x40ff80, move:'hover', core:'beam', hp:1.5, abil:['charge','tractor','blink'], big:1.25,
+ {name:'DREADNOUGHT OMEGA', tip:'DER ENDGEGNER!', shape:'sphere', hull:0x5a3a9a, glow:0x40ff80, move:'hover', core:'beam', hp:1.5, big:1.25, abil:['charge', 'tractor', 'arms', 'revive'], p2:['xbeams', 'decoys', 'barrage'],
   parts:[['gen',-5.2,0,5.4,0],['gen',5.2,0,5.4,0],['laser',0,5,5,1],['homing',-4.4,-3.2,5.2,1],['hangar',4.4,-3.2,5.2,1],['core',0,0,7.4,2]]},
 ];
 
@@ -2235,7 +2235,7 @@ function spawnBoss(){
     half:half?half.clone().multiplyScalar(sc):null,sc,parts:[],mode:'normal',mT:0,minG:0,chT:rand(6,8),trT:rand(8,10),blT:rand(5,7),flT:rand(6,8)};
   scene.add(g); place(g,boss.pos,boss.rot);
   const hpMul=def.hp*(1+cyc*.6)*(1+G.wave*.04);
-  const HP={turret:16,spread:18,spiral:20,homing:18,laser:20,flak:18,mine:16,rock:20,hangar:22,gen:24,core:70};
+  const HP={turret:38,spread:42,spiral:46,homing:42,laser:46,flak:42,mine:38,rock:46,hangar:50,gen:55,core:170};
   for(const [kind,x,y,z,grp] of def.parts){
     const pm=bossPart(kind,def.glow); pm.position.set(x,y,z); g.add(pm);
     const hp=Math.round(HP[kind]*hpMul);
@@ -2271,6 +2271,46 @@ function moveBoss(b,dt,enr){
   const k=Math.min(1,dt*1.6); p.x+=(tx-p.x)*k; p.y+=(ty-p.y)*k; p.z+=(tz-p.z)*Math.min(1,dt*1.5);
 }
 // Waffen abwechselnd aus- und einfahren (eingefahren = geschützt, feuert nicht)
+// ---------- Spezialfähigkeiten (inspiriert von Star Fox und ARC Squadron) ----------
+const orbMat=new THREE.MeshStandardMaterial({color:0xff2030,emissive:0xff1020,emissiveIntensity:1.4,metalness:.3,roughness:.3,toneMapped:false});
+function spawnOrbs(b,n){
+  for(let i=0;i<n;i++){ const g=new THREE.Group(); g.add(mesh(geo.sphere,orbMat,1.3,1.3,1.3)); const r=mesh(geo.ring,Bm(0xffffff),1.5,1.5,2); g.add(r); g.add(glowSprite(0xff3040,5,.8));
+    const e=addEnemy('orb',g,{hp:6,maxHp:6,radius:1.9,score:120,collide:22,minion:true}); e.ob=b; e.oa=i/n*Math.PI*2; e.or=(i%2)*2.5; e.fireT=rand(2,5); e.pos.copy(b.pos); }
+}
+function reviveParts(b){ for(const e of b.parts){ if(e.kind==='core'||e.alive) continue; e.alive=true; e.hp=Math.round(e.maxHp*.55); e.mesh.visible=true; e.flash=1; if(!enemies.includes(e)) enemies.push(e); sparks(e.pos,b.def.glow,20); } }
+function bossSpecials(b,dt,ab){
+  const p=b.pos, has=k=>ab.includes(k);
+  // Luke: Treffer nur, wenn sie offen ist (wie der Attack Carrier)
+  if(has('hatch')){ b.hT=(b.hT??5)-dt; if(b.hT<=0){ b.hOpen=!b.hOpen; b.hT=b.hOpen?4.5:5.5;
+      if(b.hOpen){ toast('LUKE OFFEN – JETZT FEUERN!','#7fff9a'); for(let i=0;i<3;i++) later(i*.4,()=>{ if(G.boss===b) spawnMinion(p); }); } else toast('LUKE ZU','#ff9a8a'); }
+    b.hatchShut=!b.hOpen; for(const e of b.parts) if(e.alive){ e.armK=(e.armK??1)+((b.hOpen?1:.45)-(e.armK??1))*Math.min(1,dt*3); if(!b.hOpen) e.invul=true; } }
+  // Schutzkugeln, die um den Boss kreisen (rote Kugeln wie bei ARC)
+  if(has('orbitals')){ const n=enemies.filter(e=>e.alive&&e.type==='orb').length; if(!n){ b.obT=(b.obT??0)-dt; if(b.obT<=0){ b.obT=11; spawnOrbs(b,b.def.big?10:8); toast('SCHUTZKUGELN!','#ff6a6a'); } } }
+  // Schutzschild-Phasen
+  if(has('reflect')){ b.rfT=(b.rfT??4)-dt; if(b.rfT<=0){ b.rfOn=!b.rfOn; b.rfT=b.rfOn?3.5:5.5; if(b.rfOn) toast('SCHILD AKTIV – WARTEN!','#7fb4ff'); }
+    if(!b.shield){ b.shield=new THREE.Mesh(geo.sphere,new THREE.MeshBasicMaterial({color:0x60b8ff,transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthWrite:false})); b.shield.scale.setScalar(13); b.mesh.add(b.shield); }
+    b.shield.visible=!!b.rfOn; b.shield.material.opacity=.14+.08*Math.sin(b.t*9); if(b.rfOn) for(const e of b.parts) e.invul=true; }
+  // Riesige Felsbrocken auf den Spieler werfen
+  if(has('boulder')){ b.boT=(b.boT??4)-dt; if(b.boT<=0){ b.boT=rand(6,8); const r=rand(3.2,4.2), m=new THREE.Mesh(pick(rocks),M.rock); m.scale.setScalar(r);
+      const e=addEnemy('thrown',m,{hp:14,maxHp:14,radius:r*.95,score:200,collide:30,bs:r,minion:true}); e.pos.copy(p); e.vel.subVectors(ship.pos,p).normalize().multiplyScalar(28); e.spin=new V3(rand(-1,1),rand(-1,1),rand(-1,1)); toast('FELSBROCKEN!','#ffb060'); } }
+  // Raketenschwarm mit Vorwarnung
+  if(has('barrage')){ b.baT=(b.baT??6)-dt; if(b.baT<=0){ b.baT=rand(8,10); b.warn.visible=true; toast('RAKETENSCHWARM!','#ff8a40'); sfx.alarm();
+      for(let i=0;i<8;i++) later(.9+i*.12,()=>{ if(G.boss===b&&b.state==='fight') spawnHoming(b.pos,i%2?1:-1); }); } }
+  // freie Laserstrahlen
+  if(has('beams')||has('xbeams')){ b.lbT=(b.lbT??rand(5,7))-dt; if(b.lbT<=0&&!bBeams.length){ b.lbT=rand(8,11);
+      if(has('xbeams')){ const a=rand(0,Math.PI); spawnBossBeam('rot',a); spawnBossBeam('rot',a+Math.PI/2); } else spawnBossBeam(); } }
+  // Täuschung: zwei Trugbilder, nur das echte Schiff nimmt Schaden
+  if(has('decoys')){ b.dcT=(b.dcT??7)-dt;
+    if(!b.decoy&&b.dcT<=0){ b.decoy=true; b.dcT=7; b.clones=[0,1].map(()=>{ const c=b.mesh.clone(true); scene.add(c); return c; }); b.slots=[-1,0,1].sort(()=>Math.random()-.5); toast('TRUGBILDER – FINDE DAS ECHTE!','#c08aff'); sfx.zap(); }
+    if(b.decoy){ const xs=b.slots.map(k=>k*B.x*.62);
+      b.clones.forEach((c,i)=>{ _hp.set(xs[i+1],p.y+Math.sin(b.t*2+i)*1.5,p.z); place(c,_hp,b.rot); c.scale.copy(b.mesh.scale); });
+      p.x+=(xs[0]-p.x)*Math.min(1,dt*3);
+      if(b.dcT<=0){ b.decoy=false; b.dcT=rand(9,12); for(const c of b.clones){ for(let i=0;i<12;i++) sparks(c.position,0xc08aff,2); scene.remove(c); } b.clones=null; } } }
+  // Vorbeiflug von hinten (wie in Star Fox): durchrast den Spieler
+  if(has('flyby')&&b.mode==='normal'){ b.fyT=(b.fyT??6)-dt; if(b.fyT<=0){ b.fyT=rand(9,12); b.mode='flyby'; b.mT=3.2; b.fyX=ship.pos.x+rand(-3,3); b.fyY=ship.pos.y; p.set(b.fyX,b.fyY+10,60); toast('VON HINTEN – AUSWEICHEN!','#ff6a6a'); sfx.whoosh(); } }
+  // Köpfe wachsen nach (einmal), wie Spyborg sich heilt
+  if(has('revive')&&!b.revived&&b.core&&b.minG>=b.core.grp&&b.core.hp<b.core.maxHp*.6){ b.revived=true; reviveParts(b); b.minG=0; toast('ER REGENERIERT SICH!','#ff7a6a'); sfx.charge&&sfx.charge(); }
+}
 function updateBossArms(b,dt){
   const ps=b.parts.filter(e=>e.alive&&e.kind!=='core'); if(!ps.length) return;
   b.arT=(b.arT??6)-dt;
@@ -2284,9 +2324,9 @@ function updateBossArms(b,dt){
 }
 // Freie Laserstrahlen im Raum (ohne Ring): Warnlinie, dann Strahl der schwenkt
 const bBeams=[];
-function spawnBossBeam(){
-  const b={t:0,warn:1.1,dur:3.2,mode:pick(['slideV','slideH','rot']),a0:0,d0:0,sp:pick([-1,1])*rand(.8,1.2)};
-  if(b.mode==='slideV'){ b.a0=0; b.d0=(Math.random()<.5?-1:1)*B.y*.9; } else if(b.mode==='slideH'){ b.a0=Math.PI/2; b.d0=(Math.random()<.5?-1:1)*B.x*.85; } else { b.a0=rand(0,Math.PI); b.d0=0; }
+function spawnBossBeam(md,a0){
+  const b={t:0,warn:1.1,dur:3.2,mode:md||pick(['slideV','slideH','rot']),a0:0,d0:0,sp:pick([-1,1])*rand(.8,1.2)};
+  if(b.mode==='slideV'){ b.a0=0; b.d0=(Math.random()<.5?-1:1)*B.y*.9; } else if(b.mode==='slideH'){ b.a0=Math.PI/2; b.d0=(Math.random()<.5?-1:1)*B.x*.85; } else { b.a0=a0??rand(0,Math.PI); b.d0=0; }
   b.o=new THREE.Mesh(hzBeamGeo,hzBeamO); b.i=new THREE.Mesh(hzBeamGeo,hzBeamI); b.p1=hzPod(); b.p2=hzPod(); scene.add(b.o); scene.add(b.i); bBeams.push(b);
   toast('LASERSTRAHL – AUSWEICHEN!','#ff60e0'); sfx.charge&&sfx.charge();
 }
@@ -2303,7 +2343,7 @@ function updateBossBeams(dt){
   G.bbHitT=Math.max(0,(G.bbHitT||0)-dt);
 }
 function updateBoss(dt){
-  const b=G.boss; if(!b) return; b.t+=dt; const p=b.pos, def=b.def, ab=def.abil||[];
+  const b=G.boss; if(!b) return; b.t+=dt; const p=b.pos, def=b.def; let ab=def.abil||[];
   // Gruppen-Schutz
   let minG=99; for(const e of b.parts) if(e.alive) minG=Math.min(minG,e.grp);
   for(const e of b.parts) e.invul=e.grp>minG;
@@ -2314,10 +2354,11 @@ function updateBoss(dt){
     if(b.behind){ p.z-=48*dt; if(p.z<15) p.y+=(4-p.y)*Math.min(1,dt*1.1); b.rot.z=Math.sin(b.t*1.5)*.08; if(p.z<=-48){ p.z=-48; b.state='fight'; bossArrive(b); } }
     else { p.z+=Math.max(24,(-48-p.z)*1.15)*dt; p.y+=(4-p.y)*Math.min(1,dt); if(p.z>=-48){ p.z=-48; b.state='fight'; bossArrive(b); } }
   } else if(b.state==='fight'){
-    const enr=b.core&&!b.core.invul;
+    const enr=b.core&&!b.core.invul&&!(b.hatchShut);
+    if(b.core&&b.minG>=b.core.grp&&def.p2){ ab=ab.concat(def.p2); if(!b.p2told){ b.p2told=true; toast('BOSS WIRD WÜTEND – NEUE ANGRIFFE!','#ff7a6a'); } }
+    bossSpecials(b,dt,ab);
     b.ft+=dt*(enr?1.5:1); b.mT-=dt;
-    updateBossArms(b,dt);
-    b.lbT=(b.lbT??rand(6,9))-dt; if(b.lbT<=0&&b.mode==='normal'&&!bBeams.length){ b.lbT=rand(9,13)/(enr?1.4:1); spawnBossBeam(); }
+    if(ab.includes('arms')) updateBossArms(b,dt);
     if(b.mode==='normal'){
       moveBoss(b,dt,enr);
       if(ab.includes('charge')){ b.chT-=dt; if(b.chT<=0){ b.mode='chargeTele'; b.mT=1.4; b.chX=ship.pos.x; b.chY=ship.pos.y; b.hitDone=false; toast('ACHTUNG – RAMMANGRIFF!','#ff6a6a'); sfx.alarm(); } }
@@ -2329,6 +2370,10 @@ function updateBoss(dt){
       if(ab.includes('spinup')){ b.suT=(b.suT??6)-dt; if(b.suT<=0){ b.suT=rand(8,10); b.spinBoost=3.2; toast('DREHT AUF!','#ff9a8a'); } }
       if(ab.includes('rockrain')){ b.rrT=(b.rrT??4)-dt; if(b.rrT<=0){ b.rrT=rand(5.5,7); for(let i=0;i<5;i++) later(i*.25,()=>{ if(G.boss===b) rockFall(); }); toast('FELSREGEN!','#ffb060'); } }
       if(b.mode==='normal'&&ab.includes('flank')){ b.flT-=dt; if(b.flT<=0){ b.mode='flank'; b.mT=6; b.side=Math.random()<.5?-1:1; toast(b.side>0?'BOSS RECHTS VON DIR!':'BOSS LINKS VON DIR!','#ff9a8a'); } }
+    } else if(b.mode==='flyby'){
+      p.z-=95*dt; p.x+=(b.fyX-p.x)*Math.min(1,dt*2); p.y+=(b.fyY-p.y)*Math.min(1,dt*2);
+      if(!b.fyHit&&state==='play'&&Math.abs(p.z-ship.pos.z)<6&&Math.hypot(p.x-ship.pos.x,p.y-ship.pos.y)<6){ b.fyHit=true; damagePlayer(30); }
+      if(p.z<-48){ p.z=-48; b.mode='normal'; b.fyHit=false; }
     } else if(b.mode==='salvoTele'){
       moveBoss(b,dt*.3,enr); b.warn.visible=Math.sin(b.t*28)>0;
       if(b.mT<=0){ b.mode='normal'; b.saT=rand(5,6.5); for(const e of b.parts) if(e.alive&&!e.invul&&(e.kind==='turret'||e.kind==='spread'||e.kind==='flak')) enemyShoot(e.pos,bulletSpeed()*.95,3,.09); sfx.zap(); }
@@ -2372,7 +2417,7 @@ function updateBoss(dt){
   }
   place(b.mesh,p,b.rot); b.mesh.updateMatrixWorld(true);
   for(const pt of b.parts){ const mk=pt.marker; if(!mk) continue;
-    const show=pt.alive&&!pt.invul&&b.state!=='dying'&&!b.blinkHidden&&(state==='play'||state==='dying');
+    const show=pt.alive&&!pt.invul&&b.state!=='dying'&&!b.blinkHidden&&!b.decoy&&(state==='play'||state==='dying');
     mk.visible=show;
     if(show){ pt.mesh.getWorldPosition(mk.position); const core=pt.kind==='core', pul=1+.18*Math.sin(b.t*8);
       mk.scale.setScalar((core?.13:.095)*pul*(innerWidth<innerHeight?1.5:1)); mk.material.color.setHex(core?0xffd040:pt.kind==='gen'?0x60e0ff:0x40ff50);
@@ -2457,7 +2502,7 @@ function updateBossPart(e,dt){
   _q2.setFromEuler(b.rot); e.pos.copy(e.off).multiplyScalar(b.sc).applyQuaternion(_q2).add(b.pos);
   if(ud.shield) ud.shield.visible=e.invul;
   e.mesh.scale.setScalar((1+Math.max(0,e.flash)*.2)*(.35+.65*(e.armK??1)));
-  if(e.armK!==undefined&&e.kind!=='core') e.pos.copy(e.off).multiplyScalar(b.sc*(.42+.58*e.armK)).applyQuaternion(_q2).add(b.pos);
+  if(e.armK!==undefined&&e.kind!=='core'&&e.kind!=='orb') e.pos.copy(e.off).multiplyScalar(b.sc*(.42+.58*e.armK)).applyQuaternion(_q2).add(b.pos);
   if(ud.gl) ud.gl.scale.setScalar(ud.glS*(1+.35*Math.sin(G.time*9)));
   if(ud.aim) e.mesh.lookAt(shipMesh.position);
   if(ud.spin) ud.spin.rotation.z+=dt*3;
@@ -2684,6 +2729,10 @@ function updateEnemy(e,dt){
       e.rot.z+=dt*.6; e.mesh.userData.ring.rotation.x+=dt*1.5;
       break;}
     case 'emitter': case 'switch': case 'panel': case 'gatehalf': break;
+    case 'orb':{ const b=e.ob; if(!b||G.boss!==b||b.state!=='fight'){ e.gone=true; break; }
+      const a=e.oa+b.t*(b.def.spin?1.1:.7), R=(9+e.or)*b.sc; p.set(b.pos.x+Math.cos(a)*R,b.pos.y+Math.sin(a)*R*.8,b.pos.z+6);
+      e.fireT-=dt; if(e.fireT<=0){ e.fireT=rand(3.5,6)/diff(); enemyShoot(p,bulletSpeed()*.7,1,0); }
+      e.rot.y+=dt*2; break;}
     case 'asteroid': case 'debris':{
       p.z+=sp*dt; p.addScaledVector(e.vel,dt); e.rot.x+=e.spin.x*dt; e.rot.y+=e.spin.y*dt; e.rot.z+=e.spin.z*dt; break;}
     case 'bpart': updateBossPart(e,dt); break;
@@ -3350,7 +3399,7 @@ function updatePlay(dt){
   for(let i=pBullets.length-1;i>=0;i--){
     const b=pBullets[i]; b.prev.copy(b.pos); b.pos.addScaledVector(b.vel,dt); b.life-=dt;
     let hit=null;
-    for(const e of enemies){ if(!e.alive||!e.wp) continue; if(segDist(b.prev,b.pos,e.wp)<e.radius+(b.big-1)*.6){ hit=e; break; } }
+    let hd=1e9; for(const e of enemies){ if(!e.alive||!e.wp) continue; if(segDist(b.prev,b.pos,e.wp)<e.radius+(b.big-1)*.6){ const d=b.prev.distanceToSquared(e.wp); if(d<hd){ hd=d; hit=e; } } }
     if(hit){ hitEnemy(hit,b.dmg||1,worldToLocalPt(b.pos)); G.hitT=.3; }
     if(!hit) for(const o of obst){ if(!o.wc||b.pos.distanceToSquared(o.wc)>o.r2) continue; _v.copy(b.pos).sub(o.wc).applyQuaternion(o.qi);
       if(Math.abs(_v.x)<o.hx&&Math.abs(_v.y)<o.hy&&Math.abs(_v.z)<o.hz+1.5){ sparksW(b.pos,0xffc070,4); hit=true; break; } }
