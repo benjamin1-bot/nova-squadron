@@ -815,22 +815,29 @@ function makeMassif(W,H,D,y0,hx,hy,rx,ry){
     let n=0,a=1,f=.06,tt=0; for(let o=0;o<4;o++){ n+=vnoise(X*f+seed,Y*f,Z*f-seed)*a; tt+=a; a*=.5; f*=2.1; } n=n/tt-.5;
     X+=x*n*9; Y+=y*n*4+(t>.6?Math.max(0,n)*6:0); Z+=z*n*6;
     pos[i]=X; pos[i+1]=Y; pos[i+2]=Z; }
-  // Loch: innere Dreiecke weg, Randpunkte exakt auf eine glatte Ellipse schieben
-  const ex=rx*1.08, ey=ry*1.08, NB=72, fr=new Array(NB).fill(null), bk=new Array(NB).fill(null);
+  // Loch mit unregelmäßigem, felsigem Umriss (kein Oval)
+  const ex=rx*1.08, ey=ry*1.08, NB=96, ph=[rand(0,6.3),rand(0,6.3),rand(0,6.3),rand(0,6.3)];
+  const shp=th=>1+.16*Math.sin(2*th+ph[0])+.11*Math.sin(3*th+ph[1])+.07*Math.sin(5*th+ph[2])+.04*Math.sin(8*th+ph[3]);
+  const fs=new Array(NB).fill(0), fn=new Array(NB).fill(0), bs=new Array(NB).fill(0), bn=new Array(NB).fill(0);
+  const inHole=(X,Y)=>{ const u=(X-hx)/ex, v=(Y-hy)/ey, r=shp(Math.atan2(v,u)); return (u*u+v*v)/(r*r); };
   const keep=[]; for(let i=0;i<idx.length;i+=3){ let cx=0,cy=0; for(let k=0;k<3;k++){ cx+=pos[idx[i+k]*3]; cy+=pos[idx[i+k]*3+1]; } cx/=3; cy/=3;
-    if(((cx-hx)/ex)**2+((cy-hy)/ey)**2<1) continue; keep.push(idx[i],idx[i+1],idx[i+2]); }
+    if(inHole(cx,cy)<1) continue; keep.push(idx[i],idx[i+1],idx[i+2]); }
   const used=new Set(keep);
-  for(const j of used){ const X=pos[j*3],Y=pos[j*3+1],Z=pos[j*3+2], u=(X-hx)/ex, v=(Y-hy)/ey, e=u*u+v*v;
-    if(e<1.04){ const th=Math.atan2(v,u), q=1/Math.sqrt(Math.max(e,1e-4)); pos[j*3]=hx+u*q*ex; pos[j*3+1]=hy+v*q*ey;
-      const bi=((Math.round((th+Math.PI)/(2*Math.PI)*NB))%NB+NB)%NB, arr=Z>=0?fr:bk; arr[bi]=arr[bi]===null?Z:(Z>=0?Math.min(arr[bi],Z):Math.max(arr[bi],Z)); } }
-  const fill=a=>{ const def=a.find(v=>v!==null)??0; for(let i=0;i<NB;i++) if(a[i]===null){ let l=i,r=i,dl=0,dr=0; while(a[(l+NB)%NB]===null&&dl<NB){ l--; dl++; } while(a[r%NB]===null&&dr<NB){ r++; dr++; }
-      const A=a[(l+NB)%NB]??def, Bv=a[r%NB]??def; a[i]=A+(Bv-A)*(dl/(dl+dr||1)); } };
-  const frF=fr.slice(), bkF=bk.slice(); fill(frF); fill(bkF);
+  for(const j of used){ const X=pos[j*3],Y=pos[j*3+1],Z=pos[j*3+2], e=inHole(X,Y);
+    if(e<1.05){ const u=(X-hx)/ex, v=(Y-hy)/ey, th=Math.atan2(v,u), r=shp(th), d=Math.max(Math.hypot(u,v),1e-4);
+      pos[j*3]=hx+u/d*r*ex; pos[j*3+1]=hy+v/d*r*ey;
+      const bi=((Math.round((th+Math.PI)/(2*Math.PI)*NB))%NB+NB)%NB; if(Z>=0){ fs[bi]+=Z; fn[bi]++; } else { bs[bi]+=Z; bn[bi]++; } } }
+  const avg=(S,N)=>{ const a=S.map((v,i)=>N[i]?v/N[i]:null); const def=a.find(v=>v!==null)??0;
+    for(let i=0;i<NB;i++) if(a[i]===null){ let l=i,r=i,dl=0,dr=0; while(a[(l+NB)%NB]===null&&dl<NB){ l--; dl++; } while(a[r%NB]===null&&dr<NB){ r++; dr++; }
+      const A=a[(l+NB)%NB]??def, Bv=a[r%NB]??def; a[i]=A+(Bv-A)*(dl/(dl+dr||1)); } return a; };
+  const frF=avg(fs,fn), bkF=avg(bs,bn);
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(keep); g.computeVertexNormals();
-  // glatte Röhre genau zwischen vorderem und hinterem Lochrand
-  const tb=new THREE.CylinderGeometry(1,1,1,NB,8,true); tb.rotateX(Math.PI/2); const tp=tb.attributes.position;
+  // Höhlenwand: gleicher Umriss an den Enden, innen unebene Felswand
+  const tb=new THREE.CylinderGeometry(1,1,1,NB,12,true); tb.rotateX(Math.PI/2); const tp=tb.attributes.position;
   for(let i=0;i<tp.count;i++){ const x=tp.getX(i),y=tp.getY(i),z=tp.getZ(i), th=Math.atan2(y,x), bi=((Math.round((th+Math.PI)/(2*Math.PI)*NB))%NB+NB)%NB, t=z+.5;
-    const zf=frF[bi], zb=bkF[bi]; tp.setXYZ(i,-(hx+x*ex),hy+y*ey,zb+(zf-zb)*t); }
+    const bump=Math.sin(Math.PI*t)*((vnoise(Math.cos(th)*2+seed,Math.sin(th)*2,t*3)-.5)*.5+.08*Math.sin(t*9+th*3));
+    const r=shp(th)*(1+bump); const zf=frF[bi], zb=bkF[bi];
+    tp.setXYZ(i,-(hx+Math.cos(th)*r*ex),hy+Math.sin(th)*r*ey,zb+(zf-zb)*t); }
   tb.scale(-1,1,1); tb.computeVertexNormals();
   return {g,tube:tb};
 }
