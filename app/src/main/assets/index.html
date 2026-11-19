@@ -155,7 +155,6 @@
   </div>
   <div id="tl">
     <div id="wave">WELLE 1</div>
-    <div class="row"><span>SCHUB</span><div class="bar"><div id="bof" class="fill bo"></div></div></div>
     <div id="pw" class="hidden"></div>
   </div>
   <div id="bossbar" class="hidden">
@@ -170,9 +169,7 @@
     <button id="pause" class="sbtn" aria-label="Pause">❚❚</button>
   </div>
   <div id="br">
-    <button id="bstbtn" class="btn y" aria-label="Boost">▶▶<small>BOOST</small></button>
     <button id="rollbtn" class="btn" aria-label="Fassrolle">↻<small>ROLLE</small></button>
-    <button id="brkbtn" class="btn y" aria-label="Bremse">◀◀<small>BREMSE</small></button>
     <button id="misbtn" class="btn" aria-label="Raketen">◆<small id="miscount">6</small></button>
   </div>
 </div>
@@ -197,9 +194,9 @@
     </div>
     <div class="help">
       <b>Links ziehen</b>: steuern · <b>Rechts ziehen</b>: Fadenkreuz zielen (Laser feuert automatisch)<br>
-      <b>Knöpfe rechts</b>: <span class="y">▶▶ Boost</span>, <span class="y">◀◀ Bremse</span>, <span class="k">↻ Rolle</span> (wehrt Schüsse ab), <span class="k">◆ Raketen</span><br>
+      <b>Knöpfe rechts</b>: <span class="k">↻ Rolle</span> (wehrt Schüsse ab), <span class="k">◆ Raketen</span><br>
       Gegner kommen von vorn, von der Seite und <b>von hinten</b> (rote Pfeile). Im Wrack-Rumpf den Trägern ausweichen!<br>
-      Energiewürfel einsammeln für Bonuspunkte!<br>Tastatur: <b>WASD</b> steuern, <b>Pfeile</b> zielen, <b>E</b> Boost, <b>Q</b> Bremse, <b>Leertaste</b> Raketen, <b>Shift</b> Rolle, <b>P</b> Pause<br>
+      Energiewürfel einsammeln für Bonuspunkte!<br>Tastatur: <b>WASD</b> steuern, <b>Pfeile</b> zielen, <b>Leertaste</b> Raketen, <b>Shift</b> Rolle, <b>P</b> Pause<br>
       Extras: <span style="color:#4dff8a">✚ Reparatur</span> · <span style="color:#ffa63d">▮▮▮ Raketen</span> · <span style="color:#7fc4ff">⋔ 3x Laser</span> · <span style="color:#7fe9ff">◎ Schutzschild</span> · <span style="color:#d49aff">✷ Nova-Bombe</span> (zerstört alles)
     </div>
   </div>
@@ -260,6 +257,16 @@ const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v===null?
 const isTouch = matchMedia('(pointer:coarse)').matches;
 
 // ================= Renderer / Szene =================
+// Cel-Shading: Licht in harte Stufen, harte Glanzpunkte, Randlicht
+THREE.ShaderChunk.lights_fragment_end = `{
+  vec3 _dd=reflectedLight.directDiffuse; float _l=max(max(_dd.r,_dd.g),_dd.b);
+  if(_l>1e-4){ float _k=_l*3.; float _q=(floor(_k)+smoothstep(.42,.58,fract(_k)))/3.; reflectedLight.directDiffuse=_dd*(max(_q,.55*_l)/_l); }
+  vec3 _sp=reflectedLight.directSpecular; float _ls=max(max(_sp.r,_sp.g),_sp.b);
+  if(_ls>1e-4) reflectedLight.directSpecular=_sp/_ls*smoothstep(.16,.24,_ls)*.6;
+  float _rim=smoothstep(.6,.68,1.-max(dot(geometry.normal,geometry.viewDir),0.));
+  reflectedLight.directDiffuse+=material.diffuseColor*_rim*.38;
+}
+`+THREE.ShaderChunk.lights_fragment_end;
 const canvas = $('c');
 let renderer;
 try { renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'}); }
@@ -319,6 +326,7 @@ function applyGfx(){
   const dpr=window.devicePixelRatio||1;
   renderer.setPixelRatio(gfx==='high'?Math.min(dpr,1.75):gfx==='mid'?Math.min(dpr,1.5):1);
   if(composer) composer.setPixelRatio(renderer.getPixelRatio());
+  for(const k in OUTLS) OUTLS[k].visible=gfx!=='low';
   resize();
   const lbl='GRAFIK: '+(gfxMode==='auto'?'AUTO':gfxMode==='high'?'HOCH':gfxMode==='mid'?'MITTEL':'NIEDRIG');
   $('gopt').textContent=lbl; $('gopt2').textContent=lbl;
@@ -392,17 +400,19 @@ function glowSprite(color, scale, opacity=1){
   const s=new THREE.Sprite(glowMats[key]); s.scale.setScalar(scale); return s;
 }
 function crossTex(){
-  const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d');
-  const draw=(col,w)=>{ g.strokeStyle=col; g.lineWidth=w; g.lineCap='round'; g.beginPath(); g.arc(128,128,84,0,Math.PI*2); g.stroke(); };
-  draw('rgba(0,0,0,.7)',16); draw('#ffffff',7);
-  const star=(r1,r2,col)=>{ g.fillStyle=col; g.beginPath(); for(let i=0;i<8;i++){ const a=i*Math.PI/4-Math.PI/2, r=i%2?r2:r1; g.lineTo(128+Math.cos(a)*r,128+Math.sin(a)*r); } g.closePath(); g.fill(); };
-  star(26,8,'rgba(0,0,0,.6)'); star(20,5,'#ffffff');
+  const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d'); g.lineCap='round';
+  const arcs=(col,w)=>{ g.strokeStyle=col; g.lineWidth=w; for(let i=0;i<4;i++){ const a=i*Math.PI/2+Math.PI/4; g.beginPath(); g.arc(128,128,86,a-.62,a+.62); g.stroke(); } };
+  const ticks=(col,w)=>{ g.strokeStyle=col; g.lineWidth=w; for(let i=0;i<4;i++){ const a=i*Math.PI/2; g.beginPath(); g.moveTo(128+Math.cos(a)*108,128+Math.sin(a)*108); g.lineTo(128+Math.cos(a)*60,128+Math.sin(a)*60); g.stroke(); } };
+  arcs('rgba(0,0,0,.85)',26); ticks('rgba(0,0,0,.85)',24); arcs('#ffffff',13); ticks('#ffffff',11);
+  g.fillStyle='rgba(0,0,0,.85)'; g.beginPath(); g.arc(128,128,17,0,Math.PI*2); g.fill(); g.fillStyle='#ffffff'; g.beginPath(); g.arc(128,128,10,0,Math.PI*2); g.fill();
   return new THREE.CanvasTexture(c);
 }
 const chTex = crossTex();
 const chFarMat = new THREE.SpriteMaterial({map:chTex,color:0x8ff4ff,transparent:true,opacity:1,depthTest:false,depthWrite:false,sizeAttenuation:false,fog:false,toneMapped:false});
 const chNearMat = new THREE.SpriteMaterial({map:chTex,color:0x8ff4ff,transparent:true,opacity:.7,depthTest:false,depthWrite:false,sizeAttenuation:false,fog:false,toneMapped:false});
 const chFar = new THREE.Sprite(chFarMat); chFar.renderOrder=999; scene.add(chFar);
+const chGlowMat=new THREE.SpriteMaterial({map:glowTex,color:0x40ff60,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false,sizeAttenuation:false,fog:false,toneMapped:false});
+const chGlow=new THREE.Sprite(chGlowMat); chGlow.renderOrder=998; scene.add(chGlow);
 const arcTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d'); g.lineCap='round';
   g.strokeStyle='rgba(0,0,0,.6)'; g.lineWidth=22; g.beginPath(); g.arc(128,128,108,-Math.PI*.78,-Math.PI*.22); g.stroke();
   g.strokeStyle='#fff'; g.lineWidth=13; g.beginPath(); g.arc(128,128,108,-Math.PI*.78,-Math.PI*.22); g.stroke(); return new THREE.CanvasTexture(c); })();
@@ -737,6 +747,41 @@ const M={
 // Fensterlichter als Emissive-Map (über triplanare UVs)
 M.wreckLit.emissiveMap=T.win; M.bossLit.emissiveMap=T.win;
 initChunks(M.wreckDark);
+const OUTL=new THREE.MeshBasicMaterial({color:0x05040c,side:THREE.BackSide});
+OUTL.onBeforeCompile=sh=>{ sh.vertexShader=sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+  vec3 _s=vec3(length(modelMatrix[0].xyz),length(modelMatrix[1].xyz),length(modelMatrix[2].xyz));
+  transformed+=normal/max(_s,vec3(1e-4))*OW;`).replace('void main() {','uniform float OW;\nvoid main() {'); sh.uniforms.OW=OUTL.userData.w; };
+var OUTLS={};
+function outlineMat(w){ const k=w.toFixed(3); if(!OUTLS[k]){ const m=OUTL.clone(); m.userData.w={value:w}; m.onBeforeCompile=sh=>{ OUTL.onBeforeCompile.call(null,Object.assign(sh,{})); sh.uniforms.OW=m.userData.w; }; m.customProgramCacheKey=()=>'outl'; OUTLS[k]=m; } return OUTLS[k]; }
+OUTL.userData.w={value:.06};
+function outline(obj,w){
+  if(obj.userData.hasOutl) return obj; obj.userData.hasOutl=1;
+  const list=[]; obj.traverse(o=>{ if(o.isMesh&&!o.isInstancedMesh&&!o.userData.outl&&o.material&&!o.material.transparent&&!o.material.isMeshBasicMaterial&&o.geometry&&o.geometry.attributes.normal) list.push(o); });
+  const mt=outlineMat(w); for(const o of list){ const l=new THREE.Mesh(o.geometry,mt); l.userData.outl=1; l.raycast=()=>{}; o.add(l); }
+  return obj;
+}
+// Detail-Platten und Leuchtpunkte auf Oberflächen (per Strahlentest)
+const _gRay=new THREE.Raycaster(), _gN=new V3(), _gM=new THREE.Matrix4(), _gQ=new THREE.Quaternion(), _gS=new V3(), _gD=new V3(), _gO=new V3();
+const greebleGeo=new THREE.BoxBufferGeometry(1,1,1); greebleGeo.translate(0,.5,0);
+function surfaceDetail(g,n,size,mat,lights,lightCol){
+  g.updateMatrixWorld(true);
+  const ms=[]; g.traverse(o=>{ if(o.isMesh&&!o.isInstancedMesh&&!o.material.transparent&&!o.userData.outl) ms.push(o); }); if(!ms.length) return;
+  const box=new THREE.Box3().setFromObject(g), ctr=box.getCenter(new V3()), R=box.getSize(new V3()).length()*.6;
+  const inv=new THREE.Matrix4().copy(g.matrixWorld).invert(), wq=g.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const im=new THREE.InstancedMesh(greebleGeo,mat,n), il=lights?new THREE.InstancedMesh(greebleGeo,new THREE.MeshBasicMaterial({color:lightCol,toneMapped:false}),lights):null;
+  let k=0,kl=0;
+  for(let t=0;t<(n+(lights||0))*3&&(k<n||(il&&kl<lights));t++){
+    _gO.set(rand(-1,1),rand(-1,1),rand(-1,1)).normalize().multiplyScalar(R).add(ctr);
+    _gD.set(ctr.x+rand(-R,R)*.3,ctr.y+rand(-R,R)*.3,ctr.z+rand(-R,R)*.3).sub(_gO).normalize();
+    _gRay.set(_gO,_gD); const h=_gRay.intersectObjects(ms,false)[0]; if(!h||!h.face) continue;
+    _gN.copy(h.face.normal).transformDirection(h.object.matrixWorld).applyQuaternion(wq);
+    const pt=h.point.clone().applyMatrix4(inv);
+    _gQ.setFromUnitVectors(WUP,_gN); _gQ.multiply(new THREE.Quaternion().setFromAxisAngle(WUP,rand(0,6.28)));
+    if(il&&kl<lights&&(k>=n||Math.random()<.3)){ const a=size*rand(.12,.22); _gS.set(a,a*.6,a); _gM.compose(pt.addScaledVector(_gN,-.02),_gQ,_gS); il.setMatrixAt(kl++,_gM); }
+    else if(k<n){ _gS.set(size*rand(.3,1.2),size*rand(.08,.35),size*rand(.3,1.2)); _gM.compose(pt.addScaledVector(_gN,-.03),_gQ,_gS); im.setMatrixAt(k++,_gM); }
+  }
+  im.count=k; g.add(im); if(il){ il.count=kl; g.add(il); }
+}
 function mesh(g,m,sx=1,sy=1,sz=1,x=0,y=0,z=0){ const o=new THREE.Mesh(g,m); o.scale.set(sx,sy,sz); o.position.set(x,y,z); return o; }
 function flame(mat,r,len,x,y,z){ const f=mesh(geo.flame,mat,r,r,len,x,y,z); f.userData.len=len; return f; }
 
@@ -780,7 +825,7 @@ const engGlows=[], flames=[], navL=[];
   }
   g.scale.setScalar(.75); shipMesh.add(g);
   shipMesh.add(mesh(geo.sphere,M.shield,2.6,1.6,3.2));
-  scene.add(shipMesh);
+  outline(shipMesh,.05); scene.add(shipMesh);
 })();
 const engineLight=new THREE.PointLight(0xff5a3a,.7,9); engineLight.position.set(0,0,2.5); shipMesh.add(engineLight);
 const ship={pos:new V3(), vel:new V3(), target:new THREE.Vector2(), tRaw:new THREE.Vector2(), aim:new THREE.Vector2(), rot:new THREE.Euler(), tx:0, ty:0};
@@ -828,7 +873,7 @@ const sfx=(()=>{
   let muted=store.get('nova_mute','0')==='1', musicOn=store.get('nova_music','1')==='1';
   const MUSIC_VOL=.36;
   const BUF={go:{},gm:{},bass:{},lead:{},dr:{}}, queue=[];
-  let gtr=[], leadIn, cleanIn=[], bassIn, drumIn, revSend, padIn, arpIn, bellIn;
+  let gtr=[], leadIn, cleanIn=[], bassIn, drumIn, revSend, padIn, arpIn, bellIn, strIn, brassIn, choirIn;
   const mtof=m=>440*Math.pow(2,(m-69)/12);
 
   // ---- Saiten-Simulation (Karplus-Strong) ----
@@ -900,6 +945,9 @@ const sfx=(()=>{
       padIn=ac.createGain(); { const lp=bq('lowpass',1500,.4), out=ac.createGain(); out.gain.value=1; padIn.connect(lp).connect(out); out.connect(musicBus); const sd=ac.createGain(); sd.gain.value=.6; out.connect(sd).connect(reverb); }
       arpIn=ac.createGain(); { const lp=bq('lowpass',2400,.7), dl=ac.createDelay(1), fb=ac.createGain(), out=ac.createGain(); dl.delayTime.value=.27; fb.gain.value=.3; out.gain.value=1;
         arpIn.connect(lp).connect(out); lp.connect(dl); dl.connect(fb).connect(dl); dl.connect(out); out.connect(musicBus); const sd=ac.createGain(); sd.gain.value=.35; out.connect(sd).connect(reverb); }
+      strIn=ac.createGain(); { const bp=bq('bandpass',1400,.7), out=ac.createGain(); out.gain.value=1.4; strIn.connect(bp).connect(out).connect(musicBus); const sd=ac.createGain(); sd.gain.value=.4; out.connect(sd).connect(reverb); }
+      brassIn=ac.createGain(); { const out=ac.createGain(); out.gain.value=1; brassIn.connect(out).connect(musicBus); const sd=ac.createGain(); sd.gain.value=.45; out.connect(sd).connect(reverb); }
+      choirIn=ac.createGain(); { const lp=bq('lowpass',2200,.5), out=ac.createGain(); out.gain.value=1; choirIn.connect(lp).connect(out).connect(musicBus); const sd=ac.createGain(); sd.gain.value=.8; out.connect(sd).connect(reverb); }
       bellIn=ac.createGain(); { const out=ac.createGain(); out.gain.value=1; bellIn.connect(out).connect(musicBus); const sd=ac.createGain(); sd.gain.value=.7; out.connect(sd).connect(reverb); }
       const L=amp(14,.05,.08,.4); leadIn=L.inp;
       const dl=ac.createDelay(1); dl.delayTime.value=.32; const fb=ac.createGain(); fb.gain.value=.3; const dlo=ac.createGain(); dlo.gain.value=.25; const dlf=bq('lowpass',2800);
@@ -953,7 +1001,16 @@ const sfx=(()=>{
     {name:'Schlachtschiff',cat:'boss',bpm:138,key:40,form:[
       ['intro',2,{pad:1,dr:'half'},[0,1],.9],['A',8,{pad:1,arp:'16',gtr:'half',dr:'rock',bass:'8'},[0,1,0,3],.9],
       ['B',8,{pad:1,gtr:'push',dr:'drive',bass:'8',lead:'mel'},[0,-4,1,-2],1],['C',8,{pad:1,arp:'16',dr:'pop',bass:'8',lead:'bell'},[3,1,0,-2],.9],
-      ['B',8,{pad:1,gtr:'push',dr:'drive',bass:'8',lead:'mel'},[0,-4,1,-2],1]]}
+      ['B',8,{pad:1,gtr:'push',dr:'drive',bass:'8',lead:'mel'},[0,-4,1,-2],1]]},
+    {name:'Sturmangriff',cat:'boss',bpm:132,key:40,form:[ // orchestral: Streicher-Stakkato, Blechbläser, Pauken, Chor
+      ['intro',2,{choir:1,timp:1},[0,-4],.9],['A',8,{ost:'a',brass:1,timp:1,dr:'half',bass:'root'},[0,-4,3,-2],.95],
+      ['B',8,{ost:'b',choir:1,brass:1,dr:'drive',lead:'bell'},[-4,3,-2,0],1],['C',8,{choir:1,timp:1,ost:'a',lead:'mel'},[0,5,3,-2],.95]]},
+    {name:'Puls',cat:'boss',bpm:142,key:43,form:[ // elektronisch: pulsierender Bass, Arpeggios
+      ['intro',2,{pulse:'16'},[0,0],.9],['A',8,{pulse:'16',arp:'16',dr:'pop'},[0,-2,-4,-2],.95],
+      ['B',8,{pulse:'8',pad:1,arp:'8',dr:'drive',lead:'bell'},[0,3,-2,-4],1],['C',8,{pulse:'16',choir:1,dr:'rock'},[-4,-2,0,0],.95]]},
+    {name:'Finsternis',cat:'boss',bpm:100,key:38,form:[ // dunkel und schwer: Chor, Pauken, tiefer Puls
+      ['intro',2,{choir:1},[0,1],.9],['A',8,{choir:1,pulse:'8',timp:1,dr:'half'},[0,1,0,-2],.95],
+      ['B',8,{ost:'b',brass:1,dr:'rock',lead:'mel'},[0,-4,1,-2],1],['C',8,{choir:1,timp:1,lead:'bell'},[3,1,0,-2],.9]]}
   ];
   function rng(seed){ let s=seed>>>0||1; return ()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; }; }
   const norm=r=>{ while(r>50) r-=12; while(r<36) r+=12; return r; };
@@ -993,7 +1050,7 @@ const sfx=(()=>{
   const OVER=[{bpm:84,root:40,maj:false,L:{pad:1,gtr:'whole'},dr:{},vol:.8,crash:false},{bpm:84,root:40,maj:false,L:{},dr:{},vol:0}];
   const SIL=[{bpm:84,root:40,maj:false,L:{},dr:{},vol:0}];
 
-  const mus={want:'menu',cat:null,bars:null,bi:0,step:0,next:0,pi:0};
+  const mus={want:'menu',cat:null,bars:null,bi:0,step:0,next:0,pi:0,bk:Math.floor(Math.random()*4)};
   let ring=[[],[]], leadRing=null, bassRing=null, cleanRing=[];
 
   function choke(n,t){ if(!n) return; try{ n.g.gain.cancelScheduledValues(t); n.g.gain.setTargetAtTime(0,t,.015); n.s.stop(t+.12); }catch(e){} }
@@ -1047,10 +1104,30 @@ const sfx=(()=>{
     g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.11*vol,t+.01); g.gain.exponentialRampToValueAtTime(.0005,t+Math.max(1.2,dur*1.5));
     c.connect(g).connect(bellIn); c.start(t); md.start(t); c.stop(t+Math.max(1.3,dur*1.5)+.1); md.stop(t+Math.max(1.3,dur*1.5)+.1);
   }
+  function stacc(m,t,dur,vol){ for(const det of [-6,6]){ const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=mtof(m); o.detune.value=det;
+      const g=ac.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.03*vol,t+.006); g.gain.exponentialRampToValueAtTime(.0005,t+dur); o.connect(g).connect(strIn); o.start(t); o.stop(t+dur+.05); } }
+  function brass(r,maj,t,dur,vol){ for(const iv of [0,7,12,12+(maj?4:3)]){ const o=ac.createOscillator(); o.type='sawtooth'; o.frequency.value=mtof(r+12+iv);
+      const f=ac.createBiquadFilter(); f.type='lowpass'; f.Q.value=2; f.frequency.setValueAtTime(300,t); f.frequency.linearRampToValueAtTime(2200,t+.12); f.frequency.exponentialRampToValueAtTime(800,t+dur);
+      const g=ac.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.035*vol,t+.06); g.gain.setValueAtTime(.035*vol,t+dur*.8); g.gain.linearRampToValueAtTime(0,t+dur+.2);
+      o.connect(f).connect(g).connect(brassIn); o.start(t); o.stop(t+dur+.3); } }
+  function pulseNote(m,t,dur,vol){ const o=ac.createOscillator(); o.type='square'; o.frequency.value=mtof(m); const f=ac.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(1400,t); f.frequency.exponentialRampToValueAtTime(220,t+dur);
+      const g=ac.createGain(); g.gain.setValueAtTime(.09*vol,t); g.gain.exponentialRampToValueAtTime(.0005,t+dur); o.connect(f).connect(g).connect(musicBus); o.start(t); o.stop(t+dur+.05); }
+  function choir(r,maj,t,dur,vol){ for(const iv of [12,12+(maj?4:3),19,24]){ for(const det of [-10,0,10]){ const o=ac.createOscillator(); o.type='triangle'; o.frequency.value=mtof(r+iv); o.detune.value=det;
+      const lfo=ac.createOscillator(), lg=ac.createGain(); lfo.frequency.value=4.8+det*.03; lg.gain.value=4; lfo.connect(lg).connect(o.detune);
+      const g=ac.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.022*vol,t+.7); g.gain.setValueAtTime(.022*vol,t+Math.max(.7,dur-.3)); g.gain.linearRampToValueAtTime(0,t+dur+1);
+      o.connect(g).connect(choirIn); o.start(t); lfo.start(t); o.stop(t+dur+1.1); lfo.stop(t+dur+1.1); } } }
+  function timp(t,vol){ const b=BUF.dr.tomL; if(!b) return; const s=ac.createBufferSource(); s.buffer=b; s.playbackRate.value=.62; const g=ac.createGain(); g.gain.value=.9*vol; s.connect(g).connect(drumIn); g.connect(revSend); s.start(t); }
+  const OST={a:[0,12,7,12,0,12,7,12,0,12,7,12,0,12,10,12],b:[0,0,12,0,7,0,12,0,0,0,12,0,3,0,10,7]};
   function playStep(bar,step,t){
     const sd=60/bar.bpm/4, r=bar.root, v=bar.vol, L=bar.L||{};
     const third=bar.maj?4:3, tones=[0,7,12,12+third,19,24,12+third,7];
     if(L.pad&&step===0) padChord(r,bar.maj,t,sd*16,v);
+    if(L.choir&&step===0) choir(r,bar.maj,t,sd*16,v);
+    if(L.ost) stacc(r+12+OST[L.ost][step]+(L.ost==='b'&&bar.maj&&OST.b[step]===3?1:0),t,sd*.85,v);
+    if(L.brass&&(step===0||step===10)) brass(r,bar.maj,t,step===0?sd*6:sd*4,v);
+    if(L.pulse==='16') pulseNote(r-12+(step%4===2?12:0),t,sd*.8,v);
+    if(L.pulse==='8'&&step%2===0) pulseNote(r-12,t,sd*1.6,v);
+    if(L.timp&&(step===0||step===12||(step===14&&bar.fill))) timp(t,v);
     if(L.arp==='8'&&step%2===0) arpNote(r+12+tones[(step/2)%8],t,sd*1.8,v);
     if(L.arp==='16') arpNote(r+12+tones[step%8],t,sd*.9,v*.8);
     if(L.bass==='root'&&step===0) bass(r-12,t,sd*15,v*.8);
@@ -1073,7 +1150,7 @@ const sfx=(()=>{
     const w=mus.want;
     if(w==='over') return mus.cat==='over'?SIL:OVER;
     if(w==='menu') return COMPILED[0];
-    if(w==='boss') return COMPILED[4];
+    if(w==='boss') return COMPILED[[4,5,6,7][(mus.bk++)%4]];
     return COMPILED[1+(mus.pi++%3)];
   }
   function tick(){
@@ -1100,12 +1177,12 @@ const sfx=(()=>{
   function tone(type,f0,f1,dur,vol,delay=0){
     if(!ac||muted) return; const t=ac.currentTime+delay, o=ac.createOscillator(), g=ac.createGain();
     o.type=type; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur); o.connect(g).connect(sfxBus); o.start(t); o.stop(t+dur+.03);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.006); g.gain.exponentialRampToValueAtTime(.0001,t+dur); o.connect(g).connect(sfxBus); o.start(t); o.stop(t+dur+.03);
   }
-  function noise(dur,vol,type,f0,f1,delay=0){
+  function noise(dur,vol,type,f0,f1,delay=0,att=.004){
     if(!ac||muted) return; const t=ac.currentTime+delay, s=ac.createBufferSource(), f=ac.createBiquadFilter(), g=ac.createGain();
-    s.buffer=noiseBuf; f.type=type; f.frequency.setValueAtTime(f0,t); if(f1) f.frequency.exponentialRampToValueAtTime(f1,t+dur);
-    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur); s.connect(f).connect(g).connect(sfxBus); s.start(t); s.stop(t+dur+.03);
+    s.buffer=noiseBuf; s.loop=true; s.playbackRate.value=rand(.8,1.2); f.type=type; f.frequency.setValueAtTime(f0,t); if(f1) f.frequency.exponentialRampToValueAtTime(f1,t+dur);
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+att); g.gain.exponentialRampToValueAtTime(.0001,t+dur); s.connect(f).connect(g).connect(sfxBus); s.start(t); s.stop(t+dur+.03);
   }
   let lpTog=0;
   return {
@@ -1116,11 +1193,19 @@ const sfx=(()=>{
     toggleMute(){ muted=!muted; store.set('nova_mute',muted?'1':'0'); if(master) master.gain.setTargetAtTime(muted?0:.85,ac.currentTime,.03); return muted; },
     suspend(){ if(ac&&ac.state==='running') ac.suspend(); }, resume(){ if(ac&&ac.state==='suspended') ac.resume(); },
     // leiser, weicher Laser
-    laser(){ if(!ac||muted) return; const n=ac.currentTime; if(n-lastLaser<.08) return; lastLaser=n; lpTog^=1; tone('triangle',lpTog?1250:1150,380,.07,.05); tone('sine',lpTog?620:580,200,.06,.03); },
+    // Laser: kurzes, gefiltertes "Zzt" statt Plopp
+    laser(){ if(!ac||muted) return; const n=ac.currentTime; if(n-lastLaser<.08) return; lastLaser=n; lpTog^=1;
+      const t=n, o=ac.createOscillator(), f=ac.createBiquadFilter(), g=ac.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(lpTog?2100:1950,t); o.frequency.exponentialRampToValueAtTime(520,t+.09);
+      f.type='bandpass'; f.frequency.setValueAtTime(2600,t); f.frequency.exponentialRampToValueAtTime(900,t+.09); f.Q.value=1.2;
+      g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.05,t+.006); g.gain.exponentialRampToValueAtTime(.0001,t+.1);
+      o.connect(f).connect(g).connect(sfxBus); o.start(t); o.stop(t+.12); noise(.05,.018,'highpass',4500,0,0,.003); },
     hit(){ if(!ac) return; const n=ac.currentTime; if(n-lastHit<.04) return; lastHit=n; noise(.04,.03,'bandpass',2200); },
     clang(){ noise(.2,.15,'bandpass',900,300); tone('triangle',180,90,.25,.1); },
     boom(s){ if(!ac) return; const n=ac.currentTime; if(n-lastBoom<.05) return; lastBoom=n; const v=Math.min(1.6,.6+s*.5);
-      noise(.55+.4*s,.5*v,'lowpass',1800,60); noise(.25,.3*v,'bandpass',1100,250); tone('sine',120,28,.5+.3*s,.45*v); tone('square',70,30,.15,.06*v); },
+      // Explosion: rumpelndes Grollen + Knistern statt Plopp
+      noise(.9+.6*s,.42*v,'lowpass',2600,90,0,.012); noise(.45+.3*s,.22*v,'bandpass',600,140,.02,.02); noise(.35,.12*v,'highpass',2500,900,0,.006);
+      for(let k=0;k<3;k++) noise(.08,.1*v,'bandpass',rand(800,2000),0,.05+k*rand(.05,.12),.003);
+      tone('sine',62,28,.7+.3*s,.22*v); },
     missile(){ noise(.4,.08,'bandpass',500,2800); },
     pickup(){ tone('sine',600,1200,.12,.12); tone('sine',900,1800,.15,.09,.08); },
     hurt(){ tone('sawtooth',220,60,.28,.13); noise(.2,.12,'lowpass',900,200); },
@@ -1155,7 +1240,7 @@ syncAudioUI();
 
 // ================= Umgebung: Trümmer, Wracks =================
 let curW=null;
-function addStatic(m,s,x,y,rot,len=0){ placeAbs(m,s,x,y,rot); m.visible=false; scene.add(m); statics.push({mesh:m,s:s+len,s0:s,w:curW}); return m; }
+function addStatic(m,s,x,y,rot,len=0){ if(m.isGroup&&!m.userData.noDetail) surfaceDetail(m,26,1,M.wreckDark,8,0xffb060); outline(m,.16); placeAbs(m,s,x,y,rot); m.visible=false; scene.add(m); statics.push({mesh:m,s:s+len,s0:s,w:curW}); return m; }
 function spawnDecor(s){
   const a=rand(0,Math.PI*2), r=rand(ENV.calm?60:30,110), x=Math.cos(a)*r*1.3, y=Math.sin(a)*r*.85;
   if(inWreck(s)&&r<40) return;
@@ -1605,7 +1690,7 @@ function spawnStationRing(s){
 // ================= Gegner =================
 function addEnemy(type,m,props){
   const e=Object.assign({type,mesh:m,pos:new V3(),vel:new V3(),rot:new THREE.Euler(),hp:1,maxHp:1,radius:1.5,t:0,fireT:rand(.8,2),flash:0,alive:true,score:100,collide:20,bs:1},props);
-  if(!e.boss) scene.add(m);
+  if(!e.boss){ outline(m,.07); scene.add(m); }
   enemies.push(e); return e;
 }
 const diff=()=>1+G.wave*.07;
@@ -1734,35 +1819,50 @@ function removeBoss(b){ scene.remove(b.mesh); for(const p of b.parts){ if(p.mark
 // ================= 15 Bosse =================
 // Teile: [Art, x, y, z, Gruppe]  – Teile einer höheren Gruppe sind geschützt, bis alle der niedrigeren Gruppe zerstört sind.
 const BOSSES=[
- {name:'SCHLACHTSCHIFF ARGUS', shape:'slab', hull:0x6a5ab8, glow:0x40e8ff, move:'hover', core:'ring', hp:1,
+ // 1: Breitseiten-Salven – alle Türme feuern nach rotem Warnblinken gleichzeitig
+ {name:'SCHLACHTSCHIFF ARGUS', tip:'WEICH DEN SALVEN AUS!', shape:'slab', hull:0x6a5ab8, glow:0x40e8ff, move:'hover', core:'ring', hp:1, abil:['salvo'],
   parts:[['turret',-8,.6,6.3,0],['turret',8,.6,6.3,0],['turret',-4.2,3.4,2.2,0],['turret',4.2,3.4,2.2,0],['core',0,-.2,6.6,1]]},
- {name:'SCHWARMMUTTER', shape:'carrier', hull:0xa89878, glow:0xffa030, move:'drift', core:'ring', hp:1,
-  parts:[['hangar',-6.6,0,6,0],['hangar',6.6,0,6,0],['turret',-4,3.4,8,0],['turret',4,3.4,8,0],['core',0,-.6,13.4,1]]},
- {name:'LANZENTRÄGER', shape:'trident', hull:0x5a68c8, glow:0xff40c0, move:'strafe', core:'ring', hp:1.05,
+ // 2: Trägerschiff – bleibt auf Abstand, schickt Jägerstaffeln und Minen
+ {name:'SCHWARMMUTTER', tip:'ZERSTÖRE DIE HANGARS!', shape:'carrier', hull:0xa89878, glow:0xffa030, move:'far', core:'swarm', hp:.9, abil:['minefield'],
+  parts:[['hangar',-6.6,0,6,0],['hangar',6.6,0,6,0],['mine',-4,3.4,8,0],['mine',4,3.4,8,0],['core',0,-.6,13.4,1]]},
+ // 3: Laserschiff – greift von der Seite an, Kern feuert einen großen Strahl
+ {name:'LANZENTRÄGER', tip:'LASER: NICHT IN DER LINIE BLEIBEN!', shape:'trident', hull:0x5a68c8, glow:0xff40c0, move:'strafe', core:'beam', hp:1.05, abil:['flank'],
   parts:[['laser',-8,0,11.6,0],['laser',8,0,11.6,0],['turret',0,2.4,5,0],['core',0,0,12.8,1]]},
- {name:'MINENLEGER', shape:'disc', hull:0x7a8a72, glow:0xffe040, move:'hover', core:'wall', hp:1.05,
+ // 4: Minenwände
+ {name:'MINENLEGER', tip:'MINENGÜRTEL – LÜCKE SUCHEN!', shape:'disc', hull:0x7a8a72, glow:0xffe040, move:'hover', core:'wall', hp:1.05, abil:['minefield'],
   parts:[['mine',-6,1.4,6.5,0],['mine',6,1.4,6.5,0],['turret',-3,1.6,7.5,0],['turret',3,1.6,7.5,0],['core',0,-.4,9.4,1]]},
- {name:'SPIRALWÄCHTER', shape:'ring', hull:0x7a50c0, glow:0x60ffd0, move:'circle', core:'spiral', hp:1.1, spin:.35,
+ // 5: Spiralen, die sich immer schneller drehen
+ {name:'SPIRALWÄCHTER', tip:'ACHTUNG – DREHT AUF!', shape:'ring', hull:0x7a50c0, glow:0x60ffd0, move:'circle', core:'spiral', hp:1.1, spin:.35, abil:['spinup'],
   parts:[['spiral',0,9,1.6,0],['spiral',-7.8,-4.5,1.6,0],['spiral',7.8,-4.5,1.6,0],['core',0,0,3.4,1]]},
- {name:'RAMMBOCK', shape:'spike', hull:0xa87a66, glow:0xff6020, move:'hover', core:'ring', hp:1.1, abil:['charge'],
+ // 6: Rammangriffe
+ {name:'RAMMBOCK', tip:'RAMMANGRIFF – AUSWEICHEN!', shape:'spike', hull:0xa87a66, glow:0xff6020, move:'hover', core:'ring', hp:1.1, abil:['charge'],
   parts:[['turret',-2.9,1.9,2.5,0],['turret',2.9,1.9,2.5,0],['spread',0,-2.9,5.5,0],['core',0,0,11.8,1]]},
- {name:'HYDRA', shape:'hydra', hull:0x78a888, glow:0x60ff90, move:'drift', core:'ring', hp:1.15,
+ // 7: Köpfe werden wütender, je weniger übrig sind
+ {name:'HYDRA', tip:'JEDER KOPF MACHT DIE ANDEREN WÜTENDER!', shape:'hydra', hull:0x78a888, glow:0x60ff90, move:'drift', core:'homing', hp:1.15, abil:['enrage'],
   parts:[['turret',0,7.5,4.8,0],['spread',-7,-3.6,4.8,0],['homing',7,-3.6,4.8,0],['core',0,0,4.9,1]]},
- {name:'PHANTOM', shape:'crescent', hull:0x4a60b0, glow:0x60ffe0, move:'hover', core:'ring', hp:1.15, abil:['blink'],
+ // 8: Teleport + Flak
+ {name:'PHANTOM', tip:'ES TELEPORTIERT SICH!', shape:'crescent', hull:0x4a60b0, glow:0x60ffe0, move:'hover', core:'bombs', hp:1.15, abil:['blink'],
   parts:[['flak',-10,0,1.9,0],['flak',10,0,1.9,0],['turret',0,10,1.9,0],['core',0,4,2,1]]},
- {name:'FESTUNG', shape:'sphere', hull:0x9a9aa6, glow:0x40c8ff, move:'drift', core:'wall', hp:1.2,
+ // 9: Schildgeneratoren zuerst
+ {name:'FESTUNG', tip:'ERST DIE SCHILDGENERATOREN!', shape:'sphere', hull:0x9a9aa6, glow:0x40c8ff, move:'drift', core:'wall', hp:1.2,
   parts:[['gen',-5.2,0,5.4,0],['gen',5.2,0,5.4,0],['turret',0,5,5,1],['turret',-4.4,-3.2,5.2,1],['turret',4.4,-3.2,5.2,1],['core',0,0,7.4,2]]},
- {name:'ASTEROIDENBRECHER', shape:'trident', hull:0xa89a78, glow:0xffb040, move:'hover', core:'ring', hp:1.2,
+ // 10: Felsregen
+ {name:'ASTEROIDENBRECHER', tip:'FELSREGEN!', shape:'trident', hull:0xa89a78, glow:0xffb040, move:'hover', core:'ring', hp:1.2, abil:['rockrain'],
   parts:[['rock',-8,0,11.6,0],['rock',8,0,11.6,0],['turret',0,2.4,5,0],['core',0,0,12.8,1]]},
- {name:'RAKETENKREUZER', shape:'slab', hull:0x7f907f, glow:0xff8030, move:'strafe', core:'ring', hp:1.25,
+ // 11: Raketenschwärme
+ {name:'RAKETENKREUZER', tip:'RAKETEN ABSCHIESSEN!', shape:'slab', hull:0x7f907f, glow:0xff8030, move:'strafe', core:'homing', hp:1.25,
   parts:[['homing',-8,.6,6.3,0],['homing',8,.6,6.3,0],['homing',-4.2,3.4,2.2,0],['homing',4.2,3.4,2.2,0],['core',0,-.2,6.6,1]]},
- {name:'SENSE', shape:'crescent', hull:0xa07090, glow:0xff40a0, move:'strafe', core:'spiral', hp:1.25, abil:['flank'],
+ // 12: Seitenangriffe mit Lasern und Spirale
+ {name:'SENSE', tip:'ANGRIFF VON DER SEITE!', shape:'crescent', hull:0xa07090, glow:0xff40a0, move:'strafe', core:'spiral', hp:1.25, abil:['flank'],
   parts:[['laser',-10,0,1.9,0],['laser',10,0,1.9,0],['spiral',0,10,1.9,0],['core',0,4,2,1]]},
- {name:'GRAVITRON', shape:'ring', hull:0x6f80a8, glow:0x4080ff, move:'hover', core:'ring', hp:1.3, spin:.25, abil:['tractor'],
+ // 13: Traktorstrahl
+ {name:'GRAVITRON', tip:'TRAKTORSTRAHL – GEGENSTEUERN!', shape:'ring', hull:0x6f80a8, glow:0x4080ff, move:'hover', core:'ring', hp:1.3, spin:.25, abil:['tractor'],
   parts:[['turret',0,9,1.6,0],['turret',-7.8,-4.5,1.6,0],['turret',7.8,-4.5,1.6,0],['core',0,0,3.4,1]]},
- {name:'FLAKKREUZER', shape:'disc', hull:0x968470, glow:0xff7040, move:'circle', core:'spiral', hp:1.3,
+ // 14: Flak-Bomben im Kreis
+ {name:'FLAKKREUZER', tip:'FLAKBOMBEN ZERPLATZEN!', shape:'disc', hull:0x968470, glow:0xff7040, move:'circle', core:'bombs', hp:1.3, abil:['salvo'],
   parts:[['flak',-6,1.4,6.5,0],['flak',6,1.4,6.5,0],['spiral',0,1.6,8,0],['core',0,-.4,9.4,1]]},
- {name:'DREADNOUGHT OMEGA', shape:'sphere', hull:0x5a3a9a, glow:0x40ff80, move:'hover', core:'wall', hp:1.5, abil:['charge','tractor'], big:1.25,
+ // 15: Endgegner mit allem
+ {name:'DREADNOUGHT OMEGA', tip:'DER ENDGEGNER!', shape:'sphere', hull:0x5a3a9a, glow:0x40ff80, move:'hover', core:'beam', hp:1.5, abil:['charge','tractor','blink'], big:1.25,
   parts:[['gen',-5.2,0,5.4,0],['gen',5.2,0,5.4,0],['laser',0,5,5,1],['homing',-4.4,-3.2,5.2,1],['hangar',4.4,-3.2,5.2,1],['core',0,0,7.4,2]]},
 ];
 
@@ -1859,7 +1959,7 @@ function bossPart(kind,glow){
 function spawnBoss(){
   G.bossCount++;
   const idx=(G.bossCount-1)%BOSSES.length, cyc=Math.floor((G.bossCount-1)/BOSSES.length), def=BOSSES[idx];
-  const {g,half}=bossHull(def), sc=(def.big||1)*1.3; g.scale.setScalar(sc);
+  const {g,half}=bossHull(def), sc=(def.big||1)*1.3; surfaceDetail(g,70,1.1,M.bossDark,26,def.glow); g.scale.setScalar(sc);
   const behind=G.bossCount%2===0;
   const boss={def,idx,mesh:g,pos:behind?new V3(0,26,80):new V3(0,8,-400),rot:new THREE.Euler(),t:0,ft:0,state:'in',behind,
     half:half?half.clone().multiplyScalar(sc):null,sc,parts:[],mode:'normal',mT:0,minG:0,chT:rand(6,8),trT:rand(8,10),blT:rand(5,7),flT:rand(6,8)};
@@ -1873,6 +1973,7 @@ function spawnBoss(){
       score:kind==='core'?3000:500,collide:0,fireT:rand(1.5,3),invul:false});
     e.marker=addMarker(); boss.parts.push(e);
   }
+  outline(g,.1);
   boss.core=boss.parts.find(p=>p.kind==='core');
   boss.maxHp=boss.parts.reduce((a,e)=>a+e.maxHp,0);
   boss.warn=glowSprite(0xff2020,24,.55); boss.warn.visible=false; g.add(boss.warn);
@@ -1891,6 +1992,7 @@ function moveBoss(b,dt,enr){
   const p=b.pos, ft=b.ft, mv=b.def.move; let tx,ty,tz;
   if(mv==='strafe'){ tx=Math.sin(ft*.9)*B.x*.9; ty=3+Math.sin(ft*.6)*3; tz=-46; }
   else if(mv==='circle'){ tx=Math.cos(ft*.6)*B.x*.7; ty=2+Math.sin(ft*.6)*B.y*.5; tz=-50; }
+  else if(mv==='far'){ tx=Math.sin(ft*.25)*B.x*.6; ty=4+Math.sin(ft*.33)*3; tz=-74+Math.sin(ft*.2)*5; }
   else if(mv==='drift'){ tx=Math.sin(ft*.22)*B.x*.5; ty=2+Math.sin(ft*.31)*2.5; tz=-54+Math.sin(ft*.17)*6; }
   else { tx=Math.sin(ft*.35)*B.x*.75; ty=3+Math.sin(ft*.5)*3.5; tz=-48+Math.sin(ft*.21)*10; }
   if(enr) tz+=10;
@@ -1905,8 +2007,8 @@ function updateBoss(dt){
     if(left.every(e=>e.kind==='core')) banner('KERN FREIGELEGT','FEUER AUF DEN REAKTOR',true); else toast('SCHILD AUSGEFALLEN – NEUE ZIELE','#7fe9ff'); }
   if(b.tbeam) b.tbeam.visible=false; b.warn.visible=false;
   if(b.state==='in'){
-    if(b.behind){ p.z-=48*dt; if(p.z<15) p.y+=(4-p.y)*Math.min(1,dt*1.1); b.rot.z=Math.sin(b.t*1.5)*.08; if(p.z<=-48){ p.z=-48; b.state='fight'; toast('SCHWACHPUNKTE MARKIERT','#ffb060'); } }
-    else { p.z+=Math.max(24,(-48-p.z)*1.15)*dt; p.y+=(4-p.y)*Math.min(1,dt); if(p.z>=-48){ p.z=-48; b.state='fight'; toast('SCHWACHPUNKTE MARKIERT','#ffb060'); } }
+    if(b.behind){ p.z-=48*dt; if(p.z<15) p.y+=(4-p.y)*Math.min(1,dt*1.1); b.rot.z=Math.sin(b.t*1.5)*.08; if(p.z<=-48){ p.z=-48; b.state='fight'; toast(def.tip||'SCHWACHPUNKTE MARKIERT','#ffb060'); } }
+    else { p.z+=Math.max(24,(-48-p.z)*1.15)*dt; p.y+=(4-p.y)*Math.min(1,dt); if(p.z>=-48){ p.z=-48; b.state='fight'; toast(def.tip||'SCHWACHPUNKTE MARKIERT','#ffb060'); } }
   } else if(b.state==='fight'){
     const enr=b.core&&!b.core.invul;
     b.ft+=dt*(enr?1.5:1); b.mT-=dt;
@@ -1915,7 +2017,15 @@ function updateBoss(dt){
       if(ab.includes('charge')){ b.chT-=dt; if(b.chT<=0){ b.mode='chargeTele'; b.mT=1.4; b.chX=ship.pos.x; b.chY=ship.pos.y; b.hitDone=false; toast('ACHTUNG – RAMMANGRIFF!','#ff6a6a'); sfx.alarm(); } }
       if(b.mode==='normal'&&ab.includes('tractor')){ b.trT-=dt; if(b.trT<=0){ b.mode='tractor'; b.mT=3.2; toast('TRAKTORSTRAHL – GEGENSTEUERN!','#7fb4ff'); sfx.charge(); } }
       if(b.mode==='normal'&&ab.includes('blink')){ b.blT-=dt; if(b.blT<=0){ b.mode='blinkOut'; b.mT=.4; sfx.zap(); } }
+      if(b.mode==='normal'&&ab.includes('salvo')){ b.saT=(b.saT??4)-dt; if(b.saT<=0){ b.mode='salvoTele'; b.mT=.9; sfx.charge(); } }
+      if(ab.includes('minefield')){ b.mfT=(b.mfT??5)-dt; if(b.mfT<=0){ b.mfT=rand(6.5,8.5); const gap=rand(-B.x*.6,B.x*.6), y=rand(-B.y*.5,B.y*.5);
+          for(let i=0;i<7;i++){ const x=-B.x+i*(2*B.x/6); if(Math.abs(x-gap)<4.5) continue; spawnMine(new V3(x,y,p.z+4)).vel.set(0,0,20); } toast('MINENGÜRTEL – LÜCKE SUCHEN!','#ffe060'); } }
+      if(ab.includes('spinup')){ b.suT=(b.suT??6)-dt; if(b.suT<=0){ b.suT=rand(8,10); b.spinBoost=3.2; toast('DREHT AUF!','#ff9a8a'); } }
+      if(ab.includes('rockrain')){ b.rrT=(b.rrT??4)-dt; if(b.rrT<=0){ b.rrT=rand(5.5,7); for(let i=0;i<5;i++) later(i*.25,()=>{ if(G.boss===b) rockFall(); }); toast('FELSREGEN!','#ffb060'); } }
       if(b.mode==='normal'&&ab.includes('flank')){ b.flT-=dt; if(b.flT<=0){ b.mode='flank'; b.mT=6; b.side=Math.random()<.5?-1:1; toast(b.side>0?'BOSS RECHTS VON DIR!':'BOSS LINKS VON DIR!','#ff9a8a'); } }
+    } else if(b.mode==='salvoTele'){
+      moveBoss(b,dt*.3,enr); b.warn.visible=Math.sin(b.t*28)>0;
+      if(b.mT<=0){ b.mode='normal'; b.saT=rand(5,6.5); for(const e of b.parts) if(e.alive&&!e.invul&&(e.kind==='turret'||e.kind==='spread'||e.kind==='flak')) enemyShoot(e.pos,bulletSpeed()*.95,3,.09); sfx.zap(); }
     } else if(b.mode==='chargeTele'){
       p.x+=(b.chX-p.x)*Math.min(1,dt*3); p.y+=(b.chY-p.y)*Math.min(1,dt*3);
       b.warn.visible=Math.sin(b.t*25)>0;
@@ -1946,7 +2056,8 @@ function updateBoss(dt){
       const k=Math.min(1,dt*1.6); p.x+=(b.side*(B.x+14)-p.x)*k; p.y+=(2-p.y)*k; p.z+=(-14-p.z)*k;
       if(b.mT<=0){ b.mode='normal'; b.flT=rand(8,11); }
     }
-    if(def.spin) b.rot.z+=def.spin*dt*(enr?1.6:1);
+    b.spinBoost=Math.max(1,(b.spinBoost||1)-dt*.6);
+    if(def.spin) b.rot.z+=def.spin*dt*(enr?1.6:1)*b.spinBoost;
     else if(b.mode==='flank') b.rot.y+=(-b.side*.9-b.rot.y)*Math.min(1,dt*2);
     else { b.rot.y+=(0-b.rot.y)*Math.min(1,dt*2); b.rot.z=-Math.cos(b.ft*.35)*.14; }
   } else if(b.state==='dying'){
@@ -1994,12 +2105,19 @@ function spawnMine(from){
   const l=glowSprite(0xff3020,1.8,1); g.add(l); g.userData.light=l;
   const e=addEnemy('mine',g,{hp:2,maxHp:2,radius:1.3,score:30,collide:22,minion:true});
   e.pos.copy(from); e.vel.set(rand(-6,6),rand(-4,4),18+G.wave*.3);
+  return e;
 }
 function throwRock(from){
   const r=rand(1.8,2.6), m=new THREE.Mesh(pick(rocks),M.rock); m.scale.setScalar(r);
   const e=addEnemy('thrown',m,{hp:Math.ceil(r*2.5),maxHp:Math.ceil(r*2.5),radius:r*.95,score:60,collide:30,bs:r,minion:true});
   e.pos.copy(from); const tgt=new V3(ship.pos.x+ship.vel.x*.6,ship.pos.y+ship.vel.y*.6,ship.pos.z);
   e.vel.subVectors(tgt,from).normalize().multiplyScalar(34); e.spin=new V3(rand(-2,2),rand(-2,2),rand(-2,2));
+}
+function rockFall(){
+  const r=rand(1.6,2.4), m=new THREE.Mesh(pick(rocks),M.rock); m.scale.setScalar(r);
+  const e=addEnemy('thrown',m,{hp:Math.ceil(r*2),maxHp:Math.ceil(r*2),radius:r*.95,score:40,collide:28,bs:r,minion:true});
+  e.pos.set(clamp(ship.pos.x+rand(-10,10),-B.x,B.x),B.y+16,rand(-50,-30)); const tgt=new V3(e.pos.x+rand(-3,3),-B.y-10,ship.pos.z+rand(-4,6));
+  e.vel.subVectors(tgt,e.pos).normalize().multiplyScalar(26); e.spin=new V3(rand(-2,2),rand(-2,2),rand(-2,2));
 }
 function flakShot(from,speed){
   const d=new V3(ship.pos.x,ship.pos.y,ship.pos.z).sub(from), dist=d.length(); d.normalize();
@@ -2019,6 +2137,9 @@ function updateLaser(e,dt){
 }
 function coreAttack(e){
   const b=e.boss, p=e.pos, bs=bulletSpeed();
+  if(b.def.core==='swarm'){ e.fireT=6/diff(); for(let i=0;i<3;i++) later(i*.35,()=>{ if(e.alive) spawnMinion(e.pos); }); ringBurst(p,10,bs*.7,0); return; }
+  if(b.def.core==='homing'){ e.fireT=4/diff(); for(const sd of [-1,1,-1,1]) spawnHoming(p,sd); enemyShoot(p,bs,1,0); sfx.missile(); return; }
+  if(b.def.core==='bombs'){ e.fireT=3.4/diff(); for(const a of [-.25,0,.25]){ const d=new V3(ship.pos.x,ship.pos.y,ship.pos.z).sub(p); const dist=d.length(); d.normalize().applyAxisAngle(_up,a); spawnEBullet(p,d.multiplyScalar(bs*.8),FLAKB).burst=dist/(bs*.8)*.6; } return; }
   if(b.def.core==='spiral'){
     e.cyc=(e.cyc||0)+.16; if(e.cyc%5.5<3.2){ e.ang=(e.ang||0)+.45; for(let k=0;k<2;k++){ const a=e.ang+k*Math.PI; spawnEBullet(p,new V3(Math.cos(a)*.15,Math.sin(a)*.15,1).normalize().multiplyScalar(bs*.65)); } }
     e.fireT=.16; if(Math.random()<.06) enemyShoot(p,bs,1,0);
@@ -2034,8 +2155,8 @@ function updateBossPart(e,dt){
   if(ud.aim) e.mesh.lookAt(shipMesh.position);
   if(ud.spin) ud.spin.rotation.z+=dt*3;
   if(b.state!=='fight'||b.blinkHidden||e.invul||b.mode==='charge'){ if(e.beam) e.beam.visible=false; return; }
-  const p=e.pos, bs=bulletSpeed(), D=diff();
-  if(e.kind==='laser'){ updateLaser(e,dt); return; }
+  const p=e.pos, bs=bulletSpeed(), dead=b.parts.filter(x=>!x.alive).length, D=diff()*((b.def.abil||[]).includes('enrage')?1+dead*.6:1)*(b.spinBoost||1)*((b.def.abil||[]).includes('salvo')&&e.kind!=='spiral'?.6:1);
+  if(e.kind==='laser'||(e.kind==='core'&&b.def.core==='beam')){ updateLaser(e,dt); if(e.kind==='core'&&Math.random()<dt*.5) ringBurst(p,10,bs*.75,e.t); return; }
   e.fireT-=dt; if(e.fireT>0) return;
   switch(e.kind){
     case 'turret': e.fireT=rand(1.5,2.3)/D; enemyShoot(p,bs+6,G.wave>=9?2:1,.05); break;
@@ -2563,7 +2684,7 @@ function hold(el,key){
   el.addEventListener('pointerup',up); el.addEventListener('pointercancel',up); el.addEventListener('lostpointercapture',up);
 }
 press($('misbtn'),fireMissiles); press($('rollbtn'),doRoll);
-hold($('bstbtn'),'Boost'); hold($('brkbtn'),'Brake');
+
 press($('pause'),()=>pause(true));
 press($('mute'),()=>{ sfx.init(); sfx.toggleMute(); syncAudioUI(); });
 press($('musbtn'),()=>{ sfx.init(); sfx.toggleMusic(); syncAudioUI(); });
@@ -2631,7 +2752,7 @@ function resize(){
   if(composer) composer.setSize(w,h);
   camera.aspect=a; baseFov=a<1?80:a>1.9?56:a>1.45?60:66; camera.fov=baseFov; camera.updateProjectionMatrix();
   B.x=Math.min(22,7+8*a); B.y=a<1?14:a>1.6?13:13.5; camFollowX=a<1?.8:.6;
-  chFar.scale.setScalar(a<1?.11:.075); chNear.scale.setScalar(a<1?.07:.045); chArc.scale.setScalar(a<1?.15:.1);
+  chFar.scale.setScalar(a<1?.19:.135); chGlow.scale.setScalar(a<1?.3:.22); chNear.scale.setScalar(a<1?.07:.045); chArc.scale.setScalar(a<1?.15:.1);
 }
 window.addEventListener('resize',()=>{ resize(); setTimeout(resize,250); });
 applyGfx();
@@ -2651,7 +2772,7 @@ function updatePlay(dt){
     else if(!aimDrag){ const f=Math.max(0,1-dt*1.4); ship.aim.multiplyScalar(f); }
   }
   clampTarget();
-  const wantB=alive&&(keys.Boost||keys.KeyE)&&G.boost>0, wantS=alive&&(keys.Brake||keys.KeyQ)&&G.boost>0&&!wantB;
+  const wantB=false, wantS=false;
   if(wantB) G.boost=Math.max(0,G.boost-34*dt); else if(wantS) G.boost=Math.max(0,G.boost-28*dt); else G.boost=Math.min(100,G.boost+18*dt);
   const warping=updateWarp(dt);
   const tSpeed=warping?(G.warp>.9?330:58):wantB?112:wantS?30:58;
@@ -2700,11 +2821,11 @@ function updatePlay(dt){
       sfx.laser();
     }
   }
-  chFar.visible=alive; chArc.visible=false; chNear.visible=false; if(!alive) lockMk.visible=false;
+  chFar.visible=chGlow.visible=alive; chArc.visible=false; chNear.visible=false; if(!alive) lockMk.visible=false;
   if(alive){
     chNear.position.copy(_shipW).addScaledVector(_wDir,22);
-    chFar.position.copy(_shipW).addScaledVector(_wDir,60); chArc.position.copy(chFar.position);
-    G.hitT=Math.max(0,(G.hitT||0)-dt); chFarMat.color.setHex(lock||G.hitT>0?0xff3030:0x50ff60);
+    chFar.position.copy(_shipW).addScaledVector(_wDir,60); chGlow.position.copy(chFar.position); chArc.position.copy(chFar.position);
+    G.hitT=Math.max(0,(G.hitT||0)-dt); const red=lock||G.hitT>0; chFarMat.color.setHex(red?0xff2a2a:0x3dff5c); chGlowMat.color.setHex(red?0xff2020:0x30ff50); chGlowMat.opacity=.4+.15*Math.sin(performance.now()*.008);
     if(lock&&lock.wp){ lockMk.visible=true; lockMk.position.copy(lock.wp); const pul=1+.12*Math.sin(G.time*10); lockMk.scale.setScalar(.085*pul*(innerWidth<innerHeight?1.5:1)); } else lockMk.visible=false;
   }
 
@@ -2777,7 +2898,7 @@ function updateIdle(dt){
   ship.rot.set(ship.vel.y*.03,0,-ship.vel.x*.06-clamp(FR.k*60,-.4,.4));
   place(shipMesh,ship.pos,ship.rot);
   shipFx(dt,false,false);
-  chNear.visible=chFar.visible=chArc.visible=false; lockMk.visible=false;
+  chNear.visible=chFar.visible=chArc.visible=chGlow.visible=false; lockMk.visible=false;
   for(const e of enemies) if(e.alive) updateEnemy(e,dt);
   for(let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if(!e.alive||e.gone){ if(e.alive) scene.remove(e.mesh); enemies.splice(i,1); } }
 }
@@ -2831,12 +2952,12 @@ function hud(){
   const beat=G.score>hiscore&&hiscore>0; setT($('hirow'),beat?'★ NEUER REKORD':'REKORD '+fmt(Math.max(hiscore,G.score)));
   if(beat&&!G.beatShown){ G.beatShown=true; $('hirow').classList.add('beat'); toast('★ NEUER REKORD! ★','#ffd24a'); sfx.fanfare(); }
   const mu=$('mult'); setT(mu,'x'+G.mult+' KOMBO'); mu.style.opacity=G.mult>1?1:.35;
-  setW($('shf'),G.shield); setW($('hlf'),Math.max(0,G.hull)); setW($('bof'),G.boost); $('hlf').classList.toggle('low',G.hull<30); $('hlf').classList.toggle('mid',G.hull>=30&&G.hull<60);
+  setW($('shf'),G.shield); setW($('hlf'),Math.max(0,G.hull)); $('hlf').classList.toggle('low',G.hull<30); $('hlf').classList.toggle('mid',G.hull>=30&&G.hull<60);
   setT($('miscount'),String(G.missiles)); $('misbtn').classList.toggle('off',G.missiles<=0);
   $('rollbtn').classList.toggle('off',G.rollCd>0);
   const fx=[]; if(G.power>0) fx.push('◈ 3x LASER '+Math.ceil(G.power)+'s'); if(G.bubble>0) fx.push('◎ SCHUTZSCHILD '+Math.ceil(G.bubble)+'s');
   setT($('pw'),fx.join('  ')); $('pw').classList.toggle('hidden',!fx.length);
-  $('bstbtn').classList.toggle('off',G.boost<=0); $('brkbtn').classList.toggle('off',G.boost<=0);
+
 }
 
 // Automatische Grafikanpassung bei schwacher Leistung
