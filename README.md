@@ -1,9 +1,9 @@
-# Nova Squadron
+# Prismwing
 
 3D-Weltraum-Railshooter als Android-App (läuft offline, Vollbild, Querformat).
 
 ## APK herunterladen
-Unter **Releases** (rechts auf der Repo-Startseite) die neueste `NovaSquadron.apk` antippen und installieren.
+Unter **Releases** (rechts auf der Repo-Startseite) die neueste `Prismwing.apk` antippen und installieren.
 Beim ersten Mal muss „Installation aus unbekannten Quellen“ für den Browser erlaubt werden.
 
 ## Wie die APK entsteht

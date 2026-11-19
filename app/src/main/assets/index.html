@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Nova Squadron – 3D-Railshooter</title>
+<title>Prismwing – 3D-Railshooter</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -184,7 +184,7 @@
 <div id="menu" class="overlay">
   <div class="panel">
     <div>
-      <div class="title">NOVA<br>SQUADRON</div>
+      <div class="title">PRISM<br>WING</div>
       <div class="tag">FLUG DURCH DAS TRÜMMERFELD</div>
       <button class="big" id="startbtn">STARTEN</button>
       <div class="opts"><button class="opt" id="mopt">♫ MUSIK: AN</button><button class="opt" id="gopt">GRAFIK: AUTO</button></div>
@@ -230,7 +230,7 @@
 <div id="rotate">
   <div class="ph"></div>
   <div style="font-size:18px;color:#bfefff">BITTE GERÄT QUER HALTEN</div>
-  <div style="font-family:Rajdhani;font-size:15px;color:rgba(210,235,255,.75);letter-spacing:0">Nova Squadron ist fürs Querformat gemacht.</div>
+  <div style="font-family:Rajdhani;font-size:15px;color:rgba(210,235,255,.75);letter-spacing:0">Prismwing ist fürs Querformat gemacht.</div>
   <button class="opt" id="rotskip">TROTZDEM HOCHKANT SPIELEN</button>
 </div>
 
@@ -322,9 +322,9 @@ if(THREE.EffectComposer&&THREE.RenderPass&&THREE.UnrealBloomPass){
       fragmentShader:`uniform sampler2D tDiffuse; uniform vec2 px; varying vec2 vUv;
         float L(vec2 o){ vec3 c=texture2D(tDiffuse,vUv+o*px).rgb; return dot(c,vec3(.3,.59,.11)); }
         void main(){ vec4 c=texture2D(tDiffuse,vUv);
-          float gx=L(vec2(1,0))-L(vec2(-1,0)), gy=L(vec2(0,1))-L(vec2(0,-1)); float e=smoothstep(.10,.22,length(vec2(gx,gy)));
+          float gx=L(vec2(1,0))-L(vec2(-1,0)), gy=L(vec2(0,1))-L(vec2(0,-1)); float e=smoothstep(.2,.38,length(vec2(gx,gy)));
           float l=dot(c.rgb,vec3(.3,.59,.11)); c.rgb=mix(vec3(l),c.rgb,1.18);
-          gl_FragColor=vec4(c.rgb*(1.-e*.55),c.a); }`});
+          gl_FragColor=vec4(c.rgb*(1.-e*.45),c.a); }`});
     composer.addPass(ink); window.__ink=ink;
     composer.addPass(bloom);
   }catch(e){ composer=null; }
@@ -470,17 +470,61 @@ function windowsTex(){
   for(let y=8;y<S;y+=16) for(let x=4;x<S;x+=10) if(Math.random()<.28){ g.fillStyle=Math.random()<.8?`rgba(255,${rand(170,210)|0},110,${rand(.5,1)})`:'rgba(120,220,255,.9)'; g.fillRect(x,y,6,4); }
   const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t;
 }
+// 2D-Wertrauschen (kachelbar) für gemalte Texturen
+function makeNoise2(P){ const h=new Float32Array(P*P); for(let i=0;i<h.length;i++) h[i]=Math.random();
+  return (x,y)=>{ const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+    const a=((xi%P)+P)%P,b=((yi%P)+P)%P,a1=(a+1)%P,b1=(b+1)%P;
+    const A=h[b*P+a],B=h[b*P+a1],C=h[b1*P+a],D=h[b1*P+a1]; return A+(B-A)*u+(C-A)*v+(A-B-C+D)*u*v; }; }
+function fbm2(n,x,y,oct,P){ let s=0,a=.5,f=1,t=0; for(let o=0;o<oct;o++){ s+=n(x*f,y*f)*a; t+=a; a*=.5; f*=2; } return s/t; }
+// Asteroiden: verwirbelte Gesteinsschichten wie gemalt, mit Rillen und Mulden
 function rockTex(){
   const S=512,c=document.createElement('canvas'),b=document.createElement('canvas'); c.width=c.height=b.width=b.height=S;
-  const g=c.getContext('2d'),h=b.getContext('2d');
-  g.fillStyle='#6a6058'; g.fillRect(0,0,S,S); h.fillStyle='#808080'; h.fillRect(0,0,S,S);
-  for(let i=0;i<900;i++){ const x=rand(0,S),y=rand(0,S),r=rand(2,24),v=rand(-30,30)|0; g.fillStyle=`rgba(${106+v},${96+v},${88+v},.35)`; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); const hv=128+v*2|0; h.fillStyle=`rgba(${hv},${hv},${hv},.35)`; h.beginPath(); h.arc(x,y,r,0,7); h.fill(); }
-  for(let i=0;i<55;i++){ const x=rand(0,S),y=rand(0,S),r=rand(5,34);
-    g.strokeStyle='rgba(170,160,150,.35)'; g.lineWidth=r*.25; g.beginPath(); g.arc(x,y,r,0,7); g.stroke();
-    g.fillStyle='rgba(30,26,24,.45)'; g.beginPath(); g.arc(x+r*.1,y+r*.1,r*.8,0,7); g.fill();
-    h.strokeStyle='#e0e0e0'; h.lineWidth=r*.3; h.beginPath(); h.arc(x,y,r,0,7); h.stroke(); h.fillStyle='#303030'; h.beginPath(); h.arc(x,y,r*.75,0,7); h.fill(); }
+  const g=c.getContext('2d'),h=b.getContext('2d'), id=g.createImageData(S,S), ib=h.createImageData(S,S), d=id.data, e=ib.data;
+  const P=8, n=makeNoise2(P), k=P/S;
+  for(let y=0;y<S;y++) for(let x=0;x<S;x++){
+    const px=x*k, py=y*k;
+    const wx=fbm2(n,px+3.1,py+1.7,4), wy=fbm2(n,px+8.3,py+2.8,4);
+    const q=fbm2(n,px+wx*2.6,py+wy*2.6,5);
+    const band=q*9, f=band-Math.floor(band), ridge=Math.pow(Math.abs(f-.5)*2,6);
+    const pit=Math.max(0,.36-fbm2(n,px*2+5,py*2+9,3))*2.4;
+    let v=.56+(q-.5)*1.35-ridge*.4-pit*.7+wx*.14;
+    const warm=fbm2(n,px+11,py+4,2);
+    const i=(y*S+x)*4;
+    d[i]=clamp((v*1.05+warm*.12)*255,0,255); d[i+1]=clamp((v*.88+warm*.04)*255,0,255); d[i+2]=clamp((v*.68)*255,0,255); d[i+3]=255;
+    const hv=clamp((q*.9+ (1-ridge)*.25 - pit*.6)*255,0,255); e[i]=e[i+1]=e[i+2]=hv; e[i+3]=255;
+  }
+  g.putImageData(id,0,0); h.putImageData(ib,0,0);
+  const map=new THREE.CanvasTexture(c), bump=new THREE.CanvasTexture(b); for(const t of [map,bump]){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=4; }
+  return {map,bump};
+}
+// Wabengitter für Stationsringe
+function hexTex(){
+  const S=256,c=document.createElement('canvas'),b=document.createElement('canvas'); c.width=c.height=b.width=b.height=S;
+  const g=c.getContext('2d'),h=b.getContext('2d'); g.fillStyle='#20262c'; g.fillRect(0,0,S,S); h.fillStyle='#202020'; h.fillRect(0,0,S,S);
+  const r=16, dx=r*Math.sqrt(3), dy=r*1.5;
+  for(let row=-1;row<S/dy+1;row++) for(let col=-1;col<S/dx+1;col++){
+    const cx=col*dx+(row%2?dx/2:0), cy=row*dy;
+    for(const [ctx,st,w] of [[g,'#5a646e',4],[h,'#e0e0e0',5]]){ ctx.strokeStyle=st; ctx.lineWidth=w; ctx.beginPath(); for(let i=0;i<7;i++){ const a=Math.PI/6+i*Math.PI/3; ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r); } ctx.stroke(); }
+    g.fillStyle='rgba(0,0,0,.35)'; g.beginPath(); g.arc(cx+2,cy+2,r*.6,0,7); g.fill();
+  }
   const map=new THREE.CanvasTexture(c), bump=new THREE.CanvasTexture(b); for(const t of [map,bump]) t.wrapS=t.wrapT=THREE.RepeatWrapping;
   return {map,bump};
+}
+// Planeten mit Wolkenwirbeln
+function cloudPlanetTex(a,b2){
+  const W=512,H=256,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d'), id=g.createImageData(W,H), d=id.data;
+  const P=8, n=makeNoise2(P);
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const px=x/W*P, py=y/H*P*.5;
+    const w=fbm2(n,px+2,py*1.5+5,4);
+    const base=.5+.5*Math.sin(py*5+w*5);
+    const cl=fbm2(n,px*1.6+w*3,py*3.2+w*2,5); const cloud=Math.max(0,(cl-.48)*3.2);
+    const i=(y*W+x)*4, t=base;
+    let r=a[0]*t+b2[0]*(1-t), gg=a[1]*t+b2[1]*(1-t), bb=a[2]*t+b2[2]*(1-t);
+    r+= (250-r)*Math.min(1,cloud); gg+=(252-gg)*Math.min(1,cloud); bb+=(255-bb)*Math.min(1,cloud);
+    d[i]=r; d[i+1]=gg; d[i+2]=bb; d[i+3]=255;
+  }
+  g.putImageData(id,0,0); const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; return t;
 }
 // Triplanare Projektion: Texturen hängen nicht von UVs ab, Plattengröße bleibt bei jeder Skalierung gleich
 function tri(mat,scale){
@@ -508,6 +552,7 @@ let planet, SKY={};
   }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3));
   const stars=new THREE.Points(g,new THREE.PointsMaterial({size:1.7,sizeAttenuation:false,vertexColors:true,fog:false})); sky.add(stars); SKY.stars=stars;
+  for(let i=0;i<45;i++){ const u=Math.random()*2-1, th=Math.random()*6.283, sq=Math.sqrt(1-u*u), st=glowSprite(pick([0xffffff,0xbfe0ff,0xffe0c0,0xe0b0ff]),rand(14,40),rand(.5,.95)); st.position.set(1850*sq*Math.cos(th),1850*u,1850*sq*Math.sin(th)); stars.add(st); }
   const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d');
   const blobs=[['rgba(140,60,220,',.35],['rgba(40,120,255,',.3],['rgba(255,60,140,',.18],['rgba(60,200,255,',.15]];
   for(let i=0;i<14;i++){
@@ -721,7 +766,9 @@ const T={
   wreckD:plating({base:[48,50,56],vari:.14,seam:'rgba(0,0,0,.7)',depth:4,grime:80,rust:12,streaks:40}),
   rust:plating({base:[112,76,52],vari:.2,seam:'rgba(30,10,0,.6)',depth:4,grime:90,rust:70,streaks:60}),
   station:plating({base:[168,164,158],vari:.08,seam:'rgba(40,30,20,.6)',depth:4,grime:40,accent:'#e0602a',hazard:true,streaks:20}),
-  rock:rockTex(), win:windowsTex()
+  rock:rockTex(), win:windowsTex(), hex:hexTex(),
+  orange:plating({base:[200,96,44],vari:.07,seam:'rgba(50,14,0,.75)',depth:3,grime:70,accent:'#ece6da',rust:18,streaks:40}),
+  teal:plating({base:[70,120,118],vari:.08,seam:'rgba(0,20,20,.7)',depth:4,grime:60,rust:10,streaks:30})
 };
 const S=(o)=>new THREE.MeshStandardMaterial(o);
 const TM=(t,o,scale,bump=.03)=>tri(S(Object.assign({map:t.map,bumpMap:t.bump,bumpScale:bump},o)),scale);
@@ -734,8 +781,8 @@ const M={
   eHull:TM(T.enemy,{color:0xffd040,metalness:.4,roughness:.45},.4), eDark:TM(T.dark,{color:0x666a77,metalness:.5,roughness:.55},.4), eRed:Bm(0xff2d50),
   iHull:TM(T.rust,{color:0xb0a090,metalness:.5,roughness:.5},.4), iOr:Bm(0xff8a1e), fGreen:Bm(0x59ff7a),
   hHull:TM(T.purple,{metalness:.55,roughness:.4},.3), hGlow:Bm(0xc35bff),
-  rock:tri(S({map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.06,color:0xb8aca0,metalness:.05,roughness:.95}),.35),
-  rock2:tri(S({map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.06,color:0x8f857c,metalness:.1,roughness:.9}),.22),
+  rock:tri(S({map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.16,color:0xb8aca0,metalness:0,roughness:.85}),.16),
+  rock2:tri(S({map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.16,color:0x8f857c,metalness:0,roughness:.85}),.11),
   pb:Bm(0x8af6ff,true), pbPow:Bm(0xa9b8ff,true), eb:new THREE.MeshBasicMaterial({color:0xfff0f4,toneMapped:false}), ebWall:Bm(0xff60c0), ebFlak:Bm(0xffa040), ebOrb:Bm(0xffd040), ebSnip:Bm(0xff8090),
   bossHull:TM(T.boss,{metalness:.45,roughness:.55,envMapIntensity:.5},.12,.05), bossDark:TM(T.dark,{metalness:.45,roughness:.6,envMapIntensity:.5},.15,.04),
   bossLit:TM(T.boss,{metalness:.45,roughness:.55,envMapIntensity:.5,emissive:0xffc070,emissiveIntensity:.7},.12,.05),
@@ -744,7 +791,7 @@ const M={
   wreck:TM(T.wreck,{metalness:.6,roughness:.7},.09,.06), wreckDark:TM(T.wreckD,{metalness:.55,roughness:.75},.1,.06),
   rust:TM(T.rust,{metalness:.3,roughness:.9},.1,.07),
   wreckLit:TM(T.wreckD,{metalness:.5,roughness:.75,emissive:0xffffff,emissiveIntensity:1.4},.1,.06),
-  station:TM(T.station,{metalness:.3,roughness:.7,envMapIntensity:.3},.12,.04), stationDark:TM(T.dark,{color:0x6a7684,metalness:.5,roughness:.55,envMapIntensity:.5},.15,.04), stationOr:TM(T.rust,{color:0xff9a60,metalness:.3,roughness:.6},.12,.05),
+  station:TM(T.station,{metalness:.3,roughness:.7,envMapIntensity:.3},.12,.04), stationDark:TM(T.dark,{color:0x6a7684,metalness:.5,roughness:.55,envMapIntensity:.5},.15,.04), stationOr:TM(T.orange,{metalness:.25,roughness:.6},.1,.06), stationHex:TM(T.hex,{metalness:.6,roughness:.5},.25,.08), stationTeal:TM(T.teal,{metalness:.35,roughness:.6},.12,.05),
   hazard:Bm(0xff8a1e), wGlow:Bm(0x2fa6c8), window:Bm(0xffc070), wRed:Bm(0xff3a3a),
   missile:TM(T.light,{metalness:.3,roughness:.5,envMapIntensity:.4},.8),
   shield:new THREE.MeshBasicMaterial({color:0x2f9fd8,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}),
@@ -1503,9 +1550,9 @@ const WORLDS=[
  {name:'ASTEROIDENGÜRTEL KEPLER', fog:0x123444, dens:.0040, sky:[0x0c3444,0x3a2270,0x06101a], neb:0x9fffe8, sun:0xfff0dc, hemi:0xa8d8ff, rim:0x60c0ff, motes:0x7ff0ff,
   planet:[[120,170,230],[40,60,120]], ring:true, rock:[0xd8b88c,0xaa8a64], rockE:0, decor:{rock:.6,chunk:.25,girder:.15}, wrecks:.6, tube:'rock', fx:null,
   tunnel:{key:'rock',every:[1300,1900],len:[300,420]}},
- {name:'EISPLANET HEL', exp:.78, bloom:.22, hemiI:.55, fog:0x6e9cc4, dens:.0052, sky:[0x1a4682,0x7cb0d8,0xa8cce6], neb:0x80c8ff, sun:0xf0f6ff, hemi:0xb8d8f0, rim:0x80e0ff, motes:0xffffff, stars:false,
-  planet:[[230,240,255],[150,180,220]], ring:true, rock:[0xe8f4ff,0xb8d4ec], rockE:0x0a1828, decor:{ice:.8,rock:.2}, wrecks:0, tube:'ice', fx:'snow',
-  surface:{low:0xc8def0,high:0x4a78a8,mid:0x8cb2d4,canyon:1}, tunnel:{key:'ice',every:[900,1300],len:[320,460]}},
+ {name:'EISPLANET HEL', exp:.8, bloom:.3, hemiI:.5, fog:0x1d6a96, dens:.005, sky:[0x08244a,0x2a8ab8,0x0e4a70], neb:0x40d8ff, sun:0xd8f6ff, hemi:0x60c8f0, rim:0x40f0ff, motes:0xffffff, stars:false,
+  planet:[[230,240,255],[150,180,220]], ring:true, rock:[0x8ae4ff,0x4aa8d8], rockE:0x06304a, decor:{ice:.8,rock:.2}, wrecks:0, tube:'ice', fx:'snow',
+  surface:{low:0x7fe0ff,high:0x0c3462,mid:0x2c90c4,canyon:1}, tunnel:{key:'ice',every:[900,1300],len:[320,460]}},
  {name:'LAVAPLANET SURTR', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
   planet:null, ring:false, rock:[0x4a3a34,0x3a2e2a], rockE:0x3a0c00, decor:{lava:.8,rock:.2}, wrecks:0, tube:'lava', fx:'embers',
   surface:{low:0xc85014,high:0x1e1410,mid:0x3a2218,canyon:1.1}, tunnel:{key:'lava',every:[1000,1400],len:[300,440]}},
@@ -1527,12 +1574,24 @@ const WORLDS=[
 ];
 let worldIdx=0, W0=WORLDS[0];
 const skyDome=new THREE.Mesh(new THREE.SphereGeometry(2200,32,16),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,fog:false,
-  uniforms:{top:{value:new THREE.Color()},mid:{value:new THREE.Color()},bot:{value:new THREE.Color()}},
+  uniforms:{top:{value:new THREE.Color()},mid:{value:new THREE.Color()},bot:{value:new THREE.Color()},nA:{value:new THREE.Color()},nB:{value:new THREE.Color()},nI:{value:1}},
   vertexShader:'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-  fragmentShader:`uniform vec3 top,mid,bot; varying vec3 vP; void main(){ float t=normalize(vP).y;
-    vec3 c=t>0.?mix(mid,top,pow(t,.6)):mix(mid,bot,pow(-t,.5)); gl_FragColor=vec4(c,1.); }`}));
+  fragmentShader:`uniform vec3 top,mid,bot,nA,nB; uniform float nI; varying vec3 vP;
+    float h(vec3 p){ p=fract(p*.3183099+.1); p*=17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+    float n(vec3 x){ vec3 i=floor(x),f=fract(x); f=f*f*(3.-2.*f);
+      return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+                 mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
+    float fb(vec3 p){ float s=0.,a=.5; for(int i=0;i<5;i++){ s+=n(p)*a; p*=2.03; a*=.5; } return s; }
+    void main(){ vec3 d=normalize(vP); float t=d.y;
+      vec3 c=t>0.?mix(mid,top,pow(t,.6)):mix(mid,bot,pow(-t,.5));
+      vec3 q=d*2.2; float w=fb(q+3.); float a=fb(q*1.3+w*2.2); float b=fb(q*2.1-w*1.6+7.);
+      float m1=smoothstep(.42,.78,a), m2=smoothstep(.5,.82,b);
+      float dark=smoothstep(.55,.75,fb(q*3.+11.));
+      c=mix(c,nA*.9,m1*.75*nI); c+=nB*m2*.45*nI; c*=1.-dark*.35*nI;
+      c+=vec3(1.)*pow(max(0.,a-.62),2.)*1.4*nI;
+      gl_FragColor=vec4(c,1.); }`}));
 skyDome.renderOrder=-10; sky.add(skyDome);
-function planetTexture(a,b){
+function planetTexture(a,b){ return cloudPlanetTex(a,b);
   const pc=document.createElement('canvas'); pc.width=1024; pc.height=512; const p=pc.getContext('2d');
   for(let y=0;y<512;y++){ const v=.5+(Math.sin(y*.045)*.5+Math.sin(y*.016+1)*.35+Math.sin(y*.11)*.15)*.5;
     p.fillStyle=`rgb(${a[0]*v+b[0]*(1-v)|0},${a[1]*v+b[1]*(1-v)|0},${a[2]*v+b[2]*(1-v)|0})`; p.fillRect(0,y,1024,1); }
@@ -1558,7 +1617,7 @@ const blackHole=new THREE.Group();
 const flashS=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xc8fff0,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));
 flashS.scale.setScalar(1500); sky.add(flashS);
 const M2={
-  ice:new THREE.MeshStandardMaterial({color:0xcfeaff,metalness:.1,roughness:.12,emissive:0x16304a,transparent:true,opacity:.88,envMapIntensity:1.3,flatShading:true}),
+  ice:new THREE.MeshStandardMaterial({color:0x7fe6ff,metalness:.1,roughness:.12,emissive:0x0a4a78,transparent:true,opacity:.88,envMapIntensity:1.3,flatShading:true}),
   lava:tri(new THREE.MeshStandardMaterial({map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.06,color:0x3a2a24,emissive:0x701800,emissiveIntensity:.7,roughness:.9}),.3),
   crysA:new THREE.MeshStandardMaterial({color:0xff70e8,emissive:0x8a1878,emissiveIntensity:.9,metalness:.2,roughness:.2,flatShading:true}),
   crysB:new THREE.MeshStandardMaterial({color:0x50ffe0,emissive:0x0e7a68,emissiveIntensity:.9,metalness:.2,roughness:.2,flatShading:true}),
@@ -1568,6 +1627,7 @@ const crystalGeo=new THREE.ConeGeometry(.5,1,5);
 function applyWorld(i){
   worldIdx=((i%WORLDS.length)+WORLDS.length)%WORLDS.length; const w=WORLDS[worldIdx]; W0=w;
   scene.fog.color.setHex(w.fog); scene.fog.density=w.dens; scene.background.setHex(w.sky[2]);
+  skyDome.material.uniforms.nA.value.setHex(w.neb).multiplyScalar(.55); skyDome.material.uniforms.nB.value.setHex(w.rim).multiplyScalar(.5); skyDome.material.uniforms.nI.value=w.stars===false?.25:1;
   skyDome.material.uniforms.top.value.setHex(w.sky[0]); skyDome.material.uniforms.mid.value.setHex(w.sky[1]); skyDome.material.uniforms.bot.value.setHex(w.sky[2]);
   SKY.stars.visible=w.stars!==false; for(const n of SKY.nebs) n.visible=w.stars!==false;
   hemi.groundColor.setHex(w.surface?w.surface.high:0x1a0f22); hemi.intensity=w.hemiI||.55;
@@ -1682,7 +1742,7 @@ function spawnTunnel(s0,len,key){
 // ---------- Orbitalstation: Deck zum Tiefflug + riesige Ringe ----------
 function spawnDeck(s){
   const g=new THREE.Group(), Wd=2*(B.x+9), y0=-(B.y+7), wall=B.x+9;
-  g.add(mesh(geo.box,M.station,Wd,1.4,42,0,y0,0));
+  g.add(mesh(geo.box,M.stationDark,Wd,1.4,42,0,y0,0));
   for(let i=-2;i<=2;i++) g.add(mesh(geo.box,M.stationDark,1.2,.3,42,i*Wd/5,y0+.75,0));
   for(const sx of [-1,1]){
     g.add(mesh(geo.box,M.station,3,9,42,sx*wall,y0+4.5,0));
@@ -1691,15 +1751,31 @@ function spawnDeck(s){
     for(let k=0;k<3;k++){ const pz=-14+k*14; g.add(mesh(geo.box,M.stationDark,3.6,7,2,sx*wall,y0+4,pz)); const l=glowSprite(pick([0xff6a20,0x60e0ff]),2.6,.8); l.position.set(sx*(wall-1.8),y0+8,pz); g.add(l); }
   }
   for(let i=0;i<5;i++) g.add(mesh(geo.box,pick([M.stationDark,M.station,M.stationOr]),rand(2,6),rand(.5,2),rand(2,6),rand(-wall+4,wall-4),y0+1,rand(-18,18)));
+  for(const sx of [-1,1]){
+    g.add(mesh(geo.box,M.stationOr,1.2,3.2,42,sx*(wall-2.4),y0+2.3,0));            // orange Seitenwulst
+    for(let k=0;k<5;k++){ const pz=-18+k*9; g.add(mesh(geo.cyl,M.stationDark,.18,2.4,.18,sx*(wall-3.4),y0+4.4,pz)); }  // Geländerpfosten
+    g.add(mesh(geo.box,M.stationDark,.22,.22,42,sx*(wall-3.4),y0+5.6,0));         // Handlauf
+    const pipe=mesh(geo.cyl,M.stationTeal,.5,42,.5,sx*(wall+1.9),y0+7.3,0); pipe.rotation.x=Math.PI/2; g.add(pipe);
+  }
+  for(let k=0;k<7;k++) g.add(mesh(geo.box,M.stationHex,Wd*.5,.2,2.4,0,y0+.78,-18+k*6));   // Bodengitter
   addStatic(g,s,0,0,null,21);
 }
 function spawnStationRing(s){
-  const g=new THREE.Group(), R=Math.max(B.x,B.y)+18;
-  const t=new THREE.Mesh(new THREE.TorusGeometry(R,3.2,10,48),M.station); g.add(t);
-  const t2=new THREE.Mesh(new THREE.TorusGeometry(R-3,1.2,6,48),M.stationOr); t2.position.z=1.6; g.add(t2);
-  const t3=new THREE.Mesh(new THREE.TorusGeometry(R+3.5,1.6,6,48),M.stationDark); g.add(t3);
-  for(let i=0;i<16;i++){ const a=i/16*Math.PI*2, b=mesh(geo.box,i%2?M.stationOr:M.stationDark,6,4,9,Math.cos(a)*(R+1),Math.sin(a)*(R+1),0); b.rotation.z=a; g.add(b);
-    if(i%4===0){ const l=glowSprite(0x60e0ff,6,.7); l.position.set(Math.cos(a)*(R-2),Math.sin(a)*(R-2),2.5); g.add(l); } }
+  const g=new THREE.Group(), R=Math.max(B.x,B.y)+18, N=12;
+  const segW=2*(R+4)*Math.tan(Math.PI/N)+.4;
+  for(let i=0;i<N;i++){
+    const a=i/N*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a), seg=new THREE.Group(); seg.position.set(ca*(R+4),sa*(R+4),0); seg.rotation.z=a-Math.PI/2; g.add(seg);
+    seg.add(mesh(geo.box,M.stationHex,segW*.92,7,6,0,0,0));                 // Wabengitter
+    seg.add(mesh(geo.box,M.stationOr,segW,1.6,8,0,-3.9,0));                 // innerer oranger Rahmen
+    seg.add(mesh(geo.box,M.stationOr,segW,1.4,7,0,3.9,0));                  // äußerer Rahmen
+    seg.add(mesh(geo.box,M.stationTeal,segW*.98,.9,3,0,-4.9,1.6));          // türkiser Innenrand
+    seg.add(mesh(geo.box,M.stationDark,1.2,9,9,segW/2,0,0));               // Stoßstrebe
+    seg.add(mesh(geo.box,M.stationDark,segW*.7,.5,.6,0,-2.6,3.4));          // Leitung vorn
+    seg.add(mesh(geo.box,M.stationTeal,segW*.4,2,1.4,0,1.6,3.6));           // Abdeckplatte
+    if(i%3===0){ seg.add(mesh(geo.cyl,M.stationDark,.9,4,.9,segW*.3,6.2,0)); const l=glowSprite(0xff7a30,4,.8); l.position.set(segW*.3,8.4,0); seg.add(l); }
+    if(i%2===0){ const l=glowSprite(0x60e0ff,4.5,.75); l.position.set(0,-4.9,3.4); seg.add(l); }
+  }
+  for(let i=0;i<4;i++){ const a=i/4*Math.PI*2+Math.PI/4, sp=mesh(geo.box,M.stationDark,1.4,14,1.4,Math.cos(a)*(R+14),Math.sin(a)*(R+14),-2); sp.rotation.z=a-Math.PI/2; g.add(sp); }
   addStatic(g,s,0,0,null);
 }
 
