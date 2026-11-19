@@ -74,6 +74,15 @@ public class MainActivity extends Activity {
         }
         return super.dispatchKeyEvent(e);
     }
+    /** Beim Start nach bereits verbundenen Controllern suchen. */
+    private void scanPads() {
+        try {
+            for (int id : InputDevice.getDeviceIds()) {
+                InputDevice d = InputDevice.getDevice(id);
+                if (d != null && !d.isVirtual() && isPad(d)) { padDevice = id; pushPad(); return; }
+            }
+        } catch (Throwable ignored) { }
+    }
     private static float ax(MotionEvent e, int a) { InputDevice d = e.getDevice(); if (d == null || d.getMotionRange(a, e.getSource()) == null) return 0f; return e.getAxisValue(a); }
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent e) {
@@ -142,6 +151,8 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient());
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new PadBridge(), "AndroidPad");
+        web.postDelayed(this::scanPads, 2500);
+        web.postDelayed(this::scanPads, 6000);
         setContentView(web);
         web.loadUrl("file:///android_asset/index.html");
         hideSystemBars();

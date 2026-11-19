@@ -220,6 +220,7 @@
       <div id="fshint" class="hidden" style="margin-top:8px;font-size:13px;color:rgba(210,235,255,.7)"></div>
     </div>
     <div>
+    <div id="padstat" style="font-family:Orbitron;font-size:9px;letter-spacing:1px;margin-bottom:6px"></div>
     <div class="slots"><div class="sltitle">SPIELSTAND WÄHLEN</div><div id="slotRow"></div>
       <div class="slname"><input id="slotName" maxlength="10" placeholder="NAME EINTRAGEN" autocomplete="off"><span>✎</span></div></div>
     <div class="help">
@@ -1409,10 +1410,14 @@ const sfx=(()=>{
     // leiser, weicher Laser
     // Laser: kurzes, gefiltertes "Zzt" statt Plopp
     laser(){ if(!ac||muted) return; const n=ac.currentTime; if(n-lastLaser<.08) return; lastLaser=n; lpTog^=1;
-      const t=n, f=ac.createBiquadFilter(), g=ac.createGain(); f.type='lowpass'; f.frequency.setValueAtTime(3200,t); f.frequency.exponentialRampToValueAtTime(700,t+.12); f.Q.value=2.5;
-      for(const d of [-12,12]){ const o=ac.createOscillator(); o.type='sawtooth'; o.detune.value=d; o.frequency.setValueAtTime(lpTog?1250:1150,t); o.frequency.exponentialRampToValueAtTime(220,t+.12); o.connect(f); o.start(t); o.stop(t+.14); }
-      g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.075,t+.005); g.gain.exponentialRampToValueAtTime(.0001,t+.13); f.connect(g).connect(sfxBus);
-      tone('sine',260,70,.09,.12); },
+      // runder, kurzer „Pew“: Dreieck-Ton mit Tonhöhen-Abfall + weicher Luftstoß, keine Sägezahn-Schärfe
+      const t=n, base=lpTog?880:820;
+      { const o=ac.createOscillator(), g=ac.createGain(), f=ac.createBiquadFilter(); o.type='triangle'; o.frequency.setValueAtTime(base,t); o.frequency.exponentialRampToValueAtTime(base*.28,t+.11);
+        f.type='lowpass'; f.frequency.value=2400; g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.11,t+.004); g.gain.exponentialRampToValueAtTime(.0001,t+.12);
+        o.connect(f).connect(g).connect(sfxBus); o.start(t); o.stop(t+.14); }
+      { const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(base*2,t); o.frequency.exponentialRampToValueAtTime(base*.5,t+.06);
+        g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.035,t+.003); g.gain.exponentialRampToValueAtTime(.0001,t+.06); o.connect(g).connect(sfxBus); o.start(t); o.stop(t+.08); }
+      noise(.07,.03,'bandpass',1600,500,0,.002); },
     hit(){ if(!ac) return; const n=ac.currentTime; if(n-lastHit<.04) return; lastHit=n; noise(.04,.03,'bandpass',2200); },
     clang(){ noise(.2,.15,'bandpass',900,300); tone('triangle',180,90,.25,.1); },
     boom(s){ if(!ac) return; const n=ac.currentTime; if(n-lastBoom<.05) return; lastBoom=n; const v=Math.min(1.6,.6+s*.5);
@@ -3377,7 +3382,13 @@ const GP={prev:[],stickAim:false,lastR:0};
 // In der Android-App liefert die App den Controller direkt (zuverlässiger als die Browser-Schnittstelle)
 const NP={connected:false,axes:[0,0,0,0],buttons:[],vibrationActuator:{playEffect:(t,o)=>{ try{ window.AndroidPad&&AndroidPad.rumble(o.strongMagnitude||0,o.weakMagnitude||0,o.duration|0); }catch(e){} return Promise.resolve('complete'); }}};
 window.__nativePad=(a,b)=>{ NP.axes=a; NP.buttons=b.map(v=>({pressed:!!v,value:v})); if(!NP.connected){ NP.connected=true; try{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); }catch(e){} } };
-function getPad(){ if(NP.connected) return NP; try{ const ps=navigator.getGamepads?navigator.getGamepads():[]; for(const p of ps) if(p&&p.connected) return p; }catch(e){} return null; }
+function getPad(){ if(NP.connected) return NP; GP.err='';
+  try{ if(!navigator.getGamepads){ GP.err='nosupport'; return null; } const ps=navigator.getGamepads()||[]; for(const p of ps) if(p&&p.connected&&(p.buttons||[]).length) return p; }catch(e){ GP.err='blocked'; } return null; }
+function padStatus(){ const el=document.getElementById('padstat'); if(!el) return; const p=getPad();
+  let t; if(p){ const on=p.buttons.map((b,i)=>b&&b.pressed?i:-1).filter(i=>i>=0); const ax=(p.axes||[]).slice(0,4).map(v=>(+v||0).toFixed(1)).join(' ');
+    t='🎮 '+(p===NP?'App-Controller':(p.id||'Controller').slice(0,28))+' · Tasten: '+(on.length?on.join(','):'–')+' · Sticks: '+ax; el.style.color='#7fff9a'; }
+  else { t=GP.err==='blocked'?'🎮 Controller im Vorschaufenster blockiert – App oder eigenes Browserfenster nutzen':window.NOVA_APP?'🎮 Kein Controller erkannt – einmal eine Taste drücken':'🎮 Kein Controller erkannt – Taste am Controller drücken'; el.style.color='#ffb070'; }
+  if(el.textContent!==t) el.textContent=t; }
 function rumble(strong,weak,ms){ const p=getPad(), a=p&&p.vibrationActuator; if(!a||!a.playEffect) return; const now=performance.now(); if(now-GP.lastR<70&&strong<.7) return; GP.lastR=now;
   try{ const r=a.playEffect('dual-rumble',{startDelay:0,duration:ms,strongMagnitude:Math.min(1,strong),weakMagnitude:Math.min(1,weak)}); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }
 window.addEventListener('gamepadconnected',()=>{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); });
@@ -3708,7 +3719,7 @@ let last=performance.now();
 function loop(now){
   requestAnimationFrame(loop);
   const dt=Math.min(.05,Math.max(.001,(now-last)/1000)); last=now;
-  pollPad(dt);
+  pollPad(dt); if(state==='menu') padStatus();
   if(state!=='pause'){
     ENV.s+=ENV.speed*dt;
     updateEnvSpawn(dt);
