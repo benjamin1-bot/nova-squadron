@@ -238,7 +238,8 @@
     <div class="title" style="font-size:40px">PAUSE</div>
     <div style="height:18px"></div>
     <button class="big" id="resumebtn">WEITER</button><br>
-    <button class="big alt" id="restartbtn">NEUSTART</button>
+    <button class="big alt" id="restartbtn">NEUSTART</button><br>
+    <button class="big alt" id="pmenubtn">HAUPTMENÜ</button>
     <div class="opts"><button class="opt" id="mopt2">♫ MUSIK: AN</button><button class="opt" id="gopt2">GRAFIK: AUTO</button></div>
   </div>
 </div>
@@ -1011,6 +1012,7 @@ const ship={pos:new V3(), vel:new V3(), target:new THREE.Vector2(), tRaw:new THR
 let state='menu';
 const G={};
 const enemies=[], pBullets=[], eBullets=[], missiles=[], pickups=[], statics=[], obst=[], cubes=[];
+function bagNext(key,n,avoid){ if(!G[key]||!G[key].length){ G[key]=[...Array(n).keys()].sort(()=>Math.random()-.5); if(G[key][G[key].length-1]===avoid&&n>1) G[key].unshift(G[key].pop()); } return G[key].pop(); }
 function resetGame(){
   for(const arr of [enemies,pBullets,eBullets,missiles,pickups]){ for(const o of arr){ if(o.extras) for(const x of o.extras) scene.remove(x); if(o.boss) continue; if(o.mesh) scene.remove(o.mesh);} arr.length=0; }
   if(G.boss) removeBoss(G.boss);
@@ -1164,33 +1166,47 @@ const sfx=(()=>{
   // ================= Komponist: 5 abwechslungsreiche Stücke =================
   const RHY={
     open:[[0,'c',8],[8,'c',8]], half:[[0,'c',8],[8,'c',4],[12,'c',4]], whole:[[0,'c',16]],
-    push:[[0,'c',3],[3,'c',3],[6,'c',2],[8,'c',4],[12,'c',4]]
+    push:[[0,'c',3],[3,'c',3],[6,'c',2],[8,'c',4],[12,'c',4]],
+    chug:[...Array(16).keys()].map(i=>i===0||i===10?[i,'c',2]:[i,'m',1]).filter(e=>!(e[0]===1||e[0]===11)),
+    gallop:[[0,'c',2],[2,'m',1],[3,'m',1],[4,'c',2],[6,'m',1],[7,'m',1],[8,'c',2],[10,'m',1],[11,'m',1],[12,'c',2],[14,'m',1],[15,'m',1]],
+    stab:[[0,'c',2],[3,'c',2],[6,'c',2],[10,'m',1],[11,'m',1],[12,'c',4]]
   };
   const DRUM={
     pop:{k:'x.......x.......',s:'....x.......x...',h:'..x...x...x...x.',sv:.42,hv:.09},
     half:{k:'x...............',s:'........x.......',h:'x...x...x...x...',sv:.38,hv:.07},
     rock:{k:'x.....x.x.......',s:'....x.......x...',h:'x.x.x.x.x.x.x.x.',sv:.55,hv:.11},
     drive:{k:'x..x..x.x..x....',s:'....x.......x...',r:'x...x...x...x...',sv:.58,hv:.1},
+    thrash:{k:'x.x.x.x.x.x.x.x.',s:'....x.......x...',h:'xxxxxxxxxxxxxxxx',sv:.62,hv:.06},
+    stomp:{k:'x.....x...x.....',s:'....x.......x...',h:'x.x.x.x.x.x.x.x.',sv:.64,hv:.1},
     none:{}
   };
   // Abschnitt: [Name, Takte, Ebenen, Akkordfolge, Lautstärke]
   //  Ebenen: pad (Synth-Fläche), arp '8'/'16', gtr (Gitarren-Rhythmus), dr (Schlagzeug), lead 'bell'|'clean'|'mel'|'solo', bass 'root'|'8'
   const TRACKS=[
-    {name:'Startrampe',cat:'menu',bpm:84,key:40,form:[
-      ['intro',4,{pad:1},[0,-4,3,-2],.9],['A',8,{pad:1,arp:'8',lead:'bell'},[0,-4,3,-2],.9],
-      ['B',8,{pad:1,arp:'16',bass:'root'},[-4,3,5,-2],.85],['A',8,{pad:1,arp:'8',lead:'bell',bass:'root'},[0,-4,3,-2],.9]]},
-    {name:'Sternenwind',cat:'play',bpm:112,key:45,form:[
-      ['intro',4,{pad:1,arp:'16'},[0,-4,3,-2],.85],['verse',8,{pad:1,arp:'8',dr:'pop',bass:'root'},[0,-4,3,-2],.85],
-      ['chorus',8,{pad:1,arp:'16',dr:'pop',bass:'8',lead:'bell'},[-4,3,-2,0],.95],['verse',8,{pad:1,arp:'8',dr:'pop',bass:'root',lead:'clean'},[0,-4,3,-2],.85],
-      ['bridge',8,{pad:1,lead:'bell'},[5,3,-2,0],.8],['chorus',8,{pad:1,arp:'16',gtr:'open',dr:'rock',bass:'8',lead:'mel'},[-4,3,-2,0],1],['outro',4,{pad:1,arp:'8'},[0,-4,0,0],.8]]},
-    {name:'Höhlenflug',cat:'play',bpm:92,key:38,form:[
-      ['intro',4,{pad:1,lead:'bell'},[0,5,0,-2],.85],['A',8,{pad:1,arp:'8',dr:'half',bass:'root'},[0,5,-2,3],.85],
-      ['B',8,{pad:1,gtr:'whole',dr:'half',bass:'root',lead:'clean'},[-4,-2,0,0],.9],['A',8,{pad:1,arp:'8',dr:'half',bass:'root',lead:'bell'},[0,5,-2,3],.85],
-      ['C',8,{pad:1,arp:'16',dr:'pop',bass:'8',lead:'mel'},[3,-2,5,0],.95],['outro',4,{pad:1},[0,5,0,0],.8]]},
-    {name:'Nachbrenner',cat:'play',bpm:126,key:40,form:[
-      ['intro',4,{pad:1,arp:'16'},[0,3,-2,-4],.85],['verse',8,{arp:'16',dr:'pop',bass:'8'},[0,3,-2,-4],.85],
-      ['chorus',8,{pad:1,gtr:'push',dr:'rock',bass:'8',lead:'mel'},[-4,3,-2,0],1],['bridge',8,{pad:1,arp:'8',dr:'half',lead:'bell'},[5,-2,3,0],.85],
-      ['solo',8,{pad:1,gtr:'open',dr:'rock',bass:'8',lead:'solo'},[0,3,-2,-4],.95],['chorus',8,{pad:1,gtr:'push',dr:'rock',bass:'8',lead:'mel'},[-4,3,-2,0],1],['outro',4,{pad:1,arp:'8'},[0,3,0,0],.8]]},
+    {name:'Zündung',cat:'menu',bpm:132,key:40,form:[
+      ['intro',4,{riff:'a'},[0,0,0,0],.85],['A',8,{riff:'a',gtr:'chug',dr:'rock',bass:'8'},[0,0,-2,3],.9],
+      ['B',8,{gtr:'stab',dr:'stomp',bass:'8',lead:'mel'},[0,-4,3,-2],.95],['A',8,{riff:'a',gtr:'chug',dr:'drive',bass:'8'},[0,0,-2,3],.9]]},
+    {name:'Donnerschlag',cat:'play',bpm:152,key:40,form:[
+      ['intro',4,{riff:'a'},[0,0,0,0],.85],['riff',8,{riff:'a',dr:'thrash',bass:'8'},[0,0,0,0],.9],
+      ['verse',8,{gtr:'chug',dr:'rock',bass:'8'},[0,0,-2,3],.9],['chorus',8,{gtr:'push',dr:'drive',bass:'8',lead:'mel'},[0,-4,3,-2],1],
+      ['riff',8,{riff:'a',gtr:'chug',dr:'thrash',bass:'8'},[0,0,-2,3],.95],['solo',8,{gtr:'open',dr:'rock',bass:'8',lead:'solo'},[0,3,-2,-4],1],
+      ['chorus',8,{gtr:'push',dr:'drive',bass:'8',lead:'mel'},[0,-4,3,-2],1]]},
+    {name:'Vollgas',cat:'play',bpm:164,key:45,form:[
+      ['intro',2,{gtr:'gallop',dr:'stomp'},[0,0],.9],['A',8,{gtr:'gallop',dr:'thrash',bass:'8'},[0,-2,-4,-2],.9],
+      ['B',8,{gtr:'gallop',dr:'drive',bass:'8',lead:'mel'},[0,3,-2,-4],1],['C',8,{riff:'b',dr:'thrash',bass:'8'},[0,0,3,3],.95],
+      ['solo',8,{gtr:'gallop',dr:'thrash',bass:'8',lead:'solo'},[0,-2,-4,-2],1],['B',8,{gtr:'gallop',dr:'drive',bass:'8',lead:'mel'},[0,3,-2,-4],1]]},
+    {name:'Hochspannung',cat:'play',bpm:144,key:43,form:[
+      ['intro',4,{riff:'b',dr:'half'},[0,0,0,0],.85],['verse',8,{riff:'b',gtr:'chug',dr:'rock',bass:'8'},[0,0,-4,-2],.9],
+      ['chorus',8,{gtr:'push',dr:'stomp',bass:'8',lead:'mel'},[-4,3,-2,0],1],['bridge',8,{gtr:'stab',dr:'drive',bass:'8',lead:'clean'},[5,3,-2,0],.9],
+      ['solo',8,{riff:'b',gtr:'chug',dr:'thrash',bass:'8',lead:'solo'},[0,0,-4,-2],1],['chorus',8,{gtr:'push',dr:'stomp',bass:'8',lead:'mel'},[-4,3,-2,0],1]]},
+    {name:'Nachbrenner',cat:'play',bpm:140,key:40,form:[
+      ['intro',4,{gtr:'chug',dr:'half'},[0,3,-2,-4],.85],['verse',8,{gtr:'chug',dr:'rock',bass:'8'},[0,3,-2,-4],.9],
+      ['chorus',8,{gtr:'push',dr:'drive',bass:'8',lead:'mel'},[-4,3,-2,0],1],['bridge',8,{riff:'a',dr:'stomp',bass:'8'},[5,-2,3,0],.9],
+      ['solo',8,{gtr:'open',dr:'rock',bass:'8',lead:'solo'},[0,3,-2,-4],.95],['chorus',8,{gtr:'push',dr:'drive',bass:'8',lead:'mel'},[-4,3,-2,0],1]]},
+    {name:'Sternenwind',cat:'play',bpm:136,key:45,form:[
+      ['intro',4,{pad:1,arp:'16',dr:'half'},[0,-4,3,-2],.85],['verse',8,{arp:'16',gtr:'chug',dr:'rock',bass:'8'},[0,-4,3,-2],.9],
+      ['chorus',8,{pad:1,gtr:'push',dr:'drive',bass:'8',lead:'mel'},[-4,3,-2,0],1],['solo',8,{gtr:'open',dr:'thrash',bass:'8',lead:'solo'},[0,-4,3,-2],1],
+      ['chorus',8,{pad:1,gtr:'push',dr:'drive',bass:'8',lead:'mel'},[-4,3,-2,0],1]]},
     {name:'Schlachtschiff',cat:'boss',bpm:138,key:40,form:[
       ['intro',2,{pad:1,dr:'half'},[0,1],.9],['A',8,{pad:1,arp:'16',gtr:'half',dr:'rock',bass:'8'},[0,1,0,3],.9],
       ['B',8,{pad:1,gtr:'push',dr:'drive',bass:'8',lead:'mel'},[0,-4,1,-2],1],['C',8,{pad:1,arp:'16',dr:'pop',bass:'8',lead:'bell'},[3,1,0,-2],.9],
@@ -1201,9 +1217,9 @@ const sfx=(()=>{
     {name:'Puls',cat:'boss',bpm:142,key:43,form:[ // elektronisch: pulsierender Bass, Arpeggios
       ['intro',2,{pulse:'16'},[0,0],.9],['A',8,{pulse:'16',arp:'16',dr:'pop'},[0,-2,-4,-2],.95],
       ['B',8,{pulse:'8',pad:1,arp:'8',dr:'drive',lead:'bell'},[0,3,-2,-4],1],['C',8,{pulse:'16',choir:1,dr:'rock'},[-4,-2,0,0],.95]]},
-    {name:'Finsternis',cat:'boss',bpm:100,key:38,form:[ // dunkel und schwer: Chor, Pauken, tiefer Puls
+    {name:'Finsternis',cat:'boss',bpm:120,key:38,form:[ // dunkel und schwer: Chor, Pauken, tiefer Puls
       ['intro',2,{choir:1},[0,1],.9],['A',8,{choir:1,pulse:'8',timp:1,dr:'half'},[0,1,0,-2],.95],
-      ['B',8,{ost:'b',brass:1,dr:'rock',lead:'mel'},[0,-4,1,-2],1],['C',8,{choir:1,timp:1,lead:'bell'},[3,1,0,-2],.9]]}
+      ['B',8,{ost:'b',brass:1,gtr:'chug',dr:'rock',bass:'8',lead:'mel'},[0,-4,1,-2],1],['C',8,{choir:1,timp:1,gtr:'gallop',dr:'thrash',bass:'8'},[3,1,0,-2],.95]]}
   ];
   function rng(seed){ let s=seed>>>0||1; return ()=>{ s=(Math.imul(s,1664525)+1013904223)>>>0; return s/4294967296; }; }
   const norm=r=>{ while(r>50) r-=12; while(r<36) r+=12; return r; };
@@ -1325,7 +1341,8 @@ const sfx=(()=>{
     if(L.arp==='16') arpNote(r+12+tones[step%8],t,sd*.9,v*.8);
     if(L.bass==='root'&&step===0) bass(r-12,t,sd*15,v*.8);
     if(L.bass==='8'&&step%2===0) bass(r-12,t,sd*1.8,v*.75);
-    if(L.gtr) for(const ev of RHY[L.gtr]||[]) if(ev[0]===step){ const dur=(ev[2]||2)*sd; strum(r,[0,7,12],t,false,dur,v*.75); if(!L.bass) bass(r-12,t,dur,v*.8); }
+    if(L.gtr) for(const ev of RHY[L.gtr]||[]) if(ev[0]===step){ const dur=(ev[2]||2)*sd; const mu=ev[1]==='m'; strum(r,mu?[0,7]:[0,7,12],t,mu,dur,v*(mu?.62:.78)); if(!L.bass) bass(r-12,t,dur,v*.8); }
+    if(L.riff){ const RF=L.riff==='a'?[12,0,7,0,10,0,7,0,12,0,7,0,15,0,12,10]:[0,12,10,12,7,12,10,12,0,12,10,12,5,7,10,12]; lead(norm(r)+12+RF[step],t,sd*.95,false,true); }
     const D=bar.dr||{};
     const fill=bar.fill&&step>=12;
     if(D.k&&D.k[step]==='x'&&!fill) drum('kick',t,.75);
@@ -1342,9 +1359,9 @@ const sfx=(()=>{
   function chooseTrack(){
     const w=mus.want;
     if(w==='over') return mus.cat==='over'?SIL:OVER;
-    if(w==='menu') return COMPILED[0];
-    if(w==='boss') return COMPILED[[4,5,6,7][(mus.bk++)%4]];
-    return COMPILED[1+(mus.pi++%3)];
+    const ids=TRACKS.map((t,i)=>t.cat===w?i:-1).filter(i=>i>=0);
+    let i=ids[Math.floor(Math.random()*ids.length)]; if(ids.length>1) while(i===mus.last) i=ids[Math.floor(Math.random()*ids.length)];
+    mus.last=i; mus.bars=null; return COMPILED[i];
   }
   function tick(){
     if(!ac) return;
@@ -1360,7 +1377,8 @@ const sfx=(()=>{
       const switchNow=mus.cat!==mus.want&&mus.step%4===0;
       if(mus.step>=16||switchNow){
         mus.step=0; mus.bi++;
-        if(switchNow){ for(const s of [0,1]) for(const n of ring[s]) choke(n,mus.next); choke(leadRing,mus.next); mus.bars=null; }
+        if(mus.skip&&mus.bi%2===0){ mus.skip=false; mus.bars=null; }
+        else if(switchNow){ for(const s of [0,1]) for(const n of ring[s]) choke(n,mus.next); choke(leadRing,mus.next); mus.bars=null; }
         else if(mus.bi>=mus.bars.length){ if(mus.cat==='over'){ mus.bars=SIL; mus.bi=0; } else mus.bars=null; }
       }
     }
@@ -1381,6 +1399,7 @@ const sfx=(()=>{
   return {
     init,
     want(w){ mus.want=w; },
+    nextTrack(){ mus.skip=true; },
     isMusic(){ return musicOn; }, isMuted(){ return muted; },
     toggleMusic(){ musicOn=!musicOn; store.set('nova_music',musicOn?'1':'0'); if(musicBus) musicBus.gain.setTargetAtTime(musicOn?MUSIC_VOL:0,ac.currentTime,.05); if(musicOn) mus.bars=null; return musicOn; },
     toggleMute(){ muted=!muted; store.set('nova_mute',muted?'1':'0'); if(master) master.gain.setTargetAtTime(muted?0:.85,ac.currentTime,.03); return muted; },
@@ -1417,6 +1436,7 @@ const sfx=(()=>{
 })();
 
 ['pointerdown','touchend','click','keydown'].forEach(ev=>window.addEventListener(ev,()=>sfx.init(),{passive:true}));
+if(window.NOVA_APP) setTimeout(()=>{ try{ sfx.init(); }catch(e){} },400);
 
 // ================= UI-Helfer =================
 function banner(t,s,warn){ const b=$('banner'); $('bt').textContent=t; $('bs').textContent=s||''; b.classList.toggle('warn',!!warn); b.classList.remove('show'); void b.offsetWidth; b.classList.add('show'); }
@@ -1439,7 +1459,12 @@ function spawnDecor(s){
   if(ENV.wrecks.some(w=>!w.pillar&&s>w.s0-6&&s<w.s1+4)&&r<40) return;
   let t=pickW(W0.decor); if(t==='chunk') t=Math.random()<.7?'rock':'girder'; let rot=new THREE.Euler(rand(0,6),rand(0,6),rand(0,6));
   if(W0.surface){ const sx=Math.random()<.5?-1:1, xx=sx*rand(B.x+9,B.x+34); return spawnGroundDecor(s,xx,t); }
-  if(t==='rock'){ const m=new THREE.Mesh(pick(rocks),Math.random()<.5?M.rock:M.rock2); m.scale.setScalar(rand(2.5,8)*(.6+r/80)); addStatic(m,s,x,y,rot); }
+  if(t==='rock'){ const m=new THREE.Mesh(pick(rocks),Math.random()<.5?M.rock:M.rock2); m.scale.setScalar(rand(2.5,8)*(.6+r/80)*(W0.bigRocks&&Math.random()<.15?3.5:1)); addStatic(m,s,x,y,rot); }
+  else if(t==='hulk'){ // zerrissenes Rumpfstück mit Spanten und Notlicht
+    const g=new THREE.Group(), L=rand(14,30), R0=rand(5,9);
+    const shell=new THREE.Mesh(new THREE.CylinderGeometry(R0,R0,L,14,1,true,0,rand(2.6,4.4)),M.wreck); shell.material.side=THREE.DoubleSide; shell.rotation.x=Math.PI/2; g.add(shell);
+    for(let k=0;k<4;k++){ const rb=new THREE.Mesh(new THREE.TorusGeometry(R0,.45,6,20,rand(2.4,4.4)),M.wreckDark); rb.position.z=-L/2+k*L/3; g.add(rb); }
+    const l=glowSprite(0xff2a10,3,.9); l.position.set(0,R0*.6,0); g.add(l); addStatic(g,s,x,y,rot); }
   else if(t==='chunk'){
     const g=new THREE.Group(); const n=1+Math.floor(Math.random()*3);
     for(let i=0;i<n;i++){ const p=mesh(geo.box,pick([M.wreck,M.wreckDark,M.rust]),rand(4,14),rand(.4,1.4),rand(3,10),rand(-3,3),rand(-2,2),rand(-3,3)); p.rotation.set(rand(-.5,.5),rand(-.5,.5),rand(-.5,.5)); g.add(p); }
@@ -1589,22 +1614,24 @@ function clearFutureWrecks(){
     ENV.wrecks.splice(i,1); }
 }
 // ---------- Planetenoberfläche ----------
-const groundMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.92,metalness:0});
+const groundMat=tri(new THREE.MeshStandardMaterial({vertexColors:true,map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.12,roughness:.9,metalness:0}),.05);
 const lavaMat=new THREE.MeshBasicMaterial({color:0xc04010}); const waterMats={};
+const underMat=new THREE.MeshStandardMaterial({color:0x444444,roughness:1}); const under=new THREE.Group(); { const pl=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),underMat); pl.rotation.x=-Math.PI/2; under.add(pl); } under.visible=false; scene.add(under);
+function updateUnder(){ under.visible=!!W0.surface; if(!under.visible) return; const sf=W0.surface; underMat.color.setHex(sf.water||(sf.lava?0x8a2a08:sf.mid)); _hp.set(0,-(B.y+8)-(sf.water?-.3:sf.lava?1.4:2.5),-200); place(under,_hp,null); }
 const _ca=new THREE.Color(), _cb=new THREE.Color(), _cc=new THREE.Color();
 function groundH(x,sa,sf){
   const ax=Math.abs(x), wallStart=B.x+7;
-  let h=((vnoise(x*.035+7,sa*.035,1.3)-.5)*6+(vnoise(x*.11,sa*.11,4.1)-.5)*2)*(sf.flat??1);
+  let h=((vnoise(x*.035+7,sa*.035,1.3)-.5)*6+(vnoise(x*.11,sa*.11,4.1)-.5)*2+(vnoise(x*.3,sa*.3,8.2)-.5)*.8)*(sf.flat??1);
   if(ax>wallStart){ const k=Math.min(1,(ax-wallStart)/55); h+=Math.pow(k,1.4)*70*sf.canyon*(.6+vnoise(x*.02,sa*.02,9)*.8); }
   return h;
 }
 function spawnGround(s){
-  const sf=W0.surface, Wd=260, L=46, g=new THREE.PlaneGeometry(Wd,L,44,8); g.rotateX(-Math.PI/2);
+  const sf=W0.surface, Wd=420, L=46, g=new THREE.PlaneGeometry(Wd,L,96,12); g.rotateX(-Math.PI/2);
   const pos=g.attributes.position, col=new Float32Array(pos.count*3);
   _ca.setHex(sf.low); _cb.setHex(sf.mid); _cc.setHex(sf.high);
   for(let i=0;i<pos.count;i++){
     const x=pos.getX(i), sa=s-pos.getZ(i), h=groundH(x,sa,sf); pos.setY(i,h);
-    const t=clamp((h+3)/22,0,1), v=.9+vnoise(x*.2,sa*.2,2)*.2;
+    const t=clamp((h+3)/22,0,1), v=.78+vnoise(x*.08,sa*.08,2)*.3+vnoise(x*.5,sa*.5,5)*.12;
     const c=t<.25?_c.copy(_ca).lerp(_cb,t/.25):_c.copy(_cb).lerp(_cc,(t-.25)/.75);
     col[i*3]=c.r*v; col[i*3+1]=c.g*v; col[i*3+2]=c.b*v;
   }
@@ -1678,7 +1705,7 @@ function updateEnvSpawn(dt){
     if(ENV.calm) ENV.nextPillar=Math.max(ENV.nextPillar,ahead+200); else while(ENV.nextPillar<ahead){ if(!inWreck(ENV.nextPillar)) spawnPillar(ENV.nextPillar); ENV.nextPillar+=rand(110,190); } }
   if(state==='play'&&!ENV.calm&&!G.boss&&!(G.warp>0)&&ENV.s>ENV.nextCube){ ENV.nextCube=ENV.s+rand(1400,2100); if(!inWreck(ahead-60)&&!inWreck(ahead+20)) spawnCubeSet(ahead-60); }
   while(ENV.nextDecor<ahead){ spawnDecor(ENV.nextDecor); ENV.nextDecor+=rand(4,9); }
-  while(ENV.nextDerelict<ahead){ spawnDerelict(ENV.nextDerelict); ENV.nextDerelict+=rand(450,800); }
+  while(ENV.nextDerelict<ahead){ spawnDerelict(ENV.nextDerelict); ENV.nextDerelict+=W0.derelictEvery?rand(...W0.derelictEvery):rand(450,800); }
   if(ENV.s>ENV.nextRock){ ENV.nextRock=ENV.s+rand(24,46); if(!ENV.wrecks.some(w=>!w.pillar&&ahead>w.s0-10&&ahead<w.s1+4)&&!ENV.calm&&!G.passage) spawnTubeDebris(); }
   for(let i=statics.length-1;i>=0;i--){ const st=statics[i]; if(st.s<ENV.s-60){ scene.remove(st.mesh); statics.splice(i,1); } else st.mesh.visible=st.s0<ENV.s+560; }
   for(let i=obst.length-1;i>=0;i--) if(obst[i].s<ENV.s-30) obst.splice(i,1);
@@ -1704,13 +1731,13 @@ function updateEnvSpawn(dt){
 // ================= Welten (Sektoren) =================
 const WORLDS=[
  {name:'ASTEROIDENGÜRTEL KEPLER', ev:'crossrocks', curv:1, evName:'QUERSCHLÄGER-ASTEROIDEN', fog:0x123444, dens:.0040, sky:[0x0c3444,0x3a2270,0x06101a], neb:0x9fffe8, sun:0xfff0dc, hemi:0xa8d8ff, rim:0x60c0ff, motes:0x7ff0ff,
-  planet:[[120,170,230],[40,60,120]], ring:true, rock:[0xd8b88c,0xaa8a64], rockE:0, decor:{rock:.6,chunk:.25,girder:.15}, wrecks:.6, tube:'rock', fx:null,
+  planet:[[120,170,230],[40,60,120]], ring:true, rock:[0xd8b88c,0xaa8a64], rockE:0, decor:{rock:1}, wrecks:0, noDerelict:true, bigRocks:true, tube:'rock', fx:null,
   tunnel:{key:'rock',every:[1300,1900],len:[300,420]}},
  {name:'GEFRORENER OZEAN NIFL', ev:'icefall', curv:.7, pitchK:.3, evName:'EISZAPFEN UND EISBERGE', exp:.78, bloom:.32, hemiI:.55, fog:0x14385a, dens:.0038, sky:[0x02081a,0x10406a,0x041628], neb:0x40ffa0, sun:0xe0f8ff, hemi:0x90d0ff, rim:0x60ffc0, motes:0xffffff,
   planet:[[230,240,255],[150,180,220]], ring:true, rock:[0x9ad8f0,0x6ab0d0], rockE:0x08304a, decor:{berg:1}, wrecks:0, tube:'ice', fx:'snow', gmat:'ice',
   surface:{low:0xc8f0ff,high:0x6ab8e0,mid:0x9ad8f4,canyon:0,flat:.25,water:0x0a2e4a}, tunnel:{key:'ice',every:[700,1000],len:[380,520]}},
  {name:'SCHIFFSFRIEDHOF', ev:'fuel', curv:1, evName:'TREIBSTOFFTANKS – EXPLOSIV!', exp:1, bloom:.5, fog:0x1a0c0c, dens:.0048, sky:[0x080404,0x2a1010,0x020000], neb:0xff4030, sun:0xffb090, hemi:0x806060, rim:0xff3020, motes:0xff8060,
-  planet:[[140,90,80],[60,30,30]], ring:false, rock:[0x6a6058,0x50463e], rockE:0, decor:{girder:.5,rock:.3,chunk:.2}, wrecks:2.2, tube:'mix', fx:null},
+  planet:[[140,90,80],[60,30,30]], ring:false, rock:[0x6a6058,0x50463e], rockE:0, decor:{girder:.6,hulk:.4}, wrecks:2.2, derelictEvery:[180,300], tube:'metal', fx:null},
  {name:'LAVAPLANET SURTR', ev:'eruption', curv:1.2, pitchK:.5, evName:'LAVA-AUSBRÜCHE', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
   planet:null, ring:false, rock:[0x4a3a34,0x3a2e2a], rockE:0x3a0c00, decor:{lava:.8,rock:.2}, wrecks:0, tube:'lava', fx:'embers', gmat:'lava',
   surface:{low:0xc85014,high:0x1e1410,mid:0x3a2218,canyon:1.5,lava:1}, tunnel:{key:'lava',every:[1000,1400],len:[300,440]}},
@@ -1809,7 +1836,7 @@ function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
   worldIdx=((i%WORLDS.length)+WORLDS.length)%WORLDS.length; const w=WORLDS[worldIdx]; W0=w;
   scene.fog.color.setHex(w.fog); scene.fog.density=w.dens; scene.background.setHex(w.sky[2]);
   const SU=skyBake.src.uniforms; SU.nA.value.setHex(w.neb).multiplyScalar(.55); SU.nB.value.setHex(w.rim).multiplyScalar(.5); SU.nI.value=w.stars===false?.25:1;
-  SU.top.value.setHex(w.sky[0]); SU.mid.value.setHex(w.sky[1]); SU.bot.value.setHex(w.sky[2]); bakeSky();
+  SU.top.value.setHex(w.sky[0]); SU.mid.value.setHex(w.sky[1]); SU.bot.value.setHex(w.surface?w.fog:w.sky[2]); bakeSky(); if(w.surface) scene.background.setHex(w.fog);
   SKY.stars.visible=w.stars!==false; for(const n of SKY.nebs) n.visible=w.stars!==false;
   hemi.groundColor.setHex(w.surface?w.surface.high:0x1a0f22); hemi.intensity=w.hemiI||.55;
   renderer.toneMappingExposure=w.exp||1.12; if(bloom) bloom.strength=w.bloom!==undefined?w.bloom:.45;
@@ -1824,7 +1851,7 @@ function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
   motes.material.color.setHex(w.motes); dust.material.color.setHex(w.motes); lineMat.color.setHex(w.motes);
   M.rock.color.setHex(w.rock[0]); M.rock2.color.setHex(w.rock[1]); M.rock.emissive.setHex(w.rockE||0); M.rock2.emissive.setHex(w.rockE||0);
   for(const st of statics) scene.remove(st.mesh); statics.length=0; obst.length=0; ENV.wrecks.length=0; ENV.sparkers.length=0;
-  ENV.nextDecor=ENV.s+15; ENV.nextDerelict=w.surface?1e12:ENV.s+180; ENV.nextWreck=w.wrecks>0?ENV.s+380+600/w.wrecks:1e12;
+  ENV.nextDecor=ENV.s+15; ENV.nextDerelict=(w.surface||w.noDerelict)?1e12:ENV.s+180; ENV.nextWreck=w.wrecks>0?ENV.s+380+600/w.wrecks:1e12;
   ENV.nextGround=ENV.s-40; ENV.nextPillar=ENV.s+250; ENV.nextCube=ENV.s+300; ENV.nextTunnel=ENV.s+420; ENV.nextDeck=ENV.s-40; ENV.nextRing=ENV.s+200;
   for(const e of enemies) if((e.env||e.haz)&&e.alive){ scene.remove(e.mesh); e.alive=false; }
   clearHazards();
@@ -1921,7 +1948,7 @@ function updateWarp(dt){
   G.warp-=dt; G.invul=Math.max(G.invul,.6);
   if(G.warp<3.0&&!G.inHyper&&G.warp>.45){ G.inHyper=true; G.warpFx=1; for(const e of enemies) if(!e.boss&&e.alive&&!e.haz){ e.alive=false; scene.remove(e.mesh); } }
   if(G.inHyper&&G.warp<=.45){ G.inHyper=false; G.warpFx=1; }
-  if(!G.warpApplied&&G.warp<1.7){ G.warpApplied=true; if(!G.inHyper) G.warpFx=1; applyWorld(worldIdx+1); G.worldNo=(G.worldNo||1)+1; }
+  if(!G.warpApplied&&G.warp<1.7){ G.warpApplied=true; if(!G.inHyper) G.warpFx=1; applyWorld(bagNext('wBag',WORLDS.length,worldIdx)); G.worldNo=(G.worldNo||1)+1; sfx.nextTrack(); }
   if(G.warp<=0){ G.warp=0; ENV.calm=false; banner('SEKTOR '+G.worldNo,W0.name+(W0.evName?' · '+W0.evName:'')); slotProgress(); }
   return true;
 }
@@ -2133,6 +2160,8 @@ function spawnTubeDebris(){
   const tt=W0.tube;
   if(true){
     const r=rand(1.2,3);
+    if(tt==='metal'){ const g=new THREE.Group(), L=rand(5,10); for(const sy of [-1,1]) g.add(mesh(geo.box,M.wreckDark,L,.5,.5,0,sy*.9,0)); for(let k=0;k<4;k++){ const d=mesh(geo.box,M.rust,.35,2.2,.35,-L/2+k*L/3,0,0); d.rotation.z=k%2?.6:-.6; g.add(d); }
+      const e=addEnemy('asteroid',g,{hp:3,maxHp:3,radius:L*.4,score:50,collide:22,env:true,bs:1}); e.pos.set(rand(-B.x,B.x),rand(-B.y,B.y),-470); e.vel.set(rand(-2,2),rand(-1.5,1.5),0); e.spin=new V3(rand(-1,1),rand(-1,1),rand(-1,1)); return; }
     const m=new THREE.Mesh(pick(rocks),tt==='ice'?M2.ice:tt==='lava'?M2.lava:tt==='crystal'?pick([M2.crysA,M2.crysB]):M.rock); m.scale.setScalar(r);
     const e=addEnemy('asteroid',m,{hp:Math.ceil(r*2),maxHp:Math.ceil(r*2),radius:r*.95,score:50,collide:25,env:true,bs:r});
     e.pos.set(rand(-B.x,B.x),rand(-B.y,B.y),-470); e.vel.set(rand(-2,2),rand(-1.5,1.5),0);
@@ -2346,7 +2375,8 @@ function bossPart(kind,glow){
 function bossArrive(b){ const d=b.def; banner(d.name,'BOSS '+(b.idx+1)+'/'+BOSSES.length+' · '+(d.tip||'SCHWACHPUNKTE TREFFEN'),true); sfx.alarm(); }
 function spawnBoss(){
   G.bossCount++;
-  const idx=(G.bossCount-1)%BOSSES.length, cyc=Math.floor((G.bossCount-1)/BOSSES.length), def=BOSSES[idx];
+  const idx=G.fixedBoss?(G.bossCount-1)%BOSSES.length:bagNext('bBag',BOSSES.length,G.lastBoss), cyc=Math.floor((G.bossCount-1)/BOSSES.length), def=BOSSES[idx];
+  G.lastBoss=idx;
   const {g,half}=bossHull(def), sc=(def.big||1)*1.3; surfaceDetail(g,110,1,M.bossDark,40,def.glow); g.scale.setScalar(sc);
   const behind=G.bossCount%2===0;
   const boss={def,idx,mesh:g,pos:behind?new V3(0,26,80):new V3(0,8,-400),rot:new THREE.Euler(),t:0,ft:0,state:'in',behind,
@@ -3348,17 +3378,17 @@ function rumble(strong,weak,ms){ const p=getPad(), a=p&&p.vibrationActuator; if(
 window.addEventListener('gamepadconnected',()=>{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); });
 function pollPad(dt){
   const p=getPad(); if(!p){ GP.stickAim=false; return; }
-  const b=i=>!!(p.buttons[i]&&p.buttons[i].pressed), just=i=>b(i)&&!GP.prev[i], dz=v=>Math.abs(v)<.16?0:(v-Math.sign(v)*.16)/.84;
+  const b=i=>!!(p.buttons[i]&&p.buttons[i].pressed), just=i=>b(i)&&!GP.prev[i], dz=v=>Math.abs(v)<.16?0:(v-Math.sign(v)*.16)/.84, dzR=v=>Math.abs(v)<.12?0:(v-Math.sign(v)*.12)/.88;
   if(state==='play'){
     const dx=dz(p.axes[0]||0)+(b(15)?1:0)-(b(14)?1:0), dy=-dz(p.axes[1]||0)+(b(12)?1:0)-(b(13)?1:0);
     ship.tRaw.x+=dx*34*dt; ship.tRaw.y+=dy*25*dt;
-    const rx=dz(p.axes[2]||0), ry=dz(p.axes[3]||0);
-    if(rx||ry){ const f=Math.min(1,dt*12); ship.aim.x+=(clamp(rx*1.1,-1,1)-ship.aim.x)*f; ship.aim.y+=(clamp(-ry*1.1,-1,1)-ship.aim.y)*f; GP.stickAim=true; } else GP.stickAim=false;
+    const rx=dzR(p.axes[2]||0), ry=dzR(p.axes[3]||0);
+    if(rx||ry){ const f=Math.min(1,dt*5); const cx=Math.sign(rx)*Math.min(1,Math.abs(rx)*1.6), cy=Math.sign(ry)*Math.min(1,Math.abs(ry)*1.6); ship.aim.x+=(cx*.85-ship.aim.x)*f; ship.aim.y+=(-cy*.85-ship.aim.y)*f; GP.stickAim=true; } else GP.stickAim=false;
     if(just(0)||just(5)||just(7)) fireMissiles();
     if(just(1)||just(4)||just(6)) doRoll();
     if(just(3)) fireNuke();
     if(just(9)) pause(true);
-  } else if(state==='pause'){ if(just(9)||just(0)) pause(false); }
+  } else if(state==='pause'){ if(just(9)||just(0)) pause(false); else if(just(1)||just(8)) $('pmenubtn').click(); }
   else if(state==='menu'){
     if(just(0)) $('startbtn').click(); if(just(9)||just(2)){ const c=$('contbtn'); if(!c.classList.contains('hidden')) c.click(); else $('startbtn').click(); }
     if(just(3)) $('aimopt').click();
@@ -3388,7 +3418,7 @@ function goLandscape(force){
 function start(cont){
   if(state==='over'&&!G.saved) saveName();
   const c=curSlot(); sfx.init(); goLandscape(); resetGame(); G.autoAim=!!c.auto;
-  if(cont===true&&(c.worldNo||1)>1){ applyWorld(c.world||0); G.worldNo=c.worldNo; G.bossCount=c.bc||0; G.wave=Math.min(12,(c.worldNo-1)*2); } else { applyWorld(0); G.worldNo=1; }
+  if(cont===true&&(c.worldNo||1)>1){ applyWorld(c.world||0); G.worldNo=c.worldNo; G.bossCount=c.bc||0; G.wave=Math.min(12,(c.worldNo-1)*2); } else { { const w0=Math.floor(Math.random()*WORLDS.length); G.wBag=[...Array(WORLDS.length).keys()].filter(i=>i!==w0).sort(()=>Math.random()-.5); applyWorld(w0); } G.worldNo=1; }
   state='play';
   later(.4,()=>toast('SEKTOR '+G.worldNo+': '+W0.name,'#9fd8ff'));
   ['menu','over','pausem'].forEach(id=>$(id).classList.add('hidden')); $('hud').classList.remove('hidden');
@@ -3402,6 +3432,7 @@ renderSlots();
 $('againbtn').addEventListener('click',()=>start(false));
 $('restartbtn').addEventListener('click',()=>{ sfx.resume(); start(false); });
 $('resumebtn').addEventListener('click',()=>pause(false));
+$('pmenubtn').addEventListener('click',()=>{ sfx.resume(); slotProgress(); if(G.boss){ removeBoss(G.boss); G.boss=null; $('bossbar').classList.add('hidden'); } resetGame(); state='menu'; $('pausem').classList.add('hidden'); $('hud').classList.add('hidden'); $('menu').classList.remove('hidden'); showHS(); renderSlots(); });
 $('menubtn').addEventListener('click',()=>{ if(!G.saved) saveName(); resetGame(); state='menu'; $('over').classList.add('hidden'); $('menu').classList.remove('hidden'); showHS(); renderSlots(); });
 function saveName(){
   if(G.saved) return; G.saved=true;
@@ -3666,7 +3697,7 @@ function loop(now){
     updateEnvSpawn(dt);
     if(state==='play'||state==='dying'){ updatePlay(dt); hud(); }
     else updateIdle(dt);
-    updateWorldFx(dt); updateWorldEvents(dt); updateCubes(dt); updatePops(dt); updateCameraDust(dt); updatePS(PS,dt); updatePS(SMOKE,dt); updateChunks(dt); updateRings(dt); updateCamera(dt); updateArrows();
+    updateWorldFx(dt); updateWorldEvents(dt); updateUnder(); updateCubes(dt); updatePops(dt); updateCameraDust(dt); updatePS(PS,dt); updatePS(SMOKE,dt); updateChunks(dt); updateRings(dt); updateCamera(dt); updateArrows();
     if(planet) planet.rotation.y+=dt*.01;
     autoQuality(dt);
   }
