@@ -84,11 +84,11 @@
   .btn.off{opacity:.35}
   .arr{position:absolute;left:0;top:0;width:0;height:0;margin:-9px 0 0 -9px;border-top:9px solid transparent;border-bottom:9px solid transparent;
     border-left:18px solid rgba(255,70,90,.9);filter:drop-shadow(0 0 6px #ff3b5c);display:none}
-  #banner{position:fixed;left:0;right:0;top:28%;text-align:center;pointer-events:none;opacity:0}
+  #banner{position:fixed;left:0;right:0;top:calc(var(--st) + 84px);text-align:center;pointer-events:none;opacity:0}
   #banner.show{animation:ban 2.4s ease forwards}
-  #bt{font-family:Orbitron;font-weight:900;font-size:clamp(24px,6vw,48px);letter-spacing:6px;color:#fff;text-shadow:0 0 18px var(--cy),0 0 40px rgba(26,168,224,.6)}
+  #bt{font-family:Orbitron;font-weight:900;font-size:clamp(15px,3.2vw,24px);letter-spacing:4px;color:#fff;text-shadow:0 0 18px var(--cy),0 0 40px rgba(26,168,224,.6)}
   #banner.warn #bt{color:#ffd9d0;text-shadow:0 0 18px var(--red),0 0 40px rgba(255,59,92,.7)}
-  #bs{font-family:Orbitron;font-size:clamp(11px,2.4vw,14px);letter-spacing:4px;margin-top:6px;color:rgba(210,240,255,.85)}
+  #bs{font-family:Orbitron;font-size:clamp(9px,1.8vw,11px);letter-spacing:3px;margin-top:3px;color:rgba(210,240,255,.85)}
   @keyframes ban{0%{opacity:0;transform:scale(1.25)}12%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(.97)}}
   #toast{position:fixed;left:0;right:0;bottom:26%;text-align:center;font-family:Orbitron;font-weight:700;font-size:15px;letter-spacing:3px;pointer-events:none;opacity:0}
   #toast.show{animation:toast 1.6s ease forwards}
@@ -961,7 +961,7 @@ function resetGame(){
   for(const c of cubes) scene.remove(c.mesh); cubes.length=0;
   if(typeof hazards!=='undefined') clearHazards();
   ENV.calm=false;
-  Object.assign(G,{score:0,mult:1,chain:0,multT:0,hull:100,shield:100,shieldDelay:0,missiles:6,misRegen:0,misCd:0,power:0,boost:100,nukes:1,nukeFx:0,wpn:null,wlv:0,wdmg:0,
+  Object.assign(G,{score:0,mult:1,chain:0,multT:0,hull:100,shield:100,shieldDelay:0,missiles:6,misRegen:0,misCd:0,power:0,boost:100,inHyper:false,nukes:1,nukeFx:0,wpn:null,wlv:0,wdmg:0,
     rollT:0,rollCd:0,rollDir:1,invul:0,bubble:0,novaFx:0,warp:0,warpFx:0,warpApplied:false,seen:null,seenWall:false,seenCubes:false,worldNo:1,wave:0,queue:[],waveClock:0,interWave:0,boss:null,bossCount:0,fireT:0,gun:0,trauma:0,time:0,timers:[],shieldFx:0,dmgFx:0,behindWarn:0});
   ship.pos.set(0,0,0); ship.target.set(0,0); ship.tRaw.set(0,0); ship.aim.set(0,0); shipMesh.visible=true;
   G.beatShown=false; G.saved=true; const hr=document.getElementById('hirow'); if(hr) hr.classList.remove('beat');
@@ -1760,6 +1760,27 @@ function updateWorldFx(dt){
   flashS.material.opacity=flashV*(Math.random()<.85?1:.3);
   if(flashV>0) hemi.intensity+=flashV*2.2*dt*10;
 }
+// Hyperraum (wie Sternensprung): eigene Szene mit Lichtstreifen und Tunnel, Spielwelt ist ausgeblendet
+const warpScene=new THREE.Scene(); warpScene.background=new THREE.Color(0x02040e); const warpCam=new THREE.PerspectiveCamera(72,1,.1,2000);
+const WS=(()=>{ const N=900, pos=new Float32Array(N*6), col=new Float32Array(N*6), d=[];
+  for(let i=0;i<N;i++){ const a=rand(0,6.283), r=rand(4,60), l=rand(20,90); d.push({a,r,z:rand(-1200,0),l,sp:rand(.8,1.3)}); const c=pick([[.6,.75,1],[.85,.9,1],[.45,.6,1],[.7,.6,1]]); for(let k=0;k<2;k++){ col[i*6+k*3]=c[0]*(k?.25:1); col[i*6+k*3+1]=c[1]*(k?.25:1); col[i*6+k*3+2]=c[2]*(k?.25:1); } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const lines=new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false})); lines.frustumCulled=false; warpScene.add(lines);
+  const c=document.createElement('canvas'); c.width=64; c.height=512; const x=c.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,64,512);
+  for(let i=0;i<260;i++){ x.fillStyle=`rgba(${rand(80,170)|0},${rand(140,210)|0},255,${rand(.1,.5)})`; x.fillRect(rand(0,64),rand(0,512),rand(1,3),rand(20,120)); }
+  const tex=new THREE.CanvasTexture(c); tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(6,2);
+  const tun=new THREE.Mesh(new THREE.CylinderGeometry(70,70,1600,40,1,true),new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false}));
+  tun.rotation.x=Math.PI/2; tun.position.z=-700; warpScene.add(tun);
+  const core=glowSprite(0x9cc8ff,90,.6); core.position.z=-900; warpScene.add(core);
+  return {d,pos,g,tex,lines,core,tun}; })();
+function updateWarpScene(dt,k){
+  warpCam.aspect=camera.aspect; warpCam.updateProjectionMatrix();
+  const sp=900*k+200;
+  for(let i=0;i<WS.d.length;i++){ const o=WS.d[i]; o.z+=sp*o.sp*dt; if(o.z>5){ o.z=rand(-1200,-900); o.a=rand(0,6.283); o.r=rand(4,60); }
+    const x=Math.cos(o.a)*o.r, y=Math.sin(o.a)*o.r, L=o.l*(.3+k*2.2); WS.pos.set([x,y,o.z,x,y,o.z-L],i*6); }
+  WS.g.attributes.position.needsUpdate=true; WS.tex.offset.y-=dt*(1.5+k*3); WS.tun.rotation.y+=dt*.4;
+  warpCam.rotation.z+=dt*.15; WS.core.material.opacity=.35+.2*Math.sin(G.time*6);
+}
 // Hypersprung in den nächsten Sektor
 function startWarp(){
   if(state!=='play'&&state!=='dying') return;
@@ -1767,8 +1788,10 @@ function startWarp(){
 }
 function updateWarp(dt){
   if(!(G.warp>0)) return false;
-  G.warp-=dt; G.invul=Math.max(G.invul,.3);
-  if(!G.warpApplied&&G.warp<1.7){ G.warpApplied=true; G.warpFx=1; applyWorld(worldIdx+1); G.worldNo=(G.worldNo||1)+1; }
+  G.warp-=dt; G.invul=Math.max(G.invul,.6);
+  if(G.warp<3.0&&!G.inHyper&&G.warp>.45){ G.inHyper=true; G.warpFx=1; for(const e of enemies) if(!e.boss&&e.alive&&!e.haz){ e.alive=false; scene.remove(e.mesh); } }
+  if(G.inHyper&&G.warp<=.45){ G.inHyper=false; G.warpFx=1; }
+  if(!G.warpApplied&&G.warp<1.7){ G.warpApplied=true; if(!G.inHyper) G.warpFx=1; applyWorld(worldIdx+1); G.worldNo=(G.worldNo||1)+1; }
   if(G.warp<=0){ G.warp=0; ENV.calm=false; banner('SEKTOR '+G.worldNo,W0.name); slotProgress(); }
   return true;
 }
@@ -2149,6 +2172,7 @@ function bossPart(kind,glow){
   return g;
 }
 
+function bossArrive(b){ const d=b.def; banner(d.name,'BOSS '+(b.idx+1)+'/'+BOSSES.length+' · '+(d.tip||'SCHWACHPUNKTE TREFFEN'),true); sfx.alarm(); }
 function spawnBoss(){
   G.bossCount++;
   const idx=(G.bossCount-1)%BOSSES.length, cyc=Math.floor((G.bossCount-1)/BOSSES.length), def=BOSSES[idx];
@@ -2171,7 +2195,6 @@ function spawnBoss(){
   boss.maxHp=boss.parts.reduce((a,e)=>a+e.maxHp,0);
   boss.warn=glowSprite(0xff2020,24,.55); boss.warn.visible=false; g.add(boss.warn);
   G.boss=boss; $('bossbar').classList.remove('hidden'); $('bosslbl').textContent=def.name;
-  banner(def.name,'BOSS '+(idx+1)+' VON '+BOSSES.length,true);
   if(behind){ toast('ÜBER DIR!','#ff6a6a'); sfx.whoosh(); }
 }
 
@@ -2200,8 +2223,8 @@ function updateBoss(dt){
     if(left.every(e=>e.kind==='core')) banner('KERN FREIGELEGT','FEUER AUF DEN REAKTOR',true); else toast('SCHILD AUSGEFALLEN – NEUE ZIELE','#7fe9ff'); }
   if(b.tbeam) b.tbeam.visible=false; b.warn.visible=false;
   if(b.state==='in'){
-    if(b.behind){ p.z-=48*dt; if(p.z<15) p.y+=(4-p.y)*Math.min(1,dt*1.1); b.rot.z=Math.sin(b.t*1.5)*.08; if(p.z<=-48){ p.z=-48; b.state='fight'; toast(def.tip||'SCHWACHPUNKTE MARKIERT','#ffb060'); } }
-    else { p.z+=Math.max(24,(-48-p.z)*1.15)*dt; p.y+=(4-p.y)*Math.min(1,dt); if(p.z>=-48){ p.z=-48; b.state='fight'; toast(def.tip||'SCHWACHPUNKTE MARKIERT','#ffb060'); } }
+    if(b.behind){ p.z-=48*dt; if(p.z<15) p.y+=(4-p.y)*Math.min(1,dt*1.1); b.rot.z=Math.sin(b.t*1.5)*.08; if(p.z<=-48){ p.z=-48; b.state='fight'; bossArrive(b); } }
+    else { p.z+=Math.max(24,(-48-p.z)*1.15)*dt; p.y+=(4-p.y)*Math.min(1,dt); if(p.z>=-48){ p.z=-48; b.state='fight'; bossArrive(b); } }
   } else if(b.state==='fight'){
     const enr=b.core&&!b.core.invul;
     b.ft+=dt*(enr?1.5:1); b.mT-=dt;
@@ -2966,7 +2989,7 @@ function buildWave(n){
 }
 function startWave(){
   G.wave++; G.waveClock=0; setT($('wave'),'WELLE '+G.wave);
-  if(G.wave%3===0){ ENV.calm=true; clearFutureWrecks(); G.queue=[{t:2.5,f:tryBoss}]; banner('WARNUNG','BOSS IM ANFLUG',true); sfx.alarm(); }
+  if(G.wave%3===0){ ENV.calm=true; clearFutureWrecks(); G.queue=[{t:2.5,f:tryBoss}];  }
   else { G.queue=buildWave(G.wave); banner('WELLE '+G.wave, pick(['FEINDLICHE STAFFEL','FEINDKONTAKT','JÄGER IM ANFLUG'])); }
 }
 function updateWaves(dt){
@@ -3375,7 +3398,8 @@ function loop(now){
     autoQuality(dt);
   }
   sfx.want(state==='menu'?'menu':(state==='play'||state==='dying')?(G.boss?'boss':'play'):state==='over'?'over':null);
-  if(composer&&gfx==='high') composer.render(); else renderer.render(scene,camera);
+  if(G.inHyper){ const k=clamp(Math.min(3-G.warp,G.warp-.45)*1.5,0,1); updateWarpScene(state==="pause"?0:dt,k); renderer.render(warpScene,warpCam); }
+  else if(composer&&gfx==='high') composer.render(); else renderer.render(scene,camera);
 }
 requestAnimationFrame(loop);
 })();
