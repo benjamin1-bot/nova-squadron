@@ -2011,7 +2011,7 @@ function updateWorldEvents(dt){
     if(strike&&!k.hit&&state==='play'&&dist<(k.hor?1.4:2.2)){ k.hit=true; damagePlayer(16); G.trauma=.7; }
     if(strike&&!k.fl&&!k.hor){ k.fl=true; G.warpFx=Math.max(G.warpFx||0,.25); sfx.boom&&sfx.boom(.5); }
     if(k.t>w+d+.15){ scene.remove(k.o); strikes.splice(i,1); } }
-  if(G.gT>0){ G.gT-=dt; if(state==='play') ship.tRaw.x+=G.gPull*.65*dt; }
+  if(G.gT>0){ G.gT-=dt; if(state==='play') ship.tRaw.x+=G.gPull*dt; }
   { const el=document.getElementById('pullind'); if(el){ const on=G.gT>0&&state==='play'; el.style.opacity=on?(.6+.4*Math.sin(G.time*10)):0; if(on) el.textContent=G.gPull>0?'SOG ▶▶▶':'◀◀◀ SOG'; } }
   if(G.sandT>0){ G.sandT-=dt; scene.fog.density=(W0.dens||.005)*(1+1.6*Math.min(1,G.sandT)); } else if(W0.ev==='sandstorm') scene.fog.density=W0.dens||.005;
 }
@@ -3164,12 +3164,12 @@ function segDist(a,b,p){ _ab.subVectors(b,a); _ap.subVectors(p,a); const l=_ab.l
 const ebRingMat=new THREE.SpriteMaterial({map:ringTex,color:0xff2040,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
 const WALLB={mat:'ebWall',sc:1,glow:0xff60c0,dmg:12}, FLAKB={mat:'ebFlak',sc:1.7,glow:0xffa040,dmg:14}, ORBB={mat:'ebOrb',sc:2.1,glow:0xffd040,dmg:18}, SNIPB={mat:'ebSnip',sc:.8,glow:0xff2030,dmg:16};
 let SHOOTER=null;
-const DMG={fighter:6,form:6,over:7,cloak:9,swarm:4,drone:4,interceptor:7,escort:8,flanker:7,chaser:8,bomber:12,sniper:16,heavy:12,shieldship:9,spinner:8,mini:14,capturret:12,orb:8,gturret:10,spore:6,
-  turret:13,spread:10,flak:12,spiral:9,homing:16,laser:16,rock:14,hangar:10,gen:10,mine:12,core:18};
+const DMG={fighter:10,form:9,over:11,cloak:14,swarm:7,drone:7,interceptor:11,escort:12,flanker:11,chaser:12,bomber:18,sniper:24,heavy:18,shieldship:14,spinner:12,mini:20,capturret:18,orb:12,gturret:15,spore:9,
+  turret:18,spread:14,flak:16,spiral:13,homing:22,laser:22,rock:20,hangar:14,gen:14,mine:16,core:26};
 function shotDmg(){ const e=SHOOTER; if(!e) return 10; let d=DMG[e.boss?e.kind:e.type]??10; if(e.boss) d*=1+Math.floor((G.bossCount-1)/BOSSES.length)*.25; return Math.round(d*(1+G.wave*.025)); }
 function spawnEBullet(from,vel,o){
   const m=new THREE.Mesh(geo.ebullet,o?M[o.mat]:M.eb); if(o&&o.sc!==1) m.scale.setScalar(o.sc); m.add(glowSprite(o?o.glow:0xff1a3a,3.4,1)); if(!o){ const r=new THREE.Sprite(ebRingMat); r.scale.setScalar(2.2); m.add(r); } scene.add(m);
-  const dm=(o&&o.dmg)||shotDmg(); const b={mesh:m,pos:from.clone(),prev:from.clone(),vel,dmg:dm}; if(dm>=14) m.scale.multiplyScalar(1.35); place(m,b.pos); eBullets.push(b); return b;
+  const dm=(o&&o.dmg)||shotDmg(); const b={mesh:m,pos:from.clone(),prev:from.clone(),vel,dmg:dm}; if(dm>=20) m.scale.multiplyScalar(1.35); place(m,b.pos); eBullets.push(b); return b;
 }
 function enemyShoot(from,speed,count=1,spread=0){
   const dist=from.distanceTo(ship.pos);
@@ -3477,7 +3477,7 @@ function damagePlayer(d,force){
   if(state!=='play'||G.invul>0) return;
   if(G.bubble>0){ G.shieldFx=1; sfx.shield(); return; }
   if(G.rollT>0&&!force) return;
-  G.shieldDelay=2.8; let rem=d;
+  G.shieldDelay=4.5; let rem=d;
   if(G.shield>0){ const s=Math.min(G.shield,rem); G.shield-=s; rem-=s; G.shieldFx=1; sfx.shield(); }
   rumble(rem>0?.85:.25,rem>0?.6:.45,rem>0?240:120);
   if(rem>0){ G.hull-=rem; G.dmgFx=1; sfx.hurt(); G.invul=Math.max(G.invul,.4);
@@ -3509,8 +3509,8 @@ function doRoll(){
   G.rollDir=-dir; ship.tRaw.x+=dir*4; sfx.roll();
 }
 function clampTarget(){
-  const t=ship.tRaw, k=(t.x/B.x)**2+(t.y/B.y)**2;
-  if(k>1){ const f=1/Math.sqrt(k); t.x*=f; t.y*=f; }
+  const t=ship.tRaw; t.x=clamp(t.x,-B.x,B.x); t.y=clamp(t.y,-B.y,B.y); const k=(t.x/B.x)**4+(t.y/B.y)**4;
+  if(k>1){ const f=1/Math.pow(k,.25); t.x*=f; t.y*=f; }
 }
 function checkObstacles(){
   if(state!=='play') return;
@@ -3519,7 +3519,7 @@ function checkObstacles(){
     if(Math.abs(ss-o.s)<o.hz+.8&&Math.abs(ship.pos.x-o.x)<o.hx+.8&&Math.abs(ship.pos.y-o.y)<o.hy+.6){
       if(G.invul>0) return;
       damagePlayer(22,true); G.invul=.8; sfx.clang();
-      if(o.hx>o.hy) ship.tRaw.y+=(ship.pos.y>o.y?1:-1)*4; else ship.tRaw.x+=(ship.pos.x>o.x?1:-1)*4;
+      if(o.hx>o.hy) ship.tRaw.y+=(ship.pos.y>o.y?1:-1)*1.5; else ship.tRaw.x+=(ship.pos.x>o.x?1:-1)*1.5;
       sparks(ship.pos,0xffc070,18);
       return;
     }
@@ -3783,7 +3783,7 @@ function updatePlay(dt){
   place(shipMesh,ship.pos,ship.rot);
   shipFx(dt,wantB,wantS);
 
-  G.shieldDelay-=dt; if(G.shieldDelay<=0&&G.shield<100) G.shield=Math.min(100,G.shield+22*dt);
+  G.shieldDelay-=dt; if(G.shieldDelay<=0&&G.shield<100) G.shield=Math.min(100,G.shield+11*dt);
   if(G.missiles<6){ G.misRegen+=dt; if(G.misRegen>=9){ G.misRegen=0; G.missiles++; } } else G.misRegen=0;
   G.multT-=dt; if(G.multT<=0&&G.chain>0){ G.chain=0; G.mult=1; }
   G.bubble=Math.max(0,G.bubble-dt);
