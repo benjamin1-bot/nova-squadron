@@ -214,7 +214,7 @@
       <div class="tag">FLUG DURCH DAS TRÜMMERFELD</div>
       <button class="big" id="startbtn">NEUES SPIEL</button>
       <button class="big alt hidden" id="contbtn">WEITER</button>
-      <div class="opts"><button class="opt" id="mopt">♫ MUSIK: AN</button><button class="opt" id="gopt">GRAFIK: AUTO</button><button class="opt" id="aimopt">🎯 AUTO-ZIELEN: AUS</button></div>
+      <div class="opts"><button class="opt" id="mopt">♫ MUSIK: AN</button><button class="opt" id="gopt">GRAFIK: AUTO</button><button class="opt" id="aimopt">🎯 AUTO-ZIELEN: AUS</button><button class="opt" id="hsopt">🏆 HIGHSCORES</button></div>
       <div class="hs" id="hsmenu"></div>
       <div id="menuHst"></div>
       <div id="fshint" class="hidden" style="margin-top:8px;font-size:13px;color:rgba(210,235,255,.7)"></div>
@@ -236,6 +236,7 @@
   </div>
 </div>
 
+<div id="hsov" class="overlay hidden" style="background:rgba(2,8,20,.82)"><div class="panel" style="min-width:min(92vw,420px)"><div class="title" style="font-size:26px">🏆 HIGHSCORES</div><div id="hsFull" style="font-size:1.15em"></div><button class="big" id="hsclose" style="margin-top:14px">ZURÜCK</button></div></div>
 <div id="pausem" class="overlay hidden">
   <div class="panel">
     <div class="title" style="font-size:40px">PAUSE</div>
@@ -3191,7 +3192,7 @@ function spawnPBullet(from,dirW,col,dmg,big){
   if(!pbMats[col]) pbMats[col]=new THREE.MeshBasicMaterial({color:col,blending:THREE.AdditiveBlending,transparent:true,depthWrite:false,toneMapped:false});
   const m=new THREE.Mesh(geo.pbullet,pbMats[col]); m.scale.set(big*1.3,big*1.3,1); scene.add(m);
   m.position.copy(pos); m.lookAt(_v.copy(pos).add(vel));
-  pBullets.push({mesh:m,pos,prev:pos.clone(),vel,life:1.4,dmg,big});
+  pBullets.push({mesh:m,pos,prev:pos.clone(),vel,life:1.0,dmg,big});
   emitL(from.x,from.y,from.z,0,0,0,1,col,1.1*big,.07);
 }
 const _pv=new V3(), _wDir=new V3(), _shipW=new V3(), _aimPt=new V3(), _aimSm=new V3(), _bo=new V3();
@@ -3254,10 +3255,12 @@ function spawnBulkhead(s,ow,oh){
 function spawnHazard(type,s){
   const h={type,s,t:rand(0,6),z:-1e3,pz:-1e3,done:false,meshes:[],lines:[]};
   const Rr=RING_R();
+  if(type==='beam2'){ type='beam'; h.type='beam'; h.dbl=true; }
   if(type==='beam'||type==='grid'){
     spawnStationRing(s);
     if(type==='beam'){ const mode=pick(['static','rot','rot','slide','slide']);
-      h.lines.push({mode,a0:rand(0,Math.PI),w:pick([-1,1])*rand(.6,1.1),amp:rand(4,B.y*.8),d0:mode==='static'?rand(-B.y*.5,B.y*.5):0,on:true}); }
+      h.lines.push({mode,a0:rand(0,Math.PI),w:pick([-1,1])*rand(.6,1.1),amp:rand(4,B.y*.8),d0:mode==='static'?rand(-B.y*.5,B.y*.5):0,on:true});
+      if(h.dbl){ const a0=rand(0,Math.PI), w=rand(.7,1.2); h.lines[0]={mode:'rot',a0,w,d0:0,on:true}; h.lines.push({mode:'rot',a0:a0+Math.PI/2,w:-w,d0:0,on:true}); } }
     else { const a0=rand(0,Math.PI), w=Math.random()<.5?pick([-1,1])*.25:0;
       for(let i=0;i<4;i++) h.lines.push({mode:w?'rot':'static',a0,w,d0:(i-1.5)*5.2,on:true});
       for(let i=0;i<3;i++) h.lines.push({mode:w?'rot':'static',a0:a0+Math.PI/2,w,d0:(i-1)*5.2,on:true});
@@ -3318,14 +3321,18 @@ function spawnSpikes(s){
   curW=null;
 }
 function startPassage(){
-  clearFutureWrecks(); let sp=ENV.s+320; const sp0=sp; const n=5+Math.floor(Math.random()*2), surf=!!W0.surface;
-  ENV.nextPillar=Math.max(ENV.nextPillar,ENV.s+2000);
-  for(let i=0;i<n;i++){ while(ENV.wrecks.some(w=>!w.pillar&&sp>w.s0-40&&sp<w.s1+40)) sp+=40; if(sp>sp0+700) break;
-    if(surf){ const t=i===2?'tunnel':pick(['arch','arch','arch','pillar','spikes']);
-      if(t==='tunnel'){ const key=W0.tunnel?W0.tunnel.key:W0.gmat==='lava'?'lava':'rock'; spawnTunnel(sp,140,key); sp+=140; }
-      else if(t==='spikes') spawnSpikes(sp); else spawnPillar(sp,t==='arch'); }
-    else spawnHazard(i===0?'beam':pick(['beam','beam','beam','grid','gate','wall']),sp);
-    sp+=rand(80,110); }
+  clearFutureWrecks(); let sp=ENV.s+320; const sp0=sp, surf=!!W0.surface, lvl=Math.min(1,(G.worldNo||1)/6);
+  const n=12+Math.floor(Math.random()*4)+Math.round(lvl*3);
+  ENV.nextPillar=Math.max(ENV.nextPillar,ENV.s+2600);
+  for(let i=0;i<n;i++){ while(ENV.wrecks.some(w=>!w.pillar&&sp>w.s0-40&&sp<w.s1+40)) sp+=40; if(sp>sp0+1700) break;
+    const k=i/n; // wird nach hinten enger und schwerer
+    if(surf){ const t=(i===4||i===n-4)?'tunnel':pick(k<.3?['arch','pillar','spikes']:['arch','arch','spikes','spikes','pillar']);
+      if(t==='tunnel'){ const key=W0.tunnel?W0.tunnel.key:W0.gmat==='lava'?'lava':'rock'; spawnTunnel(sp,160,key); sp+=160; }
+      else if(t==='spikes'){ spawnSpikes(sp); if(k>.4&&Math.random()<.6) spawnSpikes(sp+28); } else spawnPillar(sp,t==='arch'); }
+    else { const t=i===0?'beam':pick(k<.3?['beam','beam','gate','wall']:k<.65?['beam','beam2','grid','gate','wall']:['beam2','beam2','grid','gate','beam']);
+      spawnHazard(t,sp);
+      if(k>.25&&Math.random()<.55){ const zs=-(sp+42-ENV.s); later(.05,()=>{ for(let j=0;j<2+Math.round(k*3);j++){ const m=spawnMine(new V3(rand(-B.x*.8,B.x*.8),rand(-B.y*.7,B.y*.7),zs+rand(-8,8))); m.vel.set(0,0,0); m.env=true; } }); } }
+    sp+=rand(95,115)-k*40; }
   G.passage={end:sp+20}; ENV.nextWreck=Math.max(ENV.nextWreck,sp+250); ENV.nextPillar=Math.max(ENV.nextPillar,sp+100);
   banner('GESCHICKLICHKEIT',surf?'FELSPASSAGE – AUSWEICHEN!':'SPERREN DURCHFLIEGEN · SCHALTER ABSCHIESSEN'); if(!surf) toast('GRÜNE ZIELE ÖFFNEN DEN WEG','#7fff9a');
 }
@@ -3555,7 +3562,7 @@ function updateWaves(dt){
   if(G.warp>0) return;
   G.waveClock+=dt;
   while(G.queue.length&&G.queue[0].t<=G.waveClock) G.queue.shift().f();
-  if(G.passage){ if(ENV.s>G.passage.end){ G.passage=null; if(state==='play'){ addScore(1500,true); toast('PASSAGE GESCHAFFT  +1.500','#ffd24a'); } startWave(); } return; }
+  if(G.passage){ if(ENV.s>G.passage.end){ G.passage=null; if(state==='play'){ addScore(4000,true); toast('PASSAGE GESCHAFFT  +4.000','#ffd24a'); } startWave(); } return; }
   if(G.wave>0&&!G.queue.length&&!G.boss&&!enemies.some(e=>!e.env&&!e.haz)){
     G.interWave+=dt;
     if(G.interWave>1.1){ G.interWave=0; if(state==='play') addScore(250*G.wave,true);
@@ -3661,7 +3668,7 @@ function pollPad(dt){
     if(just(3)) fireNuke();
     if(just(9)) pause(true);
   } else { // Menüs: mit Steuerkreuz / linkem Stick wählen, A drücken, B zurück
-    const ov=state==='pause'?$('pausem'):state==='over'?$('over'):state==='menu'?$('menu'):null;
+    const ov=state==='pause'?$('pausem'):state==='over'?$('over'):state==='menu'?$('menu'):state==='hs'?$('hsov'):null;
     if(ov){ const items=[...ov.querySelectorAll('button')].filter(el=>el.offsetParent!==null&&!el.classList.contains('hidden'));
       if(!items.includes(GP.foc)){ if(GP.foc) GP.foc.classList.remove('padfocus'); GP.foc=items.find(el=>el.id==='contbtn')||items.find(el=>el.id==='startbtn'||el.id==='resumebtn'||el.id==='againbtn')||items[0]; if(GP.foc) GP.foc.classList.add('padfocus'); }
       const ax=p.axes[0]||0, ay=p.axes[1]||0; let dx=(b(15)?1:0)-(b(14)?1:0), dy=(b(13)?1:0)-(b(12)?1:0);
@@ -3674,7 +3681,7 @@ function pollPad(dt){
         if(best){ GP.foc.classList.remove('padfocus'); GP.foc=best; best.classList.add('padfocus'); best.scrollIntoView&&best.scrollIntoView({block:'nearest'}); sfx.click&&sfx.click(); } }
       if(!dx&&!dy){ GP.navT=0; GP.navDir=''; }
       if(just(0)&&GP.foc) GP.foc.click();
-      if(just(1)){ if(state==='pause') pause(false); else if(state==='over') $('menubtn').click(); }
+      if(just(1)){ if(state==='hs') $('hsclose').click(); else if(state==='pause') pause(false); else if(state==='over') $('menubtn').click(); }
       if(just(9)){ if(state==='pause') pause(false); else if(state==='menu'){ const c=$('contbtn'); (!c.classList.contains('hidden')?c:$('startbtn')).click(); } else if(state==='over') $('againbtn').click(); }
     } else if(GP.foc){ GP.foc.classList.remove('padfocus'); GP.foc=null; }
   }
@@ -3709,6 +3716,8 @@ function start(cont){
   later(1,startWave);
 }
 $('startbtn').addEventListener('click',()=>start(false)); $('contbtn').addEventListener('click',()=>start(true));
+$('hsopt').addEventListener('click',()=>{ $('hsFull').innerHTML=hstHTML(hst,10,-1); $('hsov').classList.remove('hidden'); $('menu').classList.add('hidden'); state='hs'; });
+$('hsclose').addEventListener('click',()=>{ $('hsov').classList.add('hidden'); $('menu').classList.remove('hidden'); state='menu'; });
 $('aimopt').addEventListener('click',()=>{ const c=curSlot(); c.auto=!c.auto; saveSlots(); renderSlots(); });
 $('slotName').addEventListener('input',()=>{ const c=curSlot(); c.name=($('slotName').value||'').toUpperCase().slice(0,10)||('PILOT '+(slotIdx+1)); saveSlots(); const b=$('slotRow').children[slotIdx]; if(b) b.querySelector('b').textContent=c.name; });
 ['keydown','keyup'].forEach(ev=>$('slotName').addEventListener(ev,e=>e.stopPropagation()));
