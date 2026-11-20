@@ -1767,7 +1767,7 @@ function updateEnvSpawn(dt){
   if(W0.surface){ while(ENV.nextGround<ahead+60){ if(!ENV.wrecks.some(w=>w.tunnel&&ENV.nextGround-21>w.s0+6&&ENV.nextGround+21<w.s1-6)) spawnGround(ENV.nextGround); ENV.nextGround+=42; }
     if(ENV.calm) ENV.nextPillar=Math.max(ENV.nextPillar,ahead+200); else while(ENV.nextPillar<ahead){ if(!inWreck(ENV.nextPillar)) spawnPillar(ENV.nextPillar); ENV.nextPillar+=rand(110,190); } }
   if(state==='play'&&!ENV.calm&&!G.boss&&!(G.warp>0)&&ENV.s>ENV.nextCube){ ENV.nextCube=ENV.s+rand(1400,2100); if(!inWreck(ahead-60)&&!inWreck(ahead+20)) spawnCubeSet(ahead-60); }
-  while(ENV.nextDecor<ahead){ spawnDecor(ENV.nextDecor); ENV.nextDecor+=rand(4,9); }
+  while(ENV.nextDecor<ahead){ spawnDecor(ENV.nextDecor); if(W0.surface&&W0.decor&&!ENV.calmDecor){ for(let k=0;k<2;k++){ const sx=Math.random()<.5?-1:1; spawnGroundDecor(ENV.nextDecor+rand(-3,3),sx*rand(B.x+40,190),pickW(W0.decor)); } } ENV.nextDecor+=rand(4,9); }
   while(ENV.nextDerelict<ahead){ spawnDerelict(ENV.nextDerelict); ENV.nextDerelict+=W0.derelictEvery?rand(...W0.derelictEvery):rand(450,800); }
   if(ENV.s>ENV.nextRock){ ENV.nextRock=ENV.s+rand(24,46); if(!ENV.wrecks.some(w=>!w.pillar&&ahead>w.s0-10&&ahead<w.s1+4)&&!ENV.calm&&!G.passage) spawnTubeDebris(); }
   for(let i=statics.length-1;i>=0;i--){ const st=statics[i]; if(st.s<ENV.s-60){ scene.remove(st.mesh); statics.splice(i,1); } else st.mesh.visible=st.s0<ENV.s+560; }
@@ -1796,33 +1796,33 @@ const WORLDS=[
  {name:'ASTEROIDENGÜRTEL KEPLER', ev:'crossrocks', curv:1, evName:'QUERSCHLÄGER-ASTEROIDEN', fog:0x123444, dens:.0040, sky:[0x0c3444,0x3a2270,0x06101a], neb:0x9fffe8, sun:0xfff0dc, hemi:0xa8d8ff, rim:0x60c0ff, motes:0x7ff0ff,
   planet:[[120,170,230],[40,60,120]], ring:true, rock:[0xd8b88c,0xaa8a64], rockE:0, decor:{rock:1}, wrecks:0, noDerelict:true, bigRocks:true, tube:'rock', fx:null,
   tunnel:{key:'rock',every:[1300,1900],len:[300,420]}},
- {name:'GEFRORENER OZEAN NIFL', ev:'icefall', curv:.7, pitchK:.3, evName:'EISZAPFEN UND EISBERGE', exp:.78, bloom:.32, hemiI:.55, fog:0x14385a, dens:.0038, sky:[0x02081a,0x10406a,0x041628], neb:0x40ffa0, sun:0xe0f8ff, hemi:0x90d0ff, rim:0x60ffc0, motes:0xffffff,
+ {name:'GEFRORENER OZEAN NIFL', pano:'berg', ev:'icefall', curv:.7, pitchK:.3, evName:'EISZAPFEN UND EISBERGE', exp:.78, bloom:.32, hemiI:.55, fog:0x14385a, dens:.0038, sky:[0x02081a,0x10406a,0x041628], neb:0x40ffa0, sun:0xe0f8ff, hemi:0x90d0ff, rim:0x60ffc0, motes:0xffffff,
   planet:[[230,240,255],[150,180,220]], ring:true, rock:[0x9ad8f0,0x6ab0d0], rockE:0x08304a, decor:{berg:1}, wrecks:0, tube:'ice', fx:'snow', gmat:'ice',
   surface:{low:0x0a2a40,high:0x0a2a40,mid:0x0a2a40,canyon:0,flat:.15,water:0x1a5a80,waterY:3}, tunnel:{key:'ice',every:[700,1000],len:[380,520]}},
  {name:'SCHIFFSFRIEDHOF', ev:'fuel', curv:1, evName:'TREIBSTOFFTANKS – EXPLOSIV!', exp:1, bloom:.5, fog:0x1a0c0c, dens:.0048, sky:[0x080404,0x2a1010,0x020000], neb:0xff4030, sun:0xffb090, hemi:0x806060, rim:0xff3020, motes:0xff8060,
   planet:[[140,90,80],[60,30,30]], ring:false, rock:[0x6a6058,0x50463e], rockE:0, decor:{girder:.6,hulk:.4}, wrecks:2.2, derelictEvery:[180,300], tube:'metal', fx:null},
- {name:'LAVAPLANET SURTR', ev:'eruption', curv:1.2, pitchK:.5, evName:'LAVA-AUSBRÜCHE', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
+ {name:'LAVAPLANET SURTR', pano:'volcano', ev:'eruption', curv:1.2, pitchK:.5, evName:'LAVA-AUSBRÜCHE', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
   planet:null, ring:false, rock:[0x4a3a34,0x3a2e2a], rockE:0x3a0c00, decor:{lava:.8,rock:.2}, wrecks:0, tube:'lava', fx:'embers', gmat:'lava',
   surface:{low:0xc85014,high:0x1e1410,mid:0x3a2218,canyon:1.5,lava:1}, tunnel:{key:'lava',every:[1000,1400],len:[300,440]}},
  {name:'KRISTALLNEBEL', ev:'crystalring', curv:.8, pitchK:1.3, evName:'KRISTALLWIRBEL', fog:0x2e0e44, dens:.0044, sky:[0x12052a,0x8a2898,0x0a0418], neb:0xff70ff, sun:0xffd0ff, hemi:0xd8a0ff, rim:0x60ffe0, motes:0xff80ff,
   planet:[[120,220,200],[50,70,110]], ring:true, rock:[0xa898c0,0x8070a0], rockE:0x180628, decor:{crystal:.6,rock:.3,chunk:.1}, wrecks:0, tube:'crystal', fx:null,
   tunnel:{key:'crystal',every:[800,1200],len:[340,480]}},
- {name:'OZEANWELT THALASSA', ev:'spouts', curv:.9, pitchK:.25, evName:'WASSERHOSEN', exp:.9, bloom:.25, hemiI:.75, fog:0x7ab8d8, dens:.0036, sky:[0x1a5aa8,0x9ad0f0,0x5a90b8], neb:0xffffff, sun:0xfff6e0, hemi:0xd8f0ff, rim:0xffffff, motes:0xffffff, stars:false,
+ {name:'OZEANWELT THALASSA', pano:'stack', ev:'spouts', curv:.9, pitchK:.25, evName:'WASSERHOSEN', exp:.9, bloom:.25, hemiI:.75, fog:0x7ab8d8, dens:.0036, sky:[0x1a5aa8,0x9ad0f0,0x5a90b8], neb:0xffffff, sun:0xfff6e0, hemi:0xd8f0ff, rim:0xffffff, motes:0xffffff, stars:false,
   planet:[[250,250,250],[200,210,230]], ring:false, rock:[0x8a8070,0x6a6258], rockE:0, decor:{stack:1}, wrecks:0, tube:'rock', fx:null,
   surface:{low:0x1a5a7a,high:0x3a6a4a,mid:0x2a6a6a,canyon:0,flat:.3,water:0x1a6aa8}},
  {name:'ORBITALSTATION ORION', ev:'turrets', curv:.35, pitchK:.3, evName:'ABWEHRGESCHÜTZE DER STATION', fog:0x10244a, dens:.0042, sky:[0x041030,0x1c4880,0x020610], neb:0x6080ff, sun:0xfff0e0, hemi:0xa0b0e0, rim:0x40a0ff, motes:0x60a0ff,
   planet:[[110,160,230],[30,50,90]], ring:true, rock:[0xb0b0b8,0x8a8a92], rockE:0, decor:{tower:.4,girder:.3,chunk:.3}, wrecks:.6, tube:'mix', fx:null, deck:true},
- {name:'PILZWALD MYKOS', ev:'jellies', curv:1.2, pitchK:.4, evName:'SCHWEBENDE QUALLEN', exp:.85, bloom:.55, hemiI:.5, fog:0x2a0e3a, dens:.006, sky:[0x0a0418,0x4a1a6a,0x120620], neb:0x60ffe0, sun:0xffd0ff, hemi:0xc080ff, rim:0x40ffd0, motes:0x80ffe0, stars:false,
+ {name:'PILZWALD MYKOS', pano:'mush', ev:'jellies', curv:1.2, pitchK:.4, evName:'SCHWEBENDE QUALLEN', exp:.85, bloom:.55, hemiI:.5, fog:0x2a0e3a, dens:.006, sky:[0x0a0418,0x4a1a6a,0x120620], neb:0x60ffe0, sun:0xffd0ff, hemi:0xc080ff, rim:0x40ffd0, motes:0x80ffe0, stars:false,
   planet:null, ring:false, rock:[0x6a4a7a,0x4a3458], rockE:0x200830, decor:{mush:1}, wrecks:0, tube:'rock', fx:null, gmat:'fungus', noMassif:true, pillarLook:'mush',
   surface:{low:0x3a1a4a,high:0x1a0a2a,mid:0x5a2a6a,canyon:.5}},
  {name:'GEWITTERNEBEL', ev:'lightning', curv:1.1, evName:'BLITZEINSCHLÄGE', fog:0x164a3c, dens:.0056, sky:[0x041a14,0x1e6a54,0x020a08], neb:0x60ffb0, sun:0xc0ffe0, hemi:0x90d0b0, rim:0x40ffb0, motes:0x80ffd0,
   planet:[[90,170,130],[20,50,40]], ring:false, rock:[0x8a9a90,0x6a7a70], rockE:0, decor:{rock:.6,chunk:.3,girder:.1}, wrecks:.7, tube:'mix', fx:'storm'},
- {name:'NEONSTADT VEGA-9', ev:'neonbars', curv:.5, pitchK:.2, evName:'LASERSPERREN ZWISCHEN DEN TÜRMEN', exp:1, bloom:.6, hemiI:.4, fog:0x0a0a20, dens:.0042, sky:[0x020210,0x2a0a40,0x05020a], neb:0xff40c0, sun:0xa0c0ff, hemi:0x6060a0, rim:0xff40c0, motes:0xff60e0, stars:false,
+ {name:'NEONSTADT VEGA-9', pano:'city', ev:'neonbars', curv:.5, pitchK:.2, evName:'LASERSPERREN ZWISCHEN DEN TÜRMEN', exp:1, bloom:.6, hemiI:.4, fog:0x0a0a20, dens:.0042, sky:[0x020210,0x2a0a40,0x05020a], neb:0xff40c0, sun:0xa0c0ff, hemi:0x6060a0, rim:0xff40c0, motes:0xff60e0, stars:false,
   planet:[[220,120,200],[80,30,90]], ring:true, rock:[0x5a5a68,0x3a3a48], rockE:0, decor:{bldg:1}, wrecks:0, tube:'rock', fx:null, noMassif:true, pillarLook:'bldg',
   surface:{low:0x10101c,high:0x1a1a2a,mid:0x14142a,canyon:0,flat:.05,grid:0xff30c0}},
  {name:'EREIGNISHORIZONT', ev:'gravity', curv:1.5, pitchK:1.2, evName:'SOG DES SCHWARZEN LOCHS', fog:0x120a20, dens:.004, sky:[0x020104,0x2c1236,0x000000], neb:0xffa060, sun:0xffd8a0, hemi:0x9080b0, rim:0xff8040, motes:0xffb070,
   planet:null, ring:false, blackhole:true, rock:[0x8a8078,0x6a6460], rockE:0x140600, decor:{rock:.5,chunk:.35,girder:.15}, wrecks:.8, tube:'mix', fx:null},
- {name:'WÜSTENPLANET ARRAKON', ev:'sandstorm', curv:1.4, pitchK:.4, evName:'SANDSTÜRME', exp:.82, bloom:.25, hemiI:.6, fog:0xb08a62, dens:.005, sky:[0x2a5590,0xd8b080,0x8a6038], neb:0xffd070, sun:0xfff0c0, hemi:0xffe8b0, rim:0xffa040, motes:0xffe090, stars:false,
+ {name:'WÜSTENPLANET ARRAKON', pano:'dune', ev:'sandstorm', curv:1.4, pitchK:.4, evName:'SANDSTÜRME', exp:.82, bloom:.25, hemiI:.6, fog:0xb08a62, dens:.005, sky:[0x2a5590,0xd8b080,0x8a6038], neb:0xffd070, sun:0xfff0c0, hemi:0xffe8b0, rim:0xffa040, motes:0xffe090, stars:false,
   planet:[[240,220,200],[200,170,150]], ring:false, rock:[0xd8b878,0xb89858], rockE:0, decor:{rock:1}, wrecks:0, tube:'rock', fx:'dust',
   surface:{low:0xd0aa74,high:0x7a4628,mid:0xa87048,canyon:1.25}},
  {name:'SONNENKORONA HELIOS', ev:'flare', curv:1, evName:'SONNENERUPTIONEN – LÜCKE SUCHEN!', exp:.8, bloom:.7, fog:0x5a1a04, dens:.0042, sky:[0x2a0800,0xff7a10,0x601400], neb:0xffe060, sun:0xffffff, hemi:0xffb060, rim:0xffe080, motes:0xffd060, stars:false,
@@ -1913,7 +1913,7 @@ function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
     SKY.atm.visible=true; SKY.atm.material.color.setRGB(w.planet[0][0]/400,w.planet[0][1]/400,w.planet[0][2]/400); }
   else { planet.visible=false; SKY.atm.visible=false; }
   SKY.ringM.visible=!!(w.planet&&w.ring);
-  blackHole.visible=!!w.blackhole; SKY.sunG.scale.setScalar(w.bigSun?2400:(SKY.sunG.userData.s0||(SKY.sunG.userData.s0=SKY.sunG.scale.x)));
+  blackHole.visible=!!w.blackhole; rebuildPano(w); SKY.sunG.scale.setScalar(w.bigSun?2400:(SKY.sunG.userData.s0||(SKY.sunG.userData.s0=SKY.sunG.scale.x)));
   motes.material.color.setHex(w.motes); dust.material.color.setHex(w.motes); lineMat.color.setHex(w.motes);
   M.rock.color.setHex(w.rock[0]); M.rock2.color.setHex(w.rock[1]); M.rock.emissive.setHex(w.rockE||0); M.rock2.emissive.setHex(w.rockE||0);
   for(const st of statics) scene.remove(st.mesh); statics.length=0; obst.length=0; ENV.wrecks.length=0; ENV.sparkers.length=0;
@@ -1921,6 +1921,34 @@ function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
   ENV.nextGround=ENV.s-40; ENV.nextPillar=ENV.s+250; ENV.nextCube=ENV.s+300; ENV.nextTunnel=ENV.s+420; ENV.nextDeck=ENV.s-40; ENV.nextRing=ENV.s+200;
   for(const e of enemies) if((e.env||e.haz)&&e.alive){ scene.remove(e.mesh); e.alive=false; }
   clearHazards();
+}
+// ---------- Panorama am Horizont: weite Landschaft statt engem Schlauch ----------
+const pano=new THREE.Group(); scene.add(pano); 
+function hsh(i){ const x=Math.sin(i*127.1)*43758.5; return x-Math.floor(x); }
+function buildPanoLayer(type,R,hMul,col,fogC,mix,seed){
+  const N=360, pos=[], cols=[], idx=[], c=new THREE.Color(), cTop=new THREE.Color(col).lerp(new THREE.Color(fogC),mix), cBot=new THREE.Color(fogC);
+  const H=t=>{ const a=t*Math.PI*2; let h=0;
+    if(type==='berg'){ for(let k=0;k<5;k++){ const f=2+k*3; h+=Math.pow(Math.abs(Math.sin(a*f*1.7+seed*k)),3)*(.8/(k+1)); } h=h*1.2+.1; }
+    else if(type==='volcano'){ for(let k=0;k<7;k++){ const c0=hsh(seed+k)*Math.PI*2, w=.08+hsh(seed+k*3)*.12, d=Math.abs(((a-c0+Math.PI*3)%(Math.PI*2))-Math.PI); h=Math.max(h,Math.max(0,1-d/w)*(.6+hsh(k+seed*5)*.8)); } h=Math.min(h,.85)+.05+.06*Math.sin(a*40); }
+    else if(type==='dune'){ h=.25+.18*Math.sin(a*6+seed)+.12*Math.sin(a*17+seed*2)+.06*Math.sin(a*43); }
+    else if(type==='city'){ const b=Math.floor(t*220); h=.15+hsh(b+seed)*.9*(hsh(b*7+seed)>.3?1:.4); }
+    else if(type==='mush'){ const b=Math.floor(t*40), u=t*40-b, w=.25+hsh(b+seed)*.3; h=.2+(Math.abs(u-.5)<w*.5?(.5+hsh(b*3+seed)*.7)*Math.sqrt(1-Math.pow((u-.5)/(w*.5),2)):.1); }
+    else if(type==='stack'){ const b=Math.floor(t*70), u=t*70-b; h=.12+(hsh(b+seed)>.45&&Math.abs(u-.5)<.22?.4+hsh(b*5+seed)*.7:.03*Math.sin(a*50)); }
+    return h; };
+  for(let i=0;i<=N;i++){ const t=i/N, a=t*Math.PI*2, h=H(t)*hMul; const x=Math.cos(a)*R, z=Math.sin(a)*R;
+    pos.push(x,-260,z, x,h,z); cols.push(cBot.r,cBot.g,cBot.b, cTop.r,cTop.g,cTop.b);
+    if(i<N){ const k=i*2; idx.push(k,k+2,k+1, k+1,k+2,k+3); } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(cols,3)); g.setIndex(idx);
+  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,fog:false,side:THREE.DoubleSide})); m.renderOrder=-9; return m; }
+function rebuildPano(w){
+  for(const c of [...pano.children]){ pano.remove(c); c.geometry.dispose(); }
+  pano.visible=!!(w.surface&&w.pano); if(!pano.visible) return;
+  const t=w.pano, sd=rand(1,50), base=w.surface.high??0x555555, mid=w.surface.mid??base;
+  const tall=t==='berg'?420:t==='volcano'?360:t==='city'?300:t==='mush'?260:t==='stack'?200:160;
+  pano.add(buildPanoLayer(t,1750,tall*1.25,t==='berg'?0xd8f0ff:t==='city'?0x181828:base,w.fog,.55,sd));
+  pano.add(buildPanoLayer(t,1300,tall*.8,t==='berg'?0xbfe6f8:t==='city'?0x10101c:mid,w.fog,.3,sd+7));
+  if(t==='city'){ for(let i=0;i<260;i++){ const a=Math.random()*Math.PI*2, R=rand(1300,1700), l=glowSprite(pick([0xff30c0,0x30e0ff,0xffe080,0xffffff]),rand(4,9),.9); l.position.set(Math.cos(a)*R,rand(-40,200),Math.sin(a)*R); l.material.fog=false; pano.add(l); } }
+  if(t==='volcano'){ for(let i=0;i<10;i++){ const a=Math.random()*Math.PI*2, l=glowSprite(0xff5010,rand(80,160),.6); l.position.set(Math.cos(a)*1700,rand(150,280),Math.sin(a)*1700); pano.add(l); } }
 }
 function pickW(o){ let t=Math.random()*Object.values(o).reduce((a,b)=>a+b,0); for(const k in o){ t-=o[k]; if(t<=0) return k; } return Object.keys(o)[0]; }
 let stormT=3, flashV=0;
@@ -3899,7 +3927,7 @@ function updateCamera(dt){
   if(Math.abs(camera.fov-fov)>.01){ camera.fov=fov; camera.updateProjectionMatrix(); }
   const us=renderer.domElement.height/(2*Math.tan(camera.fov*Math.PI/360));
   PS.mat.uniforms.uScale.value=us; SMOKE.mat.uniforms.uScale.value=us;
-  sky.position.copy(camera.position);
+  sky.position.copy(camera.position); pano.position.set(camera.position.x,camera.position.y-(B.y+8)-20,camera.position.z);
 }
 
 function updateArrows(){
