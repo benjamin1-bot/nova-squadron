@@ -3218,7 +3218,7 @@ function findLock(dir){
   let bn=1e9;
   for(const e of enemies){
     if(!e.alive||e.invul||e.boss) continue;
-    const dz=ship.pos.z-e.pos.z; if(dz<-12||dz>=6) continue;
+    const dz=ship.pos.z-e.pos.z; if(dz<1.5||dz>=6) continue;
     const lx=e.pos.x-ship.pos.x, ly=e.pos.y-ship.pos.y, d=Math.hypot(lx,ly,dz); if(d>34) continue;
     const sc=d-(lx*ship.aim.x+ly*ship.aim.y)/Math.max(1,Math.hypot(lx,ly))*8;
     if(sc<bn){ bn=sc; best=e; }
@@ -3318,9 +3318,9 @@ function spawnSpikes(s){
   curW=null;
 }
 function startPassage(){
-  let sp=ENV.s+320; const n=6+Math.floor(Math.random()*3), surf=!!W0.surface;
+  clearFutureWrecks(); let sp=ENV.s+320; const sp0=sp; const n=5+Math.floor(Math.random()*2), surf=!!W0.surface;
   ENV.nextPillar=Math.max(ENV.nextPillar,ENV.s+2000);
-  for(let i=0;i<n;i++){ while(ENV.wrecks.some(w=>!w.pillar&&sp>w.s0-40&&sp<w.s1+40)) sp+=40;
+  for(let i=0;i<n;i++){ while(ENV.wrecks.some(w=>!w.pillar&&sp>w.s0-40&&sp<w.s1+40)) sp+=40; if(sp>sp0+700) break;
     if(surf){ const t=i===2?'tunnel':pick(['arch','arch','arch','pillar','spikes']);
       if(t==='tunnel'){ const key=W0.tunnel?W0.tunnel.key:W0.gmat==='lava'?'lava':'rock'; spawnTunnel(sp,140,key); sp+=140; }
       else if(t==='spikes') spawnSpikes(sp); else spawnPillar(sp,t==='arch'); }
@@ -3559,7 +3559,7 @@ function updateWaves(dt){
   if(G.wave>0&&!G.queue.length&&!G.boss&&!enemies.some(e=>!e.env&&!e.haz)){
     G.interWave+=dt;
     if(G.interWave>1.1){ G.interWave=0; if(state==='play') addScore(250*G.wave,true);
-      if((G.wave+1)%3!==0&&(G.wave===1||Math.random()<.3)&&!(G.warp>0)) startPassage(); else { if((G.wave+1)%3!==0&&Math.random()<.35&&!(G.warp>0)) spawnFork(ENV.s+260); startWave(); } }
+      if(G.wave%3!==0&&(G.wave+1)%3!==0&&(G.wave===1||Math.random()<.3)&&!(G.warp>0)) startPassage(); else { if(G.wave%3!==0&&(G.wave+1)%3!==0&&Math.random()<.35&&!(G.warp>0)) spawnFork(ENV.s+260); startWave(); } }
   } else G.interWave=0;
 }
 
@@ -3817,6 +3817,7 @@ function updatePlay(dt){
       else shots.push([(G.gun?1:-1)*1.88,0]);
       G.gun^=1;
       const col=wp?PU[wp].col:0x8af6ff, dmg=wp==='Z'?2+lv*.6:1+lv*.15, big=wp==='Z'?1.8+lv*.25:1+lv*.08;
+      if(G.aimPt){ L2W(ship.pos.x,ship.pos.y,ship.pos.z,_bo); if(_tmp.subVectors(G.aimPt,_bo).dot(FR.F)<0) G.aimPt=null; }
       for(const [o,a] of shots){ let d=shotDir; if(G.aimPt){ L2W(o*Math.cos(r)+ship.pos.x,o*Math.sin(r)+ship.pos.y,ship.pos.z-1.4,_bo); d=_bo.sub(G.aimPt).negate().normalize(); } if(a) d=d.clone().applyAxisAngle(FR.U,a); spawnPBullet(new V3(o*Math.cos(r)+ship.pos.x, o*Math.sin(r)+ship.pos.y, ship.pos.z-1.4),d,col,dmg,big); }
       sfx.laser();
     }
