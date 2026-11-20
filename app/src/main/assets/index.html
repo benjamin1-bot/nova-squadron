@@ -2110,7 +2110,7 @@ function spawnBeamDrone(axis,coord,col,opt={}){
   const g=makeBeamDrone(col), e=addEnemy('bdrone',g,{hp:2,maxHp:2,radius:2,score:120,collide:15,env:false});
   e.axis=axis; e.coord=coord; e.col=col; e.warn=opt.warn??1.2; e.fire=opt.fire??.45; e.dmg=opt.dmg??18; e.st='in';
   const sx=axis==='v'?coord:(opt.side||1)*(B.x+6), sy=axis==='v'?B.y+6:coord; e.tx=sx; e.ty=sy; e.pos.set(sx+rand(-20,20),sy+15,-160);
-  e.o=new THREE.Mesh(hzBeamGeo,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false})); e.o.visible=false; scene.add(e.o);
+  e.o=new THREE.Mesh(hzBeamGeo,new THREE.MeshBasicMaterial({map:plasmaTex,color:col,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false})); e.o.visible=false; scene.add(e.o);
   return e; }
 function worldEvents(dt){
   if(G.forkPU&&ENV.s>G.forkPU.s-200){ spawnPickup(new V3(B.x*.55,0,-200),pick(['P','X','Z','S'])); G.forkPU=null; }
@@ -2174,11 +2174,11 @@ const bgFx=[]; const _cd=new V3();
 var HSUN=null, flareWalls=[]; const _sd=new V3();
 function buildHSun(){
   const c=document.createElement('canvas'); c.width=1024; c.height=512; const x=c.getContext('2d');
-  x.fillStyle='#ff8a10'; x.fillRect(0,0,1024,512);
-  for(let i=0;i<9000;i++){ const r=rand(2,9); x.fillStyle=`rgba(255,${Math.floor(rand(150,240))},${Math.floor(rand(30,110))},${rand(.15,.45)})`; x.beginPath(); x.arc(rand(0,1024),rand(0,512),r,0,7); x.fill(); }
+  x.fillStyle='#ffb028'; x.fillRect(0,0,1024,512);
+  for(let i=0;i<9000;i++){ const r=rand(2,9); x.fillStyle=`rgba(255,${Math.floor(rand(190,250))},${Math.floor(rand(60,170))},${rand(.15,.45)})`; x.beginPath(); x.arc(rand(0,1024),rand(0,512),r,0,7); x.fill(); }
   for(let i=0;i<14;i++){ const px=rand(0,1024), py=rand(120,390), r=rand(6,22); x.fillStyle='rgba(90,20,0,.6)'; x.beginPath(); x.arc(px,py,r,0,7); x.fill(); x.fillStyle='rgba(160,50,0,.35)'; x.beginPath(); x.arc(px,py,r*1.9,0,7); x.fill(); }
-  const g=new THREE.Group(), sph=new THREE.Mesh(new THREE.SphereGeometry(400,56,36),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),color:0xffd8a0,fog:false}));
-  g.add(sph); const c1=glowSprite(0xff8a20,1500,.32), c2=glowSprite(0xffd060,1000,.35); c1.material=c1.material.clone(); c2.material=c2.material.clone(); g.add(c1); g.add(c2);
+  const g=new THREE.Group(), sph=new THREE.Mesh(new THREE.SphereGeometry(400,56,36),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),color:0xffffff,fog:false,toneMapped:false}));
+  g.add(sph); const c1=glowSprite(0xff9a20,1600,.42), c2=glowSprite(0xffe070,1050,.5), c3=glowSprite(0xfff4c0,880,.35); g.add(c3); c1.material=c1.material.clone(); c2.material=c2.material.clone(); g.add(c1); g.add(c2);
   const promM=new THREE.MeshBasicMaterial({color:0xffa030,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}), proms=[];
   for(let i=0;i<7;i++){ const a=rand(0,6.28), pr=new THREE.Mesh(new THREE.TorusGeometry(rand(50,120),rand(6,14),8,28,Math.PI),promM); pr.position.set(Math.cos(a)*395,Math.sin(a)*395,0); pr.rotation.z=a-Math.PI/2; pr.userData={a,ph:rand(0,6)}; g.add(pr); proms.push(pr); }
   g.userData={sph,proms,jets:[],c1}; g.visible=false; sky.add(g); return g;
@@ -2188,30 +2188,48 @@ function updateHSun(dt){
   const U=HSUN.userData; if(!U.dir) U.dir=_sd.clone(); U.dir.lerp(_sd,Math.min(1,dt*.25)).normalize();
   HSUN.position.copy(U.dir).multiplyScalar(1750); HSUN.lookAt(camera.position); U.sph.rotation.y+=dt*.02;
   for(const p of U.proms){ const k=1+Math.sin(G.time*.7+p.userData.ph)*.18; p.scale.set(k,k,1); }
-  U.c1.material.opacity=.32+Math.sin(G.time*1.3)*.04;
+  U.c1.material.opacity=.42+Math.sin(G.time*1.3)*.05;
+  if(U.build){ const bd=U.build; bd.t+=dt; const k=Math.min(1,bd.t/1.7); bd.b.scale.setScalar(60+240*k*k+Math.sin(bd.t*25)*20*k); bd.b.material.opacity=.25+.65*k; bd.bulge.scale.setScalar(5+55*k*k); }
   for(let i=U.jets.length-1;i>=0;i--){ const j=U.jets[i]; j.t+=dt; const k=j.t/1.4; j.s.scale.set(j.w*(1+k*2),j.w*(2+k*6),1); j.s.position.copy(j.base).addScaledVector(j.dir,90+k*500); j.s.material.opacity=.7*(1-k); if(k>=1){ HSUN.remove(j.s); U.jets.splice(i,1); } }
 }
+const lavaBlobTex=(()=>{ const S=128,c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d'), im=x.createImageData(S,S);
+  for(let j=0;j<S;j++) for(let i=0;i<S;i++){ const n=vnoise(i*.06,j*.06,3)*.65+vnoise(i*.2,j*.2,9)*.35, cr=Math.abs(n-.5)<.04?.35:1, k=(j*S+i)*4;
+    im.data[k]=235*cr; im.data[k+1]=(110+110*n)*cr; im.data[k+2]=(10+40*n*n)*cr; im.data[k+3]=255; }
+  x.putImageData(im,0,0); const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; })();
+const lavaBlobMat=new THREE.MeshStandardMaterial({color:0xffc040,map:lavaBlobTex,emissive:0xff8a10,emissiveMap:lavaBlobTex,emissiveIntensity:.62,roughness:.4,metalness:0});
+const lavaBlobGeo=new THREE.IcosahedronGeometry(1,2);
 function solarEruption(){
-  if(HSUN){ const a=rand(-.6,.6)+Math.PI/2*(Math.random()<.5?1:-1)*0, base=new V3(Math.cos(a+rand(-2,2))*300,Math.sin(a+rand(-2,2))*300,120), s=glowSprite(0xff9a30,160,.7); s.material=s.material.clone(); HSUN.add(s);
-    HSUN.userData.jets.push({s,base,dir:base.clone().setZ(260).normalize(),t:0,w:rand(120,200)}); const f=glowSprite(0xffa040,380,.35); f.material=f.material.clone(); f.position.copy(base); HSUN.add(f); HSUN.userData.jets.push({s:f,base,dir:new V3(0,0,1),t:0,w:500}); }
-  toast('SONNENERUPTION – LÜCKE SUCHEN!','#ffb040'); sfx.boom&&sfx.boom(.4); G.trauma=Math.max(G.trauma,.25);
-  later(1.1,()=>{ if(W0.ev==='flare'&&state==='play') spawnFlareWall(); });
+  const a=rand(0,6.28), r=rand(80,300), spot=new V3(Math.cos(a)*r,Math.sin(a)*r,Math.sqrt(Math.max(0,400*400-r*r))*.98);
+  if(HSUN){ const b=glowSprite(0xfff0a0,60,.2); b.material=b.material.clone(); b.position.copy(spot); HSUN.add(b);
+    const bulge=new THREE.Mesh(lavaBlobGeo,lavaBlobMat); bulge.position.copy(spot); bulge.scale.setScalar(5); HSUN.add(bulge);
+    HSUN.userData.build={b,bulge,spot,t:0}; }
+  toast('SONNENERUPTION BAHNT SICH AN!','#ffd060'); sfx.warp&&sfx.warp();
+  later(1.7,()=>{ if(!HSUN) return; const U=HSUN.userData, bd=U.build; if(bd){ HSUN.remove(bd.b); HSUN.remove(bd.bulge); U.build=null; }
+    const s=glowSprite(0xffc040,160,.8); s.material=s.material.clone(); HSUN.add(s); U.jets.push({s,base:spot.clone(),dir:spot.clone().normalize(),t:0,w:rand(130,200)});
+    const f=glowSprite(0xffe090,420,.5); f.material=f.material.clone(); f.position.copy(spot); HSUN.add(f); U.jets.push({s:f,base:spot.clone(),dir:new V3(0,0,1),t:0,w:420});
+    sfx.boom&&sfx.boom(.5); G.trauma=Math.max(G.trauma,.3);
+    if(W0.ev==='flare'&&state==='play'){ HSUN.updateMatrixWorld(); const wp=HSUN.localToWorld(spot.clone()); spawnFlareWall(wp); } });
 }
-function spawnFlareWall(){
-  const gx=rand(-B.x*.65,B.x*.65), gy=rand(-B.y*.55,B.y*.55), gr=rand(5.2,6.4), N=1100, pos=new Float32Array(N*3), col=new Float32Array(N*3), c=new THREE.Color(); let n=0;
-  while(n<N){ const x=rand(-B.x-12,B.x+12), y=rand(-B.y-11,B.y+11), dg=Math.hypot(x-gx,y-gy); if(dg<gr) continue; pos[n*3]=x; pos[n*3+1]=y; pos[n*3+2]=rand(-5,5);
-    c.setHSL(rand(.01,.1),1,rand(.38,.52)); if(dg<gr+1.5) c.setHSL(.12,1,.6); col[n*3]=c.r; col[n*3+1]=c.g; col[n*3+2]=c.b; n++; }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  const pts=new THREE.Points(g,new THREE.PointsMaterial({size:3,map:fireTex,vertexColors:true,transparent:true,opacity:.8,depthWrite:false}));
-  const grp=new THREE.Group(); grp.add(pts); const ring=new THREE.Mesh(new THREE.TorusGeometry(gr,.22,6,48),Bm(0x9ffcff)); ring.position.set(gx,gy,0); grp.add(ring);
-  scene.add(grp); flareWalls.push({grp,pts,gx,gy,gr,z:-430,pz:-430,done:false,t:0});
+function spawnFlareWall(wp){
+  railAt(ENV.s,FR); const d=wp?wp.clone().sub(camera.position).normalize():new V3(0,.3,-1), fwd=Math.max(.2,-d.dot(FR.F)*-1>0?d.dot(FR.F):-d.dot(FR.F));
+  const ox=clamp(d.dot(FR.R)/Math.max(.25,Math.abs(d.dot(FR.F)))*430,-160,160), oy=clamp(d.dot(FR.U)/Math.max(.25,Math.abs(d.dot(FR.F)))*430,-60,140);
+  const gx=rand(-B.x*.6,B.x*.6), gy=rand(-B.y*.55,B.y*.55), R0=rand(5.6,7), p1=rand(0,6), p2=rand(0,6), gapR=t=>R0*(1+.3*Math.sin(2*t+p1)+.18*Math.sin(3*t+p2));
+  const grp=new THREE.Group(), blobs=[];
+  for(let cy=-B.y-4;cy<=B.y+4;cy+=5.6) for(let cx=-B.x-4;cx<=B.x+4;cx+=5.6){
+    const x=cx+rand(-2,2), y=cy+rand(-2,2), r=rand(2.3,3.9), dx=x-gx, dy=y-gy, dg=Math.hypot(dx,dy);
+    if(dg<gapR(Math.atan2(dy,dx))+r*.55) continue; if(Math.random()<.06) continue;
+    const m=new THREE.Mesh(lavaBlobGeo,lavaBlobMat); m.scale.setScalar(r); m.rotation.set(rand(0,6),rand(0,6),rand(0,6)); if(Math.random()<.3){ const gl=glowSprite(0xff9020,2.2,.2); m.add(gl); } grp.add(m);
+    blobs.push({m,x,y,r,dz:rand(-9,9),ph:rand(0,6),hit:false}); }
+  scene.add(grp); flareWalls.push({grp,blobs,ox,oy,z:-440,t:0,done:false});
 }
 function updateFlareWalls(dt){
-  for(let i=flareWalls.length-1;i>=0;i--){ const f=flareWalls[i]; f.t+=dt; f.pz=f.z; f.z+=105*dt; _hp.set(0,0,f.z); place(f.grp,_hp,null);
-    f.pts.material.size=2.8+Math.sin(f.t*18)*.3; f.pts.material.opacity=Math.min(.85,f.t*.9,.3+Math.max(0,-f.z-6)*.03);
-    if(!f.done&&state==='play'&&f.pz<ship.pos.z&&f.z>=ship.pos.z){ f.done=true;
-      if(Math.hypot(ship.pos.x-f.gx,ship.pos.y-f.gy)>f.gr-.9){ damagePlayer(24,true); G.trauma=.8; sparks(ship.pos,0xffa030,22); } else { addScore(300,true); toast('DURCHGESCHLÜPFT +300','#ffe080'); } }
-    if(f.z>40){ scene.remove(f.grp); f.pts.geometry.dispose(); flareWalls.splice(i,1); } }
+  for(let i=flareWalls.length-1;i>=0;i--){ const f=flareWalls[i]; f.t+=dt; f.z+=105*dt; const k=Math.pow(clamp((f.z+440)/400,0,1),.55);
+    _hp.set(0,0,f.z); place(f.grp,_hp,null);
+    for(const b of f.blobs){ const x=f.ox+(b.x-f.ox)*k, y=f.oy+(b.y-f.oy)*k, w=1+Math.sin(f.t*4+b.ph)*.12; b.m.position.set(x,y,b.dz); b.m.scale.set(b.r*w,b.r/w,b.r*(2-w)); b.m.rotation.y+=dt*.6;
+      const bz=f.z+b.dz; if(!b.hit&&state==='play'&&Math.abs(bz-ship.pos.z)<b.r+.6&&Math.hypot(ship.pos.x-x,ship.pos.y-y)<b.r+.7){ b.hit=true; f.done=true; damagePlayer(22,true); G.trauma=.8; sparks(ship.pos,0xffa030,22); }
+      if(Math.random()<.04&&f.z<-20){ L2W(x,y,b.dz+f.z,_w); emit(_w.x,_w.y,_w.z,rand(-1,1),rand(-1,1),rand(2,6),0,0,0,0xffb030,rand(.6,1.2),.8); } }
+    if(!f.scored&&f.z>ship.pos.z+12){ f.scored=true; if(!f.done&&state==='play'){ addScore(300,true); toast('DURCHGESCHLÜPFT +300','#ffe080'); } }
+    if(f.z>50){ scene.remove(f.grp); flareWalls.splice(i,1); } }
 }
 function clearFlareWalls(){ if(!flareWalls) return; for(const f of flareWalls) scene.remove(f.grp); flareWalls.length=0; }
 const boltGeo=new THREE.CylinderGeometry(.5,.5,1,5,1,true);
@@ -3583,8 +3601,11 @@ function findLock(dir){
 // ================= Geschicklichkeits-Passagen (ohne Gegner) =================
 var hazards=[];
 const brMat=new THREE.SpriteMaterial({map:wpTex,color:0x40ff50,transparent:true,depthWrite:false,fog:false,toneMapped:false});
-const hzBeamO=new THREE.MeshBasicMaterial({color:0xff2ad0,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false,fog:false});
-const hzBeamI=new THREE.MeshBasicMaterial({color:0xffe0ff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false,fog:false});
+const plasmaTex=(()=>{ const W=64,H=256,c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'), im=x.createImageData(W,H);
+  for(let j=0;j<H;j++) for(let i=0;i<W;i++){ const a=i/W*Math.PI*2, n=vnoise(Math.cos(a)*1.5,Math.sin(a)*1.5,j*.045)*.6+vnoise(Math.cos(a)*4,Math.sin(a)*4+5,j*.14)*.4, v=Math.floor(255*clamp(.42+(n-.35)*1.4,.35,1)), k=(j*W+i)*4; im.data[k]=im.data[k+1]=im.data[k+2]=v; im.data[k+3]=255; }
+  x.putImageData(im,0,0); const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,3); return t; })();
+const hzBeamO=new THREE.MeshBasicMaterial({map:plasmaTex,color:0xff2ad0,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false,fog:false});
+const hzBeamI=new THREE.MeshBasicMaterial({map:plasmaTex,color:0xffe0ff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false,fog:false});
 const hzBeamGeo=new THREE.CylinderGeometry(1,1,1,10,1,true);
 function hzTarget(kind,col){ // abschießbarer Schalter mit grüner Markierung
   const g=new THREE.Group();
@@ -3678,7 +3699,7 @@ function spawnSpikes(s){
 var lanes=[], cgates=[], popups=[]; const LCOLS=[0xff30c0,0x30e0ff,0x60ff80,0xff4020,0xffd020,0xa060ff,0xff8020];
 const carPaints=[0xd02030,0xf0f0f0,0xf0c020,0x2050d0,0x181820,0x20b0a0].map(c=>new THREE.MeshStandardMaterial({color:c,metalness:.65,roughness:.3,envMapIntensity:1.2}));
 const carGlass=new THREE.MeshStandardMaterial({color:0x101828,metalness:.9,roughness:.1});
-const beamMats={}; function beamMat(col,core){ const k=col+(core?'c':''); return beamMats[k]||(beamMats[k]=new THREE.MeshBasicMaterial({color:core?0xffffff:col,transparent:true,opacity:core?.9:.6,blending:core?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:false})); }
+const beamMats={}; function beamMat(col,core){ const k=col+(core?'c':''); return beamMats[k]||(beamMats[k]=new THREE.MeshBasicMaterial({map:plasmaTex,color:core?new THREE.Color(col).lerp(new THREE.Color(0xffffff),.55):new THREE.Color(col).multiplyScalar(1.15),transparent:true,opacity:core?.95:.7,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false})); }
 function makeCar(){ const g=new THREE.Group(), body=new THREE.Mesh(loftHull(5.6,t=>({w:.85+.35*Math.sin(Math.min(1,t*1.6)*Math.PI/2),h:.45+.25*Math.sin(t*Math.PI),y:0}),{nr:12,dmg:0,capA:true,capB:true}),pick(carPaints));
   body.rotation.y=Math.PI/2; g.add(body); const cab=mesh(geo.sphere,carGlass,2.2,.9,1.5,-.2,.45,0); g.add(cab);
   g.add(mesh(geo.box,Bm(0xfff4d0),.2,.25,1.4,2.75,.05,0)); g.add(mesh(geo.box,Bm(0xff2020),.2,.25,1.5,-2.75,.1,0));
@@ -4474,7 +4495,7 @@ function loop(now){
     if(state==='play'||state==='dying'){ updatePlay(dt); hud(); }
     else updateIdle(dt);
     updateWorldFx(dt); updateWorldEvents(dt); updateUnder(); updateCubes(dt); updatePops(dt); updateCameraDust(dt); updatePS(PS,dt); updatePS(SMOKE,dt); updateChunks(dt); updateRings(dt); updateCamera(dt); updateArrows();
-    if(planet) planet.rotation.y+=dt*.01; updateHSun(dt);
+    if(planet) planet.rotation.y+=dt*.01; updateHSun(dt); plasmaTex.offset.y=(plasmaTex.offset.y-dt*2.6)%1; plasmaTex.offset.x=(plasmaTex.offset.x+dt*.35)%1;
     autoQuality(dt);
   }
   sfx.want(state==='menu'?'menu':(state==='play'||state==='dying')?(G.boss?'boss':'play'):state==='over'?'over':null);
