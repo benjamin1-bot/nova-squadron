@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
+<head><script>window.NOVA_APP=true;</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="screen-orientation" content="landscape">
@@ -278,14 +278,13 @@
   <button class="opt" id="rotskip">TROTZDEM HOCHKANT SPIELEN</button>
 </div>
 
-<script>window.NOVA_APP=true;</script>
 <script src="js/three.min.js"></script>
-<script src="js/CopyShader.js"></script>
-<script src="js/LuminosityHighPassShader.js"></script>
-<script src="js/EffectComposer.js"></script>
-<script src="js/RenderPass.js"></script>
-<script src="js/ShaderPass.js"></script>
-<script src="js/UnrealBloomPass.js"></script>
+<script src="js/shaders/CopyShader.js"></script>
+<script src="js/shaders/LuminosityHighPassShader.js"></script>
+<script src="js/postprocessing/EffectComposer.js"></script>
+<script src="js/postprocessing/RenderPass.js"></script>
+<script src="js/postprocessing/ShaderPass.js"></script>
+<script src="js/postprocessing/UnrealBloomPass.js"></script>
 <script>
 (() => {
 'use strict';
@@ -1777,7 +1776,7 @@ function updateEnvSpawn(dt){
   if(W0.surface){ while(ENV.nextGround<ahead+60){ if(!ENV.wrecks.some(w=>w.tunnel&&ENV.nextGround-21>w.s0+6&&ENV.nextGround+21<w.s1-6)) spawnGround(ENV.nextGround); ENV.nextGround+=42; }
     if(ENV.calm) ENV.nextPillar=Math.max(ENV.nextPillar,ahead+200); else while(ENV.nextPillar<ahead){ if(!inWreck(ENV.nextPillar)) spawnPillar(ENV.nextPillar); ENV.nextPillar+=rand(110,190); } }
   if(state==='play'&&!ENV.calm&&!G.boss&&!(G.warp>0)&&ENV.s>ENV.nextCube){ ENV.nextCube=ENV.s+rand(1400,2100); if(!inWreck(ahead-60)&&!inWreck(ahead+20)) spawnCubeSet(ahead-60); }
-  while(ENV.nextDecor<ahead){ spawnDecor(ENV.nextDecor); if(W0.surface&&W0.decor&&!ENV.calmDecor){ for(let k=0;k<2;k++){ const sx=Math.random()<.5?-1:1; spawnGroundDecor(ENV.nextDecor+rand(-3,3),sx*rand(B.x+40,190),pickW(W0.decor)); } } ENV.nextDecor+=rand(4,9); }
+  while(ENV.nextDecor<ahead){ spawnDecor(ENV.nextDecor); if(Math.random()<.08) spawnShafts(ENV.nextDecor); if(W0.surface&&W0.decor&&!ENV.calmDecor){ for(let k=0;k<2;k++){ const sx=Math.random()<.5?-1:1; spawnGroundDecor(ENV.nextDecor+rand(-3,3),sx*rand(B.x+40,190),pickW(W0.decor)); } } ENV.nextDecor+=rand(4,9); }
   while(ENV.nextDerelict<ahead){ spawnDerelict(ENV.nextDerelict); ENV.nextDerelict+=W0.derelictEvery?rand(...W0.derelictEvery):rand(450,800); }
   if(ENV.s>ENV.nextRock){ ENV.nextRock=ENV.s+rand(24,46); if(!ENV.wrecks.some(w=>!w.pillar&&ahead>w.s0-10&&ahead<w.s1+4)&&!ENV.calm&&!G.passage) spawnTubeDebris(); }
   for(let i=statics.length-1;i>=0;i--){ const st=statics[i]; if(st.s<ENV.s-60){ scene.remove(st.mesh); statics.splice(i,1); } else st.mesh.visible=st.s0<ENV.s+560; }
@@ -1905,25 +1904,33 @@ const M2={
   crysG:new THREE.MeshStandardMaterial({color:0x50ff70,emissive:0x10902a,emissiveIntensity:1,metalness:.2,roughness:.2,flatShading:true})
 };
 const crystalGeo=new THREE.ConeGeometry(.5,1,5);
+const MOOD={m:'tag',tint:null,k:0,dark:1,weather:null}; const _mc=new THREE.Color();
+function MC(h){ _mc.setHex(h); if(MOOD.tint) _mc.lerp(MOOD.tint,MOOD.k); _mc.multiplyScalar(MOOD.dark); return _mc.getHex(); }
 function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
   worldIdx=((i%WORLDS.length)+WORLDS.length)%WORLDS.length; const w=WORLDS[worldIdx]; W0=w;
-  scene.fog.color.setHex(w.fog); scene.fog.density=w.dens; scene.background.setHex(w.sky[2]);
+  const moods=w.surface&&w.pano!=='city'?['tag','tag','abend','nacht']:['tag']; const mood=pick(moods); MOOD.m=mood;
+  MOOD.tint=mood==='abend'?new THREE.Color(0xff7a40):mood==='nacht'?new THREE.Color(0x1a2a60):null; MOOD.k=mood==='abend'?.35:mood==='nacht'?.55:0; MOOD.dark=mood==='nacht'?.45:mood==='abend'?.85:1;
+  MOOD.weather=w.surface?pick(w.gmat==='lava'?['asche','asche',null]:w.gmat==='ice'?['schnee',null]:w.pano==='city'||w.pano==='stack'?['regen','regen',null]:w.pano==='dune'?[null]:['regen',null,null]):null;
+  scene.fog.color.setHex(MC(w.fog)); scene.fog.density=w.dens; scene.background.setHex(w.sky[2]);
   const SU=skyBake.src.uniforms; SU.nA.value.setHex(w.neb).multiplyScalar(.55); SU.nB.value.setHex(w.rim).multiplyScalar(.5); SU.nI.value=w.stars===false?.25:1;
-  SU.top.value.setHex(w.sky[0]); SU.mid.value.setHex(w.sky[1]); SU.bot.value.setHex(w.surface?w.fog:w.sky[2]); bakeSky(); if(w.surface) scene.background.setHex(w.fog);
+  SU.top.value.setHex(MC(w.sky[0])); SU.mid.value.setHex(MC(w.sky[1])); SU.bot.value.setHex(MC(w.surface?w.fog:w.sky[2])); bakeSky(); if(w.surface) scene.background.setHex(MC(w.fog));
   SKY.stars.visible=w.stars!==false; for(const n of SKY.nebs) n.visible=w.stars!==false;
   hemi.groundColor.setHex(w.surface?w.surface.high:0x1a0f22); hemi.intensity=w.hemiI||.55;
   { const wn=document.getElementById('wname'); if(wn) wn.textContent=(i+1)+' · '+w.name; }
   { const EC=[[0xffd040,0xff2d50],[0x9ae8ff,0x40c8ff],[0x8a7a70,0xff2a10],[0x4a3a3a,0xff6a10],[0xd090ff,0xff40e0],[0xf0f0f0,0x3080ff],[0xffa040,0x20e0ff],[0x70e0a0,0xd040ff],[0x80a0c0,0x60ffe0],[0x30303a,0xff30c0],[0xb090d0,0xffb040],[0xe0b070,0xff5020],[0xff8030,0xffe060],[0x60c070,0x40ff90]][i%14];
     M.eHull.color.setHex(EC[0]); M.eRed.color.setHex(EC[1]); }
-  renderer.toneMappingExposure=w.exp||1.12; if(bloom){ bloom.strength=(w.bloom!==undefined?w.bloom:.45)*1.7+.15; bloom.threshold=.7; }
+  renderer.toneMappingExposure=(w.exp||1.12)*(MOOD.m==='nacht'?1.15:1); if(bloom){ bloom.strength=(w.bloom!==undefined?w.bloom:.45)*1.7+.15; bloom.threshold=.7; }
   for(const c of cubes) scene.remove(c.mesh); cubes.length=0;
-  sun.color.setHex(w.sun); hemi.color.setHex(w.hemi); rim.color.setHex(w.rim);
+  sun.color.setHex(MOOD.m==='abend'?0xffa060:MOOD.m==='nacht'?0x8aa0ff:w.sun); sun.intensity=MOOD.m==='nacht'?.7:1.5; hemi.color.setHex(MC(w.hemi)); rim.color.setHex(w.rim);
+  // Neonstadt: nasser, spiegelnder Boden
+  groundMat.roughness=w.pano==='city'||MOOD.weather==='regen'?.28:.9; groundMat.metalness=w.pano==='city'?.55:MOOD.weather==='regen'?.3:0;
   SKY.nm.color.setHex(w.neb); SKY.sunG.material.color.setHex(w.sun);
   if(w.planet){ planet.visible=true; if(planet.material.map) planet.material.map.dispose(); planet.material.map=planetTexture(w.planet[0],w.planet[1]); planet.material.needsUpdate=true;
     SKY.atm.visible=true; SKY.atm.material.color.setRGB(w.planet[0][0]/400,w.planet[0][1]/400,w.planet[0][2]/400); }
   else { planet.visible=false; SKY.atm.visible=false; }
   SKY.ringM.visible=!!(w.planet&&w.ring);
-  blackHole.visible=!!w.blackhole; rebuildPano(w); SKY.sunG.scale.setScalar(w.bigSun?2400:(SKY.sunG.userData.s0||(SKY.sunG.userData.s0=SKY.sunG.scale.x)));
+  blackHole.visible=!!w.blackhole; rebuildPano(w); { const mm=MOOD.m, ww=MOOD.weather; const txt=(w.surface&&mm!=='tag'?(mm==='abend'?'ABENDDÄMMERUNG':'NACHT'):'')+(ww?(mm!=='tag'?' · ':'')+ww.toUpperCase():''); if(txt) setTimeout(()=>toast(txt,'#bfe0ff'),1800); }
+  SKY.sunG.material.opacity=w.surface&&MOOD.m==='abend'?.45:1; SKY.sunG.scale.setScalar(w.bigSun?2400:(SKY.sunG.userData.s0||(SKY.sunG.userData.s0=SKY.sunG.scale.x)));
   motes.material.color.setHex(w.motes); dust.material.color.setHex(w.motes); lineMat.color.setHex(w.motes);
   M.rock.color.setHex(w.rock[0]); M.rock2.color.setHex(w.rock[1]); M.rock.emissive.setHex(w.rockE||0); M.rock2.emissive.setHex(w.rockE||0);
   for(const st of statics) scene.remove(st.mesh); statics.length=0; obst.length=0; ENV.wrecks.length=0; ENV.sparkers.length=0;
@@ -2025,7 +2032,53 @@ function updateWorldEvents(dt){
   { const el=document.getElementById('pullind'); if(el){ const on=G.gT>0&&state==='play'; el.style.opacity=on?(.6+.4*Math.sin(G.time*10)):0; if(on) el.textContent=G.gPull>0?'SOG ▶▶▶':'◀◀◀ SOG'; } }
   if(G.sandT>0){ G.sandT-=dt; scene.fog.density=(W0.dens||.005)*(1+1.6*Math.min(1,G.sandT)); } else if(W0.ev==='sandstorm') scene.fog.density=W0.dens||.005;
 }
+// ---------- Lebendiger Hintergrund ----------
+const bgFx=[]; const _cd=new V3();
+function bgFlash(dir,R,col,size,life){ const sp=glowSprite(col,size,.95); sp.material=sp.material.clone(); sp.material.fog=false; sp.position.copy(dir).multiplyScalar(R); sky.add(sp); bgFx.push({sp,t:0,life,s0:size}); return sp; }
+function updateBackground(dt){
+  camera.getWorldDirection(_cd); const sfx2=W0.pano||(W0.surface?null:'space');
+  G.bgT=(G.bgT||0)-dt;
+  if(G.bgT<=0&&state!=='menu'){
+    if(sfx2==='space'||W0.ev==='fuel'){ G.bgT=rand(.08,.3); // ferne Raumschlacht vor dir
+      const d=_cd.clone().applyAxisAngle(WUP,rand(-.5,.5)); d.y+=rand(-.05,.25); d.normalize(); if(!G.battleDir||Math.random()<.01) G.battleDir=d; const bd=G.battleDir.clone().add(new V3(rand(-.08,.08),rand(-.05,.05),rand(-.08,.08))).normalize();
+      if(Math.random()<.6) bgFlash(bd,1400,pick([0xffb060,0xff6030,0xffe0a0]),rand(18,46),rand(.4,.9));
+      else { const a=bd.clone().multiplyScalar(1400), b2=bd.clone().add(new V3(rand(-.06,.06),rand(-.03,.03),rand(-.06,.06))).normalize().multiplyScalar(1400); const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b2]),new THREE.LineBasicMaterial({color:pick([0xff3040,0x40c8ff,0x60ff90]),transparent:true,fog:false,blending:THREE.AdditiveBlending})); sky.add(ln); bgFx.push({ln,t:0,life:.25}); } }
+    else if(sfx2==='city'){ G.bgT=rand(.05,.12); for(let k=0;k<2;k++){ const a=rand(0,6.28), h=rand(.05,.25); const d=new V3(Math.cos(a),h,Math.sin(a)).normalize(); const sp=bgFlash(d,rand(500,900),pick([0xff40c0,0x40e0ff,0xffe080,0xffffff]),rand(4,9),rand(3,6)); sp.userData.v=new V3(-d.z,0,d.x).multiplyScalar(rand(-140,140)); } }
+    else if(sfx2==='volcano'){ G.bgT=rand(.6,1.4); const a=rand(0,6.28), d=new V3(Math.cos(a),.18,Math.sin(a)).normalize(); for(let k=0;k<6;k++){ const sp=bgFlash(d,1500,0xff6010,rand(20,50),rand(1.5,3)); sp.userData.v=new V3(rand(-30,30),rand(60,140),rand(-30,30)); sp.userData.g=60; } }
+    else G.bgT=1;
+  }
+  for(let i=bgFx.length-1;i>=0;i--){ const f=bgFx[i]; f.t+=dt; const k=f.t/f.life;
+    if(f.sp){ if(f.sp.userData.v){ f.sp.position.addScaledVector(f.sp.userData.v,dt); if(f.sp.userData.g) f.sp.userData.v.y-=f.sp.userData.g*dt; } f.sp.material.opacity=Math.max(0,f.sp.userData.v?1-Math.max(0,k-.8)*5:1-k); if(!f.sp.userData.v) f.sp.scale.setScalar(f.s0*(.6+k)); }
+    if(f.ln) f.ln.material.opacity=1-k;
+    if(k>=1){ if(f.sp){ sky.remove(f.sp); f.sp.material.dispose(); } if(f.ln){ sky.remove(f.ln); f.ln.geometry.dispose(); f.ln.material.dispose(); } bgFx.splice(i,1); } }
+}
+// ---------- Vordergrund: Objekte rauschen dicht an der Kamera vorbei ----------
+const fgObj=[];
+function updateForeground(dt){
+  if(state!=='play'||G.warp>0){ for(const f of fgObj) f.m.visible=false; return; }
+  G.fgT=(G.fgT||0)-dt;
+  if(G.fgT<=0&&fgObj.length<6){ G.fgT=rand(.7,1.8); const surf=!!W0.surface; let m;
+    if(W0.gmat==='ice'){ m=new THREE.Mesh(geo.octa,M2.iceRock); m.scale.set(1.2,3,1.2); }
+    else if(W0.pano==='mush'){ m=glowSprite(0x80ffe0,1.6,.8); }
+    else if(W0.pano==='city'){ m=new THREE.Mesh(geo.box,M.bldg); m.scale.set(4,rand(30,60),4); }
+    else if(surf){ m=new THREE.Mesh(pick(rocks),M.rock2); m.scale.setScalar(rand(1.5,3)); }
+    else if(W0.ev==='fuel'){ m=new THREE.Mesh(geo.box,M.wreckDark); m.scale.set(rand(2,5),rand(.3,1),rand(2,6)); }
+    else { m=new THREE.Mesh(pick(rocks),M.rock); m.scale.setScalar(rand(1,2.4)); }
+    const sd=Math.random()<.5?-1:1, city=W0.pano==='city';
+    scene.add(m); fgObj.push({m,x:sd*(B.x+rand(5,12))*(city?1.6:1),y:city?-(B.y+8):rand(-B.y*.9,B.y*.9),z:-160,sp:new V3(rand(-1,1),rand(-1,1),rand(-1,1))}); }
+  for(let i=fgObj.length-1;i>=0;i--){ const f=fgObj[i]; f.z+=ENV.speed*1.25*dt; L2W(f.x,f.y,f.z,_hp); f.m.position.copy(_hp); f.m.visible=true; if(!f.m.isSprite){ f.m.rotation.x+=f.sp.x*dt; f.m.rotation.y+=f.sp.y*dt; }
+    if(f.z>25){ scene.remove(f.m); fgObj.splice(i,1); } }
+}
+// ---------- Lichtstrahlen (Sonnen- und Höhlenlicht) ----------
+const shaftMat=new THREE.MeshBasicMaterial({color:0xfff0d0,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false});
+const shaftGeo=(()=>{ const g=new THREE.CylinderGeometry(1.2,5,1,12,1,true); g.translate(0,-.5,0); return g; })();
+function spawnShafts(s){ if(!W0.surface||MOOD.m==='nacht'||W0.pano==='city') return; for(let k=0;k<2;k++){ const m=new THREE.Mesh(shaftGeo,shaftMat); m.scale.set(rand(3,6),rand(70,110),rand(3,6)); m.rotation.z=rand(-.35,.35); addStatic(m,s+rand(-20,20),rand(-B.x*1.4,B.x*1.4),B.y+60,null); } }
 function updateWorldFx(dt){
+  updateBackground(dt); updateForeground(dt);
+  if(MOOD.weather==='regen'){ for(let i=0;i<6;i++){ L2W(rand(-40,40),rand(-10,30),-rand(8,120),_w); emit(_w.x,_w.y,_w.z,0,-60,0,0,0,0,0x9ab8d8,rand(.12,.2),.5); } }
+  else if(MOOD.weather==='schnee'){ for(let i=0;i<4;i++){ L2W(rand(-40,40),rand(-10,30),-rand(10,140),_w); emit(_w.x,_w.y,_w.z,rand(-1,1),rand(-4,-2),rand(-1,1),0,0,0,0xffffff,rand(.2,.35),3); } }
+  else if(MOOD.weather==='asche'){ for(let i=0;i<3;i++){ L2W(rand(-40,40),rand(-10,30),-rand(10,140),_w); emit(_w.x,_w.y,_w.z,rand(-1,1),rand(-2,-.5),rand(-1,1),0,0,0,Math.random()<.2?0xff7020:0x403830,rand(.2,.4),3); } }
+  if(MOOD.m==='nacht'&&!G.ltDone&&state==='play'){ G.ltDone=true; }
   if(W0.surface&&W0.surface.water){ waveTex.offset.x+=dt*.03; waveTex.offset.y+=dt*.05;
     for(const st of statics){ const b=st.mesh.userData.bob; if(!b||!st.mesh.visible) continue; if(b.y0==null){ b.y0=st.mesh.position.clone(); b.t=0; } b.t+=dt;
       st.mesh.position.copy(b.y0); st.mesh.position.y+=Math.sin(b.t*.9+b.ph)*.7; st.mesh.translateX(b.dx*b.t); st.mesh.rotation.z=Math.sin(b.t*.6+b.ph)*.04; } }
