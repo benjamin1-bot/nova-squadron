@@ -1560,7 +1560,8 @@ function spawnDecor(s){
 }
 function spawnGroundDecor(s,x,t){
   const gy=-(B.y+8)+groundH(x,s,W0.surface)-1, g=new THREE.Group(), sc=rand(1.5,4);
-  if(t==='berg'){ const h=rand(10,34), r=new THREE.Mesh(pick(spires),M2.iceRock); r.scale.set(h*rand(.5,.9),h,h*rand(.5,.8)); r.position.y=h*.3; g.add(r);
+  if(t==='berg'){ const h=rand(10,34), r=new THREE.Mesh(pick(spires),M2.iceRock); r.scale.set(h*rand(.5,.9),h,h*rand(.5,.8)); r.position.y=h*.3; g.add(r); g.userData.bob={ph:rand(0,6),dx:rand(-1.5,1.5),y0:null};
+    { const foam=new THREE.Mesh(new THREE.RingGeometry(h*.5,h*.62,24),new THREE.MeshBasicMaterial({color:0xe0f6ff,transparent:true,opacity:.28,side:THREE.DoubleSide,depthWrite:false})); foam.rotation.x=-Math.PI/2; foam.position.y=4.2; g.add(foam); }
     if(Math.random()<.5){ const h2=h*.5, r2=new THREE.Mesh(pick(spires),M2.iceRock); r2.scale.set(h2*.6,h2,h2*.6); r2.position.set(rand(-8,8),h2*.3,rand(-6,6)); g.add(r2); } }
   else if(t==='stack'){ const h=rand(18,40), r=new THREE.Mesh(pick(spires),M.rock); r.scale.set(h*.28,h,h*.26); r.position.y=h*.4; g.add(r); const top=mesh(geo.sphere,M.grass||(M.grass=new THREE.MeshStandardMaterial({color:0x3a8a3a,roughness:.9})),h*.22,h*.06,h*.2,0,h*.88,0); g.add(top); }
   else if(t==='mush'){ const h=rand(10,28), w=h*.12; g.add(mesh(geo.cyl,M2.fungus,w,h,w,0,h/2,0)); g.add(mesh(geo.sphere,M.mushCap,w*4,w*1.6,w*4,0,h,0)); g.add(glowSprite(0x60ffd0,w*5,.5)).position.y=h-1; }
@@ -1673,6 +1674,10 @@ function clearFutureWrecks(){
 // ---------- Planetenoberfläche ----------
 const groundMat=tri(new THREE.MeshStandardMaterial({vertexColors:true,map:T.rock.map,bumpMap:T.rock.bump,bumpScale:.12,roughness:.9,metalness:0}),.05);
 const lavaMat=new THREE.MeshBasicMaterial({color:0xc04010}); const waterMats={};
+const waveTex=(()=>{ const S=256,c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d'); g.fillStyle='#8a8a8a'; g.fillRect(0,0,S,S);
+  for(let i=0;i<500;i++){ const x=Math.random()*S, y=Math.random()*S, w=rand(10,40); g.strokeStyle=`rgba(255,255,255,${rand(.08,.3)})`; g.lineWidth=rand(1,3); g.beginPath(); g.moveTo(x,y); g.quadraticCurveTo(x+w/2,y-rand(2,5),x+w,y); g.stroke();
+    for(const [ox,oy] of [[S,0],[-S,0],[0,S],[0,-S]]){ g.beginPath(); g.moveTo(x+ox,y+oy); g.quadraticCurveTo(x+ox+w/2,y+oy-3,x+ox+w,y+oy); g.stroke(); } }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(10,2); return t; })();
 const underMat=new THREE.MeshStandardMaterial({color:0x444444,roughness:1}); const under=new THREE.Group(); { const pl=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),underMat); pl.rotation.x=-Math.PI/2; under.add(pl); } under.visible=false; scene.add(under);
 function updateUnder(){ under.visible=!!W0.surface; if(!under.visible) return; const sf=W0.surface; underMat.color.setHex(W0.fog); _hp.set(0,-(B.y+8)-40,-200); place(under,_hp,null); }
 const _ca=new THREE.Color(), _cb=new THREE.Color(), _cc=new THREE.Color();
@@ -1695,8 +1700,9 @@ function spawnGround(s){
   g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.computeVertexNormals();
   const m=new THREE.Group(); m.add(new THREE.Mesh(g,groundMat));
   if(sf.lava){ const lv=new THREE.Mesh(new THREE.PlaneGeometry(Wd,L),lavaMat); lv.rotation.x=-Math.PI/2; lv.position.y=-1.6; m.add(lv); }
-  if(sf.water){ if(!waterMats[sf.water]) waterMats[sf.water]=new THREE.MeshStandardMaterial({color:sf.water,metalness:.6,roughness:.12,transparent:true,opacity:.86,envMapIntensity:1.4});
-    const wv=new THREE.Mesh(new THREE.PlaneGeometry(Wd,L,1,1),waterMats[sf.water]); wv.rotation.x=-Math.PI/2; wv.position.y=.4; m.add(wv); }
+  if(sf.water){ if(!waterMats[sf.water]){ waterMats[sf.water]=new THREE.MeshStandardMaterial({color:sf.water,map:waveTex,bumpMap:waveTex,bumpScale:.35,metalness:.55,roughness:.16,envMapIntensity:1.6}); }
+    const wv=new THREE.Mesh(new THREE.PlaneGeometry(Wd,L,1,1),waterMats[sf.water]); wv.rotation.x=-Math.PI/2; wv.position.y=(sf.waterY??.4); m.add(wv);
+    for(let i=0;i<10;i++){ const fl=mesh(geo.cyl,M2.iceRock,rand(1.5,5),.6,rand(1.5,5),rand(-Wd/2,Wd/2),(sf.waterY??.4)+.1,rand(-L/2,L/2)); fl.rotation.y=rand(0,6); m.add(fl); } }
   if(sf.grid){ for(let k=-6;k<=6;k++){ const ln=mesh(geo.box,Bm(sf.grid),.18,.05,L,k*14,.3,0); m.add(ln); } m.add(mesh(geo.box,Bm(sf.grid),Wd,.05,.18,0,.3,0)); }
   addStatic(m,s,0,-(B.y+8),null,L/2);
 }
@@ -1792,7 +1798,7 @@ const WORLDS=[
   tunnel:{key:'rock',every:[1300,1900],len:[300,420]}},
  {name:'GEFRORENER OZEAN NIFL', ev:'icefall', curv:.7, pitchK:.3, evName:'EISZAPFEN UND EISBERGE', exp:.78, bloom:.32, hemiI:.55, fog:0x14385a, dens:.0038, sky:[0x02081a,0x10406a,0x041628], neb:0x40ffa0, sun:0xe0f8ff, hemi:0x90d0ff, rim:0x60ffc0, motes:0xffffff,
   planet:[[230,240,255],[150,180,220]], ring:true, rock:[0x9ad8f0,0x6ab0d0], rockE:0x08304a, decor:{berg:1}, wrecks:0, tube:'ice', fx:'snow', gmat:'ice',
-  surface:{low:0xc8f0ff,high:0x6ab8e0,mid:0x9ad8f4,canyon:0,flat:.25,water:0x0a2e4a}, tunnel:{key:'ice',every:[700,1000],len:[380,520]}},
+  surface:{low:0x0a2a40,high:0x0a2a40,mid:0x0a2a40,canyon:0,flat:.15,water:0x1a5a80,waterY:3}, tunnel:{key:'ice',every:[700,1000],len:[380,520]}},
  {name:'SCHIFFSFRIEDHOF', ev:'fuel', curv:1, evName:'TREIBSTOFFTANKS – EXPLOSIV!', exp:1, bloom:.5, fog:0x1a0c0c, dens:.0048, sky:[0x080404,0x2a1010,0x020000], neb:0xff4030, sun:0xffb090, hemi:0x806060, rim:0xff3020, motes:0xff8060,
   planet:[[140,90,80],[60,30,30]], ring:false, rock:[0x6a6058,0x50463e], rockE:0, decor:{girder:.6,hulk:.4}, wrecks:2.2, derelictEvery:[180,300], tube:'metal', fx:null},
  {name:'LAVAPLANET SURTR', ev:'eruption', curv:1.2, pitchK:.5, evName:'LAVA-AUSBRÜCHE', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
@@ -1981,6 +1987,9 @@ function updateWorldEvents(dt){
   if(G.sandT>0){ G.sandT-=dt; scene.fog.density=(W0.dens||.005)*(1+1.6*Math.min(1,G.sandT)); } else if(W0.ev==='sandstorm') scene.fog.density=W0.dens||.005;
 }
 function updateWorldFx(dt){
+  if(W0.surface&&W0.surface.water){ waveTex.offset.x+=dt*.03; waveTex.offset.y+=dt*.05;
+    for(const st of statics){ const b=st.mesh.userData.bob; if(!b||!st.mesh.visible) continue; if(b.y0==null){ b.y0=st.mesh.position.clone(); b.t=0; } b.t+=dt;
+      st.mesh.position.copy(b.y0); st.mesh.position.y+=Math.sin(b.t*.9+b.ph)*.7; st.mesh.translateX(b.dx*b.t); st.mesh.rotation.z=Math.sin(b.t*.6+b.ph)*.04; } }
   const w=W0;
   if(blackHole.visible) blackHole.userData.disk.rotation.z+=dt*.05;
   if(w.fx==='snow'){ for(let i=0;i<4;i++){ L2W(rand(-34,34),rand(-22,22),-rand(30,170),_w); emit(_w.x,_w.y,_w.z,rand(-1,1),rand(-2,-.5),rand(-1,1),0,0,0,0x9ab8d0,rand(.15,.3),2.5); } }
@@ -3527,6 +3536,8 @@ function updateWaves(dt){
 
 // ================= Eingabe =================
 const keys={};
+window.addEventListener('blur',()=>{ for(const k in keys) keys[k]=false; });
+document.addEventListener('visibilitychange',()=>{ for(const k in keys) keys[k]=false; });
 let drag=null, aimDrag=null, lastTap=0;
 canvas.addEventListener('pointerdown',e=>{
   if(state!=='play') return;
@@ -3605,11 +3616,15 @@ function rumble(strong,weak,ms){ const p=getPad(), a=p&&p.vibrationActuator; if(
 window.addEventListener('gamepadconnected',()=>{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); });
 function pollPad(dt){
   const p=getPad(); if(!p){ GP.stickAim=false; return; }
-  const b=i=>!!(p.buttons[i]&&p.buttons[i].pressed), just=i=>b(i)&&!GP.prev[i], dz=v=>Math.abs(v)<.16?0:(v-Math.sign(v)*.16)/.84, dzR=v=>Math.abs(v)<.12?0:(v-Math.sign(v)*.12)/.88;
+  // Ruhelage des Sticks lernen (manche Sticks stehen nie genau auf 0)
+  GP.rest=GP.rest||[0,0,0,0]; for(let i=0;i<4;i++){ const v=+(p.axes[i]||0); if(Math.abs(v-GP.rest[i])<.3) GP.rest[i]+=(v-GP.rest[i])*Math.min(1,dt*.25); }
+  const A=i=>(+(p.axes[i]||0))-GP.rest[i];
+  const b=i=>!!(p.buttons[i]&&p.buttons[i].pressed), just=i=>b(i)&&!GP.prev[i], dz=v=>Math.abs(v)<.26?0:(v-Math.sign(v)*.26)/.74, dzR=v=>Math.abs(v)<.12?0:(v-Math.sign(v)*.12)/.88;
   if(state==='play'){
-    const dx=dz(p.axes[0]||0)+(b(15)?1:0)-(b(14)?1:0), dy=-dz(p.axes[1]||0)+(b(12)?1:0)-(b(13)?1:0);
+    let lx=A(0), ly=A(1); const lm=Math.hypot(lx,ly); if(lm<.26){ lx=0; ly=0; } else { const k=(lm-.26)/.74/lm; lx*=k; ly*=k; }
+    const dx=lx+(b(15)?1:0)-(b(14)?1:0), dy=-ly+(b(12)?1:0)-(b(13)?1:0);
     ship.tRaw.x+=dx*34*dt; ship.tRaw.y+=dy*25*dt;
-    const rx=dzR(p.axes[2]||0), ry=dzR(p.axes[3]||0);
+    const rx=dzR(A(2)), ry=dzR(A(3));
     if(rx||ry){ const f=Math.min(1,dt*5); const cx=Math.sign(rx)*Math.min(1,Math.abs(rx)*1.6), cy=Math.sign(ry)*Math.min(1,Math.abs(ry)*1.6); ship.aim.x+=(cx*.85-ship.aim.x)*f; ship.aim.y+=(-cy*.85-ship.aim.y)*f; GP.stickAim=true; } else GP.stickAim=false;
     if(just(0)||just(5)||just(7)) fireMissiles();
     if(just(1)||just(4)||just(6)) doRoll();
