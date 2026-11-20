@@ -2196,12 +2196,19 @@ const lavaBlobTex=(()=>{ const S=128,c=document.createElement('canvas'); c.width
   for(let j=0;j<S;j++) for(let i=0;i<S;i++){ const n=vnoise(i*.06,j*.06,3)*.65+vnoise(i*.2,j*.2,9)*.35, cr=Math.abs(n-.5)<.04?.35:1, k=(j*S+i)*4;
     im.data[k]=235*cr; im.data[k+1]=(110+110*n)*cr; im.data[k+2]=(10+40*n*n)*cr; im.data[k+3]=255; }
   x.putImageData(im,0,0); const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; })();
-const lavaBlobMat=new THREE.MeshStandardMaterial({color:0xffc040,map:lavaBlobTex,emissive:0xff8a10,emissiveMap:lavaBlobTex,emissiveIntensity:.62,roughness:.4,metalness:0});
-const lavaBlobGeo=new THREE.IcosahedronGeometry(1,2);
+const sunBlobTex=(()=>{ const S=256,c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d'); x.fillStyle='#ffc840'; x.fillRect(0,0,S,S);
+  for(let i=0;i<2600;i++){ x.fillStyle=`rgba(255,${Math.floor(rand(200,255))},${Math.floor(rand(90,200))},${rand(.2,.5)})`; x.beginPath(); x.arc(rand(0,S),rand(0,S),rand(1.5,5),0,7); x.fill(); }
+  for(let i=0;i<40;i++){ x.fillStyle=`rgba(255,${Math.floor(rand(120,160))},20,${rand(.25,.5)})`; x.beginPath(); x.arc(rand(0,S),rand(0,S),rand(4,12),0,7); x.fill(); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; return t; })();
+const lavaBlobMat=new THREE.MeshBasicMaterial({map:sunBlobTex,color:0xffffff,toneMapped:false});
+const lavaBlobGeos=[0,1,2,3].map(v=>{ const g=new THREE.IcosahedronGeometry(1,4), P=g.attributes.position, sd=v*7.3;
+  for(let i=0;i<P.count;i++){ const x=P.getX(i),y=P.getY(i),z=P.getZ(i), n=1+(vnoise(x*1.3+sd,y*1.3,z*1.3)-.5)*.45+(vnoise(x*3+sd,y*3,z*3)-.5)*.12; P.setXYZ(i,x*n,y*n*rand(.98,1.02),z*n); }
+  g.computeVertexNormals(); return g; });
+const lavaBlobGeo=lavaBlobGeos[0];
 function solarEruption(){
   const a=rand(0,6.28), r=rand(80,300), spot=new V3(Math.cos(a)*r,Math.sin(a)*r,Math.sqrt(Math.max(0,400*400-r*r))*.98);
   if(HSUN){ const b=glowSprite(0xfff0a0,60,.2); b.material=b.material.clone(); b.position.copy(spot); HSUN.add(b);
-    const bulge=new THREE.Mesh(lavaBlobGeo,lavaBlobMat); bulge.position.copy(spot); bulge.scale.setScalar(5); HSUN.add(bulge);
+    const bulge=new THREE.Mesh(lavaBlobGeos[1],lavaBlobMat); bulge.position.copy(spot); bulge.scale.setScalar(5); HSUN.add(bulge);
     HSUN.userData.build={b,bulge,spot,t:0}; }
   toast('SONNENERUPTION BAHNT SICH AN!','#ffd060'); sfx.warp&&sfx.warp();
   later(1.7,()=>{ if(!HSUN) return; const U=HSUN.userData, bd=U.build; if(bd){ HSUN.remove(bd.b); HSUN.remove(bd.bulge); U.build=null; }
@@ -2213,12 +2220,12 @@ function solarEruption(){
 function spawnFlareWall(wp){
   railAt(ENV.s,FR); const d=wp?wp.clone().sub(camera.position).normalize():new V3(0,.3,-1), fwd=Math.max(.2,-d.dot(FR.F)*-1>0?d.dot(FR.F):-d.dot(FR.F));
   const ox=clamp(d.dot(FR.R)/Math.max(.25,Math.abs(d.dot(FR.F)))*430,-160,160), oy=clamp(d.dot(FR.U)/Math.max(.25,Math.abs(d.dot(FR.F)))*430,-60,140);
-  const gx=rand(-B.x*.6,B.x*.6), gy=rand(-B.y*.55,B.y*.55), R0=rand(5.6,7), p1=rand(0,6), p2=rand(0,6), gapR=t=>R0*(1+.3*Math.sin(2*t+p1)+.18*Math.sin(3*t+p2));
+  const gx=rand(-B.x*.6,B.x*.6), gy=rand(-B.y*.55,B.y*.55), R0=rand(6,7.4), p1=rand(0,6), p2=rand(0,6), gapR=t=>R0*(1+.3*Math.sin(2*t+p1)+.18*Math.sin(3*t+p2));
   const grp=new THREE.Group(), blobs=[];
-  for(let cy=-B.y-4;cy<=B.y+4;cy+=5.6) for(let cx=-B.x-4;cx<=B.x+4;cx+=5.6){
-    const x=cx+rand(-2,2), y=cy+rand(-2,2), r=rand(2.3,3.9), dx=x-gx, dy=y-gy, dg=Math.hypot(dx,dy);
-    if(dg<gapR(Math.atan2(dy,dx))+r*.55) continue; if(Math.random()<.06) continue;
-    const m=new THREE.Mesh(lavaBlobGeo,lavaBlobMat); m.scale.setScalar(r); m.rotation.set(rand(0,6),rand(0,6),rand(0,6)); if(Math.random()<.3){ const gl=glowSprite(0xff9020,2.2,.2); m.add(gl); } grp.add(m);
+  for(let cy=-B.y-4;cy<=B.y+4;cy+=7.4) for(let cx=-B.x-4;cx<=B.x+4;cx+=7.4){
+    const x=cx+rand(-2.4,2.4), y=cy+rand(-2.4,2.4), r=rand(3.4,4.8), dx=x-gx, dy=y-gy, dg=Math.hypot(dx,dy);
+    if(dg<gapR(Math.atan2(dy,dx))+r*.5) continue; if(Math.random()<.04) continue;
+    const m=new THREE.Mesh(pick(lavaBlobGeos),lavaBlobMat); m.scale.setScalar(r); m.rotation.set(rand(0,6),rand(0,6),rand(0,6)); const gl=glowSprite(0xffb030,2.3,.22); m.add(gl); grp.add(m);
     blobs.push({m,x,y,r,dz:rand(-9,9),ph:rand(0,6),hit:false}); }
   scene.add(grp); flareWalls.push({grp,blobs,ox,oy,z:-440,t:0,done:false});
 }
