@@ -1092,7 +1092,7 @@ let state='menu';
 const G={};
 const enemies=[], pBullets=[], eBullets=[], missiles=[], pickups=[], statics=[], obst=[], cubes=[];
 function bagNext(key,n,avoid){ if(!G[key]||!G[key].length){ G[key]=[...Array(n).keys()].sort(()=>Math.random()-.5); if(G[key][G[key].length-1]===avoid&&n>1) G[key].unshift(G[key].pop()); } return G[key].pop(); }
-function resetGame(){ { const r=$('resov'); if(r) r.classList.add('hidden'); } clearFlareWalls();
+function resetGame(){ { const r=$('resov'); if(r) r.classList.add('hidden'); } clearFlareWalls(); clearCityHz();
   for(const arr of [enemies,pBullets,eBullets,missiles,pickups]){ for(const o of arr){ if(o.extras) for(const x of o.extras) scene.remove(x); if(o.boss) continue; if(o.mesh) scene.remove(o.mesh);} arr.length=0; }
   if(G.boss) removeBoss(G.boss);
   for(const c of cubes) scene.remove(c.mesh); cubes.length=0;
@@ -1590,7 +1590,7 @@ function spawnDecor(s){
   }
 }
 function spawnWallRocks(s){ const sf=W0.surface;
-  for(const sd of [-1,1]){ if(Math.random()<.25) continue; const x=sd*rand(B.x+9,B.x+75), y=groundH(x,s,sf)-(B.y+8);
+  for(const sd of [-1,1]) for(let rep=0;rep<(W0.pano==='dune'?2:1);rep++){ if(Math.random()<(W0.pano==='dune'?.1:.25)) continue; const x=sd*(rep?rand(B.x+60,B.x+120):rand(B.x+9,B.x+75)), y=groundH(x,s,sf)-(B.y+8);
     const m=new THREE.Mesh(pick(rocks),W0.gmat==='lava'?M2.lava:W0.gmat==='ice'?M2.iceRock:pick([M.rock,M.rock2])); const r=rand(5,13); m.scale.set(r*rand(.8,1.4),r*rand(1,2.2),r*rand(.8,1.4));
     addStatic(m,s+rand(-3,3),x,y+rand(-2,r*.5),new THREE.Euler(rand(0,6),rand(0,6),rand(0,6))); } }
 function spawnGroundDecor(s,x,t){
@@ -1616,22 +1616,106 @@ function spawnGroundDecor(s,x,t){
   }
   addStatic(g,s,x,gy,new THREE.Euler(0,rand(0,6),0));
 }
-function spawnDerelict(s){
-  const g=new THREE.Group(), L=rand(140,220), W=rand(22,34), H=rand(14,22);
-  const side=Math.random()<.5?-1:1;
-  g.add(mesh(geo.box,M.wreck,W,H,L*.55,0,0,-L*.2));
-  g.add(mesh(geo.box,M.wreckLit,W*.8,H*.85,L*.3,rand(-3,3),rand(-4,2),L*.33));
-  const prow=mesh(geo.cone4,M.wreck,W*1.2,L*.25,H*1.2,0,0,-L*.6); prow.rotation.x=-Math.PI/2; prow.rotation.y=Math.PI/4; g.add(prow);
-  g.add(mesh(geo.box,M.wreckLit,W*.35,H*.9,L*.12,0,H*.9,-L*.1));
-  g.add(mesh(geo.box,M.wreckDark,W*.2,H*.4,L*.06,0,H*1.5,-L*.12));
-  g.add(mesh(geo.box,M.wreckDark,W*.9,H*.25,L*.4,0,-H*.6,-L*.15));
-  for(let i=0;i<14;i++) g.add(mesh(geo.box,pick([M.wreckDark,M.rust,M.wreck]),rand(2,7),rand(1,4),rand(3,12),rand(-W/2,W/2),H/2+rand(.5,2),rand(-L*.45,L*.05)));
-  for(let i=0;i<6;i++){ const gd=mesh(geo.box,M.wreckDark,.6,.6,rand(8,20),rand(-W/2,W/2),rand(-H/2,H/2),L*.12); gd.rotation.set(rand(-.6,.6),rand(-.6,.6),0); g.add(gd); }
-  for(let i=0;i<4;i++) g.add(mesh(geo.box,Math.random()<.7?M.window:M.wRed,.3,.3,L*rand(.15,.4),side*-(W/2+.1),rand(-H*.3,H*.35),rand(-L*.3,0)));
-  for(const sx of [-1,1]){ const en=mesh(geo.cyl,M.wreckDark,W*.35,8,W*.35,sx*W*.25,0,L*.5); en.rotation.x=Math.PI/2; g.add(en); const nz=mesh(geo.tube,M.rust,W*.42,4,W*.42,sx*W*.25,0,L*.5+5); nz.rotation.x=Math.PI/2; g.add(nz); }
-  const gs=glowSprite(0xff7a3a,10,.7); gs.position.set(0,0,L*.2); g.add(gs);
-  addStatic(g,s+L*.3,side*rand(62,95),rand(-30,20),new THREE.Euler(rand(-.15,.15),rand(-.25,.25),rand(-.5,.5)),L*.5);
+// ================= Großkampfschiff-Wracks (Kreuzer, Zerstörer, Träger mit Hangar) =================
+const HSEC=[[0,1],[.5,.94],[.86,.66],[1,.18],[1,-.22],[.84,-.62],[.45,-.9],[0,-1],[-.45,-.9],[-.84,-.62],[-1,-.22],[-1,.18],[-.86,.66],[-.5,.94]];
+const winStripTex=(()=>{ const c=document.createElement('canvas'); c.width=512; c.height=32; const x=c.getContext('2d'); x.fillStyle='#0c0e12'; x.fillRect(0,0,512,32);
+  for(let i=0;i<120;i++){ const px=i*4.2+rand(-.5,.5), r=Math.random(); if(r<.45) continue; x.fillStyle=r<.85?`rgba(255,${Math.floor(rand(180,230))},120,${rand(.5,1)})`:'rgba(120,200,255,.9)'; x.fillRect(px,rand(10,14),2.4,6); }
+  for(let i=0;i<8;i++){ x.fillStyle='rgba(0,0,0,.9)'; x.fillRect(rand(0,512),0,rand(20,70),32); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; return t; })();
+const winStripMat=new THREE.MeshBasicMaterial({map:winStripTex,fog:true});
+const hazStripeTex=(()=>{ const c=document.createElement('canvas'); c.width=128; c.height=16; const x=c.getContext('2d'); x.fillStyle='#e8a020'; x.fillRect(0,0,128,16); x.fillStyle='#141414'; for(let i=-2;i<12;i++){ x.beginPath(); x.moveTo(i*16,16); x.lineTo(i*16+8,0); x.lineTo(i*16+16,0); x.lineTo(i*16+8,16); x.fill(); } const t=new THREE.CanvasTexture(c); t.wrapS=THREE.RepeatWrapping; return t; })();
+const hazStripeMat=new THREE.MeshStandardMaterial({map:hazStripeTex,roughness:.7,metalness:.2,emissive:0x3a2004,emissiveMap:hazStripeTex,emissiveIntensity:.4});
+let M_CARGO=null;
+function loftHull(L,prof,o={}){
+  const NR=o.nr||34, NS=HSEC.length, pos=[], idx=[], seed=o.seed??rand(0,50), dmg=o.dmg??1;
+  for(let r=0;r<NR;r++){ const t=r/(NR-1), z=-L/2+t*L, p=prof(t);
+    for(let k=0;k<NS;k++){ const sx=HSEC[k][0], sy=HSEC[k][1]; let d=1; const n=vnoise(sx*2.5+seed,sy*2.5,z*.05);
+      if(n>.66) d-=(n-.66)*1.3*dmg; d+=(vnoise(sx*9,sy*9+seed,z*.4)-.5)*.05*dmg;
+      pos.push(sx*p.w*d,sy*p.h*d+(p.y||0),z); } }
+  for(let r=0;r<NR-1;r++) for(let k=0;k<NS;k++){ if(o.hole&&o.hole(r/(NR-1),k)) continue; const a=r*NS+k,b=r*NS+(k+1)%NS,c=(r+1)*NS+k,d=(r+1)*NS+(k+1)%NS; idx.push(a,c,b, b,c,d); }
+  if(o.capA!==false){ const ci=pos.length/3, p=prof(0); pos.push(0,p.y||0,-L/2); for(let k=0;k<NS;k++) idx.push(ci,k,(k+1)%NS); }
+  if(o.capB!==false){ const ci=pos.length/3, p=prof(1), b=(NR-1)*NS; pos.push(0,p.y||0,L/2); for(let k=0;k<NS;k++) idx.push(ci,b+(k+1)%NS,b+k); }
+  let g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g=g.toNonIndexed(); g.computeVertexNormals(); return g;
 }
+const cruiserProf=(W,H)=>t=>{ const pr=Math.min(1,t/.3), st=t>.9?1-(t-.9)*2.2:1; return {w:W*(.16+.84*Math.pow(pr,.6))*st, h:H*(.42+.58*Math.pow(pr,.45))*Math.max(.82,st), y:-H*.18*(1-pr)}; };
+const destroyerProf=(W,H)=>t=>{ const pr=Math.min(1,t/.45); return {w:W*(.1+.9*Math.pow(pr,.85)), h:H*(.35+.65*Math.sqrt(pr)), y:H*.1*(1-pr)}; };
+const podProf=(W,H)=>t=>{ const pr=Math.min(1,t/.12), st=t>.94?1-(t-.94)*3:1; return {w:W*(.7+.3*pr)*st,h:H*(.75+.25*pr)*st,y:0}; };
+// Spanten, Stringer und zerrissene Platten an einer Bruchstelle
+function addBreak(g,p,z0,dir){
+  for(let i=0;i<4;i++){ const zz=z0-dir*i*4.2, sc=.97-i*.01;
+    for(let k=0;k<HSEC.length;k++){ if(Math.random()<.22) continue; const a=HSEC[k], b=HSEC[(k+1)%HSEC.length], ax=a[0]*p.w*sc, ay=a[1]*p.h*sc+(p.y||0), bx=b[0]*p.w*sc, by=b[1]*p.h*sc+(p.y||0), L=Math.hypot(bx-ax,by-ay);
+      const m=mesh(geo.box,M.wreckDark,L,1.1,1.1,(ax+bx)/2,(ay+by)/2,zz); m.rotation.z=Math.atan2(by-ay,bx-ax); g.add(m); } }
+  for(let k=0;k<HSEC.length;k++){ if(Math.random()<.4) continue; const a=HSEC[k], l=rand(3,12), m=mesh(geo.box,pick([M.wreckDark,M.rust]),.7,.7,l,a[0]*p.w*.95,a[1]*p.h*.95+(p.y||0),z0+dir*l/2); m.rotation.set(rand(-.25,.25),rand(-.25,.25),0); g.add(m); }
+  for(let k=0;k<7;k++){ const a=pick(HSEC), pl=mesh(geo.box,pick([M.wreck,M.rust]),rand(3,9),.35,rand(3,8),a[0]*p.w,a[1]*p.h+(p.y||0),z0+dir*rand(1,5)); pl.rotation.set(rand(-1,1),rand(-1,1),rand(-1,1)); g.add(pl); }
+  const bh=mesh(geo.cyl,M.wreckDark,p.w*1.7,1,p.h*1.7,0,p.y||0,z0-dir*15); bh.rotation.x=Math.PI/2; g.add(bh);
+  for(let k=0;k<3;k++){ const f=glowSprite(pick([0xff6a20,0xff9a40,0xff3010]),rand(4,9),.8); f.position.set(rand(-.6,.6)*p.w,rand(-.5,.5)*p.h+(p.y||0),z0-dir*rand(1,8)); g.add(f); }
+}
+function addTurret(g,x,y,z,s,up=1){
+  const t=new THREE.Group(); t.add(mesh(geo.cyl,M.wreckDark,2.6*s,1*s,2.6*s,0,.5*s*up,0)); t.add(mesh(geo.box,M.wreck,2.4*s,1.3*s,3*s,0,1.5*s*up,.2*s));
+  const n=2+Math.floor(Math.random()*2); for(let i=0;i<n;i++){ const b=mesh(geo.cyl,M.wreckDark,.32*s,4.5*s,.32*s,(i-(n-1)/2)*.7*s,1.5*s*up,-3.2*s); b.rotation.x=Math.PI/2+rand(-.15,.25); t.add(b); }
+  t.position.set(x,y,z); t.rotation.y=rand(-1.2,1.2); if(up<0) t.rotation.z=Math.PI; g.add(t);
+}
+function addTower(g,x,y,z,s){
+  const t=new THREE.Group(); let yy=0;
+  for(let i=0;i<3;i++){ const w=(7-i*1.8)*s, h=(3.2-i*.4)*s, d=(10-i*2.5)*s; t.add(mesh(geo.box,i===1?M.wreckDark:M.wreck,w,h,d,0,yy+h/2,i*s)); t.add(mesh(geo.box,winStripMat,w+.1,.5*s,d*.8,0,yy+h*.6,i*s)); yy+=h; }
+  for(let i=0;i<3;i++){ const a=mesh(geo.cyl,M.wreckDark,.18*s,rand(3,7)*s,.18*s,rand(-1.5,1.5)*s,yy+2*s,rand(-1,2)*s); a.rotation.z=rand(-.25,.25); t.add(a); }
+  const d=new THREE.Mesh(new THREE.SphereGeometry(1.6*s,12,6,0,Math.PI*2,0,1.2),M.wreck); d.position.set(0,yy+.6*s,-2*s); d.rotation.x=-.8; t.add(d);
+  if(Math.random()<.6){ const l=glowSprite(0xff2a10,2.2*s,.9); l.position.y=yy+5*s; t.add(l); }
+  t.position.set(x,y,z); g.add(t);
+}
+function addHullDetail(g,prof,L,z0,t0,t1){ // Panzerplatten, Fensterreihen, Geschütze entlang eines Rumpfabschnitts
+  for(let t=t0+.03;t<t1-.02;t+=rand(.025,.05)){ const p=prof(t), z=z0+(t-t0)*L;
+    for(const k of [1,2,13,12]) if(Math.random()<.45){ const a=HSEC[k], pl=mesh(geo.box,pick([M.wreck,M.wreckDark,M.rust]),rand(2,5),.5,rand(3,7),a[0]*p.w*1.01,a[1]*p.h*1.01+(p.y||0),z); pl.rotation.z=Math.atan2(a[1],a[0])-Math.PI/2; g.add(pl); }
+    if(Math.random()<.5) for(const sx of [-1,1]) g.add(mesh(geo.box,winStripMat,.15,.9,rand(4,9),sx*p.w*.995,p.h*.05+(p.y||0),z)); }
+}
+function makeCapitalWreck(kind){
+  const g=new THREE.Group(), des=kind==='destroyer', L=des?rand(150,200):rand(190,260), W=des?rand(11,15):rand(18,25), H=W*rand(.55,.68);
+  const prof=des?destroyerProf(W,H):cruiserProf(W,H), brk=rand(.5,.68), gap=rand(10,22), mat=Math.random()<.75?M.wreck:M.rust, La=L*brk, Lb=L*(1-brk);
+  const fa=new THREE.Group(), fb=new THREE.Group();
+  fa.add(new THREE.Mesh(loftHull(La,t=>prof(t*brk),{capB:false,hole:(t,k)=>t>.93&&Math.random()<.45}),mat));
+  fb.add(new THREE.Mesh(loftHull(Lb,t=>prof(brk+t*(1-brk)),{capA:false,hole:(t,k)=>t<.07&&Math.random()<.45}),mat));
+  addBreak(fa,prof(brk),La/2,1); addBreak(fb,prof(brk),-Lb/2,-1);
+  addHullDetail(fa,prof,L,-La/2,0,brk); addHullDetail(fb,prof,L,-Lb/2,brk,1);
+  // Geschütze oben/unten, Brücke, Triebwerke
+  for(let i=0;i<(des?3:4);i++){ const t=rand(.18,.9), p=prof(t), tgt=t<brk?fa:fb, z=t<brk?-La/2+t*L:-Lb/2+(t-brk)*L; addTurret(tgt,rand(-.3,.3)*p.w,p.h+(p.y||0)-.3,z,des?.9:1.25,1); if(Math.random()<.5) addTurret(tgt,0,-p.h+(p.y||0)+.3,z+4,1,-1); }
+  { const t=des?.72:.66, p=prof(t), tgt=t<brk?fa:fb, z=t<brk?-La/2+t*L:-Lb/2+(t-brk)*L; addTower(tgt,0,p.h+(p.y||0)-.6,z,des?1:1.5); }
+  { const p=prof(.97), n=des?2:3+Math.floor(Math.random()*2);
+    for(let i=0;i<n;i++){ const x=(i-(n-1)/2)*p.w*.6, nz=mesh(geo.tube,M.wreckDark,p.h*.7,8,p.h*.7,x,(p.y||0)-p.h*.1,Lb/2+3); nz.rotation.x=Math.PI/2; fb.add(nz); const inn=mesh(geo.cyl,M.rust,p.h*.55,2,p.h*.55,x,(p.y||0)-p.h*.1,Lb/2+1); inn.rotation.x=Math.PI/2; fb.add(inn);
+      if(Math.random()<.35){ const gl=glowSprite(0xff5a20,p.h*.9,.6); gl.position.set(x,(p.y||0)-p.h*.1,Lb/2+4); fb.add(gl); } } }
+  fa.position.z=-L/2+La/2; fb.position.set(rand(-6,6),rand(-6,6),-L/2+La+gap+Lb/2); fb.rotation.set(rand(-.12,.12),rand(-.18,.18),rand(-.45,.45)); g.add(fa); g.add(fb);
+  for(let i=0;i<12;i++){ const c=mesh(geo.box,pick([M.wreck,M.wreckDark,M.rust]),rand(1.5,6),rand(.3,1),rand(1.5,5),rand(-W,W),rand(-H,H),-L/2+La+gap*rand(0,1)); c.rotation.set(rand(0,6),rand(0,6),rand(0,6)); g.add(c); }
+  g.userData.L=L; return g;
+}
+function makeCarrierWreck(){ // Träger: Rückgrat + zwei seitliche Flugdeck-Gondeln
+  const g=new THREE.Group(), L=rand(240,300), W=rand(20,26), H=W*.6, sp=new THREE.Mesh(loftHull(L,cruiserProf(W,H)),M.wreck); g.add(sp); addHullDetail(g,cruiserProf(W,H),L,-L/2,0,1);
+  addTower(g,0,H*.95,L*.12,1.6); for(let i=0;i<3;i++) addTurret(g,rand(-.3,.3)*W,H*.92,rand(-.3,.35)*L,1.2);
+  const PW=W*.55, PH=H*.7, PL=L*.62;
+  for(const sx of [-1,1]){ const pod=new THREE.Group(), broken=Math.random()<.6;
+    pod.add(new THREE.Mesh(loftHull(PL,podProf(PW,PH),{capA:false,hole:(t,k)=>broken&&t>.4&&t<.6&&(k<4||k>11)&&Math.random()<.7}),M.wreck));
+    pod.add(mesh(geo.box,M.wreckDark,PW*1.7,PH*1.5,2,0,0,-PL/2+1.5)); pod.add(mesh(geo.box,hazStripeMat,PW*1.75,.8,2.2,0,-PH*.72,-PL/2+1.6));
+    for(let i=0;i<6;i++){ const l=glowSprite(i%2?0xffb040:0x40c0ff,2.4,.9); l.position.set((i/5-.5)*PW*1.4,-PH*.6,-PL/2); pod.add(l); }
+    addHullDetail(pod,podProf(PW,PH),PL,-PL/2,0,1);
+    for(let k=0;k<3;k++) g.add(mesh(geo.box,M.wreckDark,(W+PW)*.9,PH*.5,10,sx*(W+PW)*.62,0,(k-1)*PL*.32));
+    pod.position.set(sx*(W+PW)*1.15,0,L*.02); if(broken) pod.rotation.set(rand(-.06,.06),rand(-.08,.08),sx*rand(.05,.2)); g.add(pod); }
+  { const p=cruiserProf(W,H)(.97); for(let i=0;i<4;i++){ const nz=mesh(geo.tube,M.wreckDark,p.h*.6,9,p.h*.6,(i-1.5)*p.w*.45,0,L/2+3); nz.rotation.x=Math.PI/2; g.add(nz); } }
+  g.userData.L=L; return g;
+}
+// Rumpfröhre entlang der Bahn (für den Flug durchs Hangardeck)
+function hangarSec(n,e){ const out=[]; for(let k=0;k<n;k++){ const a=k/n*Math.PI*2, c=Math.cos(a), s=Math.sin(a); out.push([Math.sign(c)*Math.pow(Math.abs(c),2/e),Math.sign(s)*Math.pow(Math.abs(s),2/e)]); } return out; }
+function railLoft(s0,len,cx,cy,hw,hh,sec,mat,o={}){
+  const STEP=o.step||3, rings=Math.round(len/STEP)+1, NS=sec.length, pos=[], idx=[];
+  for(let r=0;r<rings;r++){ const s=s0+r*STEP, t=r/(rings-1); railAt(s,FR); const pf=o.prof?o.prof(t):1;
+    for(let k=0;k<NS;k++){ const n=vnoise(sec[k][0]*3+cx*.1,sec[k][1]*3,s*.06); const d=1+(n-.5)*(o.rough??.04); const x=cx+sec[k][0]*hw*pf*d, y=cy+sec[k][1]*hh*pf*d;
+      pos.push(FR.p.x+FR.R.x*x+FR.U.x*y, FR.p.y+FR.R.y*x+FR.U.y*y, FR.p.z+FR.R.z*x+FR.U.z*y); } }
+  for(let r=0;r<rings-1;r++) for(let k=0;k<NS;k++){ if(o.hole&&o.hole(s0+r*STEP,k,r/(rings-1))) continue; const a=r*NS+k,b=r*NS+(k+1)%NS,c=(r+1)*NS+k,d=(r+1)*NS+(k+1)%NS; idx.push(a,b,c, b,d,c); }
+  let g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g=g.toNonIndexed(); g.computeVertexNormals(); g.computeBoundingSphere();
+  const m=new THREE.Mesh(g,mat); m.visible=false; scene.add(m); statics.push({mesh:m,s:s0+len,s0,w:curW}); return m;
+}
+function railLoftChunks(s0,len,cx,cy,hw,hh,sec,mat,o){ for(let s=s0;s<s0+len-.1;s+=60){ const l=Math.min(60,s0+len-s); railLoft(s,l,cx,cy,hw,hh,sec,mat,Object.assign({},o,{prof:o&&o.prof?(t=>o.prof(((s-s0)+t*l)/len)):null})); } }
+function makeParkedFighter(){ const g=new THREE.Group();
+  g.add(new THREE.Mesh(loftHull(7,t=>({w:.4+1.1*Math.sin(Math.min(1,t*1.4)*Math.PI/2),h:.3+.6*Math.min(1,t*2),y:0}),{nr:10,dmg:.3}),pick([M.wreck,M.wreckDark,M.rust])));
+  for(const sx of [-1,1]){ const w=mesh(geo.box,M.wreckDark,4.5,.25,2.4,sx*2.8,-.1,1.4); w.rotation.y=sx*.25; g.add(w); g.add(mesh(geo.box,M.wreck,.3,1.6,1.4,sx*4.9,.5,2.2)); }
+  g.add(mesh(geo.sphere,M.wreckDark,.7,.45,1.4,0,.6,-.6)); return g; }
 const WRECK_NAMES=['HELIOS','ODIN','MERIDIAN','KASSANDRA','VULKAN','ARGOS','NEREUS','TITANIA','ORION'];
 function inWreck(s){ for(const w of ENV.wrecks) if(s>w.s0-20&&s<w.s1+20) return true; return false; }
 function addObst(s,x,y,hx,hy,hz,look){
@@ -1660,37 +1744,46 @@ function addObst(s,x,y,hx,hy,hz,look){
   if(look==='none') placeAbs(g,s,x,y,null); else addStatic(g,s,x,y,null);
   obst.push({s,x,y,hx,hy,hz,w:curW,wc:g.position.clone(),qi:g.quaternion.clone().invert(),r2:(hx+hy+hz+6)**2});
 }
+function spawnDerelict(s){
+  const r=Math.random(), kind=r<.4?'cruiser':r<.7?'destroyer':'carrier', g=kind==='carrier'?makeCarrierWreck():makeCapitalWreck(kind), L=g.userData.L;
+  const side=Math.random()<.5?-1:1, dist=kind==='carrier'?rand(120,165):rand(70,110);
+  addStatic(g,s+L*.3,side*dist,rand(-35,25),new THREE.Euler(rand(-.15,.15),rand(-.3,.3)+(Math.random()<.3?Math.PI:0),rand(-.45,.45)),L*.5);
+}
 function spawnWreck(s0,len){
-  const W=30,H=21;
+  const W=30,H=21, sec=hangarSec(28,7), seed=rand(0,99);
   const wr={s0,s1:s0+len,name:pick(WRECK_NAMES),told:false}; ENV.wrecks.push(wr); curW=wr;
-  addStatic(mesh(geo.box,M.wreck,2*W+30,8,10),s0,0,H+6,null);
-  addStatic(mesh(geo.box,M.wreck,2*W+30,8,10),s0,0,-H-6,null);
-  addStatic(mesh(geo.box,M.wreck,10,2*H+20,10),s0,-W-8,0,null);
-  addStatic(mesh(geo.box,M.wreck,10,2*H+20,10),s0,W+8,0,null);
-  addStatic(mesh(geo.box,M.hazard,2*W+12,.6,.6),s0-5.2,0,H+1.8,null);
+  M_CARGO=M_CARGO||TM(T.orange,{metalness:.35,roughness:.75},.1,.06);
+  // Flugdeck-Gondel: durchgehende Rumpfröhre mit Einschlaglöchern in Decke und Seiten
+  const hole=(s,k)=>{ const a=k/28*Math.PI*2, sn=Math.sin(a); if(sn<-.45||s<s0+14||s>s0+len-14) return false; return vnoise(Math.cos(a)*2+seed,sn*2,s*.03)>.67; };
+  railLoftChunks(s0,len,0,0,W+3,H+3,sec,M.wreck,{rough:.05,hole});
+  railLoftChunks(s0,len,0,0,W+6,H+6,sec,M.wreckDark,{rough:.08,hole});
+  // Rückgrat des Trägers und die zweite Gondel draußen (durch die Löcher sichtbar)
+  railLoftChunks(s0-90,len+180,-(W+78),4,40,30,HSEC,M.wreck,{rough:.07,step:4,prof:t=>t<.14?.5+.5*t/.14:1});
+  railLoftChunks(s0-40,len+80,-(W+156),0,W+4,H+4,sec,M.wreck,{rough:.06,step:4,hole:(s,k)=>vnoise(k*.3+seed,s*.02,4)>.7});
+  for(let k=0;k<4;k++){ const ss=s0+len*(k+.5)/4; addStatic(mesh(geo.box,M.wreckDark,34,9,16),ss,-(W+22),0,null); addStatic(mesh(geo.box,M.wreckDark,44,9,16),ss,-(W+136),0,null); }
+  { const tg=new THREE.Group(); addTower(tg,0,0,0,2.4); addStatic(tg,s0+len*.55,-(W+78),33,null); }
+  for(let k=0;k<4;k++){ const tg=new THREE.Group(); addTurret(tg,0,0,0,2); addStatic(tg,s0+rand(0,len),-(W+78)+rand(-15,15),33,null); }
+  // Hangar-Mündung mit Warnstreifen und Landelichtern
+  for(const [ss,lit] of [[s0,true],[s0+len,false]]){
+    addStatic(mesh(geo.box,M.wreckDark,2*W+26,8,7),ss,0,H+7,null); addStatic(mesh(geo.box,M.wreckDark,2*W+26,8,7),ss,0,-H-7,null);
+    addStatic(mesh(geo.box,M.wreckDark,8,2*H+22,7),ss,-W-7,0,null); addStatic(mesh(geo.box,M.wreckDark,8,2*H+22,7),ss,W+7,0,null);
+    const st=mesh(geo.box,hazStripeMat,2*W+6,.9,7.6); addStatic(st,ss,0,H+3.2,null); const sb=mesh(geo.box,hazStripeMat,2*W+6,.9,7.6); addStatic(sb,ss,0,-H-3.2,null);
+    if(lit) for(let i=0;i<10;i++){ const l=glowSprite(i%2?0xffb040:0x40d0ff,2.8,.9), g=new THREE.Group(); g.add(l); g.userData.noDetail=true; addStatic(g,ss-4,(i/9-.5)*2*W,-H-4.5,null); } }
+  // Innenausstattung
   for(let s=s0+22;s<=s0+len;s+=22){
     const br=Math.random()<.2, tilt=()=>br?new THREE.Euler(rand(-.2,.2),rand(-.2,.2),rand(-.25,.25)):null;
     addStatic(mesh(geo.box,M.wreck,2*W+6,3,3),s,0,H+1,tilt());
-    addStatic(mesh(geo.box,M.wreck,2*W+6,3,3),s,0,-H-1,tilt());
+    addStatic(mesh(geo.box,M.wreck,2*W+6,2,3),s,0,-H-2,null);
     if(!br||Math.random()<.5) addStatic(mesh(geo.box,M.wreck,3,2*H+6,3),s,-W-1,0,tilt());
     addStatic(mesh(geo.box,M.wreck,3,2*H+6,3),s,W+1,0,tilt());
-    addStatic(mesh(geo.box,Math.random()<.85?M.wGlow:M.wRed,2*W-2,.3,.3),s,0,H-.6,null);
-    // Rohrleitungen in den Ecken
-    for(const [cx,cy] of [[-1,1],[1,1],[-1,-1],[1,-1]]) if(Math.random()<.45){ const p=mesh(geo.cyl,pick([M.wreckDark,M.rust]),rand(.7,1.4),22,rand(.7,1.4)); addStatic(p,s-11,cx*(W-1.5),cy*(H-1.5),new THREE.Euler(Math.PI/2,0,0)); }
+    for(const sx of [-1,1]) addStatic(mesh(geo.box,M.wreckDark,1.2,1.2,22),s-11,sx*10,H+1.6,null);
+    { const g=new THREE.Group(); g.userData.noDetail=true; g.add(mesh(geo.box,M.wreckDark,3,.6,1.6)); const red=Math.random()<.3, l=glowSprite(red?0xff3020:0xffe2b0,red?5:7,red?.8:.55); l.position.y=-.8; g.add(l); if(Math.random()<.85) addStatic(g,s-11,rand(-8,8),H+.2,null); }
+    for(let k=0;k<4;k++){ const ss=s-22+k*5.5; for(const sx of [-1,1]) addStatic(mesh(geo.box,Bm(0x40c0ff),.6,.15,1.4),ss,sx*7,-H-2.7,null); if(k%2===0) addStatic(mesh(geo.box,Bm(0xffb040),.5,.15,2.4),ss,0,-H-2.7,null); }
+    if(Math.random()<.4){ const c=mesh(geo.cyl,M.wreckDark,.25,rand(6,14),.25); addStatic(c,s-rand(4,18),rand(-W+4,W-4),H-3,new THREE.Euler(rand(-.3,.3),0,rand(-.3,.3))); }
   }
-  for(let s=s0+11;s<s0+len;s+=22){
-    const dmg=()=>Math.random()<.25?new THREE.Euler(rand(-.15,.15),rand(-.1,.1),rand(-.15,.15)):null;
-    const pm=()=>Math.random()<.22?M.wreckLit:pick([M.wreck,M.wreckDark,M.rust]);
-    if(Math.random()<.65) addStatic(mesh(geo.box,pm(),2*W+4,1,20),s,0,H+2.2,dmg());
-    if(Math.random()<.65) addStatic(mesh(geo.box,pm(),2*W+4,1,20),s,0,-H-2.2,dmg());
-    if(Math.random()<.6)  addStatic(mesh(geo.box,pm(),1,2*H+4,20),s,-W-2.2,0,dmg());
-    if(Math.random()<.6)  addStatic(mesh(geo.box,pm(),1,2*H+4,20),s,W+2.2,0,dmg());
-    if(Math.random()<.35) addStatic(mesh(geo.box,M.window,.3,rand(4,10),.3),s,pick([-1,1])*(W-.4),rand(-8,8),null);
-    if(Math.random()<.3) { const px=pick([-1,1])*rand(B.x+3,W-2); addStatic(mesh(geo.cyl,M.wreckDark,.5,rand(4,9),.5),s,px,H-3,new THREE.Euler(0,0,rand(-.3,.3))); }
-    if(Math.random()<.4) addStatic(mesh(geo.box,pick([M.wreckDark,M.rust]),rand(2,5),rand(1,3),rand(3,8)),s,pick([-1,1])*(W-1.2),rand(-H+2,H-2),null);
-  }
-  for(let i=0;i<7;i++){ const h=rand(8,26); addStatic(mesh(geo.box,pick([M.wreckDark,M.wreckLit]),rand(6,18),h,rand(10,30)),s0+rand(20,len-20),rand(-W,W),H+3+h/2,new THREE.Euler(0,0,rand(-.1,.1))); }
-  for(const sx of [-1,1]) { addStatic(mesh(geo.cyl,M.wreckDark,14,20,14),s0+len+12,sx*(W+10),-H+4,new THREE.Euler(Math.PI/2,0,0)); }
+  for(let s=s0+30;s<s0+len-20;s+=rand(28,46)){ const sd=Math.random()<.5?-1:1;
+    if(Math.random()<.6){ const f=makeParkedFighter(); f.scale.setScalar(1.5); addStatic(f,s,sd*(W-3.5),-H-1.2,new THREE.Euler(Math.random()<.25?rand(-.5,.5):0,sd*rand(1.2,1.9),Math.random()<.25?rand(-.4,.4):0)); }
+    else { const n=1+Math.floor(Math.random()*3); for(let k=0;k<n;k++) addStatic(mesh(geo.box,M_CARGO,5,4.2,9),s+rand(-1,1),sd*(W-2.5),-H-.8+k*4.3,new THREE.Euler(0,rand(-.15,.15),0)); } }
   let s=s0+55;
   while(s<s0+len-25){
     const t=Math.random();
@@ -1963,7 +2056,7 @@ function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
   else { planet.visible=false; SKY.atm.visible=false; }
   SKY.ringM.visible=!!(w.planet&&w.ring);
   blackHole.visible=!!w.blackhole; rebuildPano(w); { const mm=MOOD.m, ww=MOOD.weather; const txt=(w.surface&&mm!=='tag'?(mm==='abend'?'ABENDDÄMMERUNG':'NACHT'):'')+(ww?(mm!=='tag'?' · ':'')+ww.toUpperCase():''); if(txt) setTimeout(()=>{ if(state==='play') toast(txt,'#bfe0ff'); },1800); }
-  if(!HSUN) HSUN=buildHSun(); HSUN.visible=!!w.bigSun; if(HSUN.userData) HSUN.userData.dir=null; SKY.sunG.visible=!w.bigSun; clearFlareWalls();
+  if(!HSUN) HSUN=buildHSun(); HSUN.visible=!!w.bigSun; if(HSUN.userData) HSUN.userData.dir=null; SKY.sunG.visible=!w.bigSun; clearFlareWalls(); clearCityHz();
   SKY.sunG.material.opacity=w.surface&&MOOD.m==='abend'?.3:.8; SKY.sunG.scale.setScalar(w.bigSun?2400:(SKY.sunG.userData.s0||(SKY.sunG.userData.s0=SKY.sunG.scale.x)));
   M.mushCap.emissiveIntensity=w.gmat==='fungus'?(MOOD.m==='nacht'?1.8:MOOD.m==='abend'?1.15:.7):.6;
   motes.material.color.setHex(w.motes); dust.material.color.setHex(w.motes); lineMat.color.setHex(w.motes);
@@ -2046,7 +2139,7 @@ function worldEvents(dt){
   else if(ev==='jellies'){ G.evT=rand(1.2,2); const g=new THREE.Group(); g.add(mesh(geo.sphere,M.jelly||(M.jelly=new THREE.MeshStandardMaterial({color:0x80ffe8,transparent:true,opacity:.6,emissive:0x20a090,emissiveIntensity:.9,roughness:.2})),2.4,1.6,2.4));
     for(let k=0;k<5;k++){ const a=k/5*Math.PI*2; g.add(mesh(geo.cyl,M.jelly,.18,4,.18,Math.cos(a)*1.2,-2.4,Math.sin(a)*1.2)); } g.add(glowSprite(0x60ffe0,6,.6));
     const e=addEnemy('jelly',g,{hp:3,maxHp:3,radius:2.4,score:70,collide:18,bs:1,env:true}); e.pos.set(rand(-B.x*.8,B.x*.8),rand(-B.y*.6,B.y*.5),-170); e.ph=rand(0,6); }
-  else if(ev==='neonbars'){ G.evT=rand(2.4,3.6); const y=clamp(ship.pos.y+rand(-5,5),-B.y*.8,B.y*.8); spawnBeamDrone('h',y,pick([0xff30c0,0x30e0ff]),{side:Math.random()<.5?-1:1,fire:1.6,dmg:14}); introduce('ndrone','POLIZEIDROHNEN – STRAHL AUSWEICHEN ODER ABSCHIESSEN'); }
+  else if(ev==='neonbars'){ G.evT=rand(3.6,5.2); if(Math.random()<.5) spawnTraffic(ENV.s+300); else spawnCityGate(ENV.s+300); }
   else if(ev==='flare'){ G.evT=rand(5.5,7.5); solarEruption(); }
   else if(ev==='spores'){ G.evT=rand(1.6,2.6); const g=new THREE.Group(); g.add(mesh(geo.sphere,sporeMat,2,2.4,2)); for(let k=0;k<6;k++){ const sp=mesh(geo.cone,sporeMat,.5,1.6,.5); const a=k/6*Math.PI*2; sp.position.set(Math.cos(a)*1.9,Math.sin(a)*1.9,0); sp.rotation.z=a-Math.PI/2; g.add(sp); } g.add(glowSprite(0x60ff70,5,.6));
     const e=addEnemy('spore',g,{hp:3,maxHp:3,radius:2.4,score:80,collide:18,bs:1,env:true}); e.pos.set(rand(-B.x*.8,B.x*.8),rand(-B.y*.7,B.y*.7),-180); }
@@ -3387,6 +3480,9 @@ function updateEnemy(e,dt){
       break;}
     case 'emitter': case 'switch': case 'panel': case 'gatehalf': break;
     case 'crys':{ e.ca+=e.cw*dt; e.cz+=sp*dt; p.set(Math.cos(e.ca)*B.x*.62,Math.sin(e.ca)*B.y*.7,e.cz); e.rot.z=e.ca; e.rot.y+=dt*2; break;}
+    case 'tank':{ p.z+=sp*dt; p.x+=e.vx*dt; if(Math.abs(p.x)>B.x+6) e.vx=-Math.sign(p.x)*Math.abs(e.vx); p.y=-(B.y+8)+(W0.surface?groundH(p.x,ENV.s-p.z,W0.surface):0)+1.3; e.rot.set(0,Math.atan2(e.vx,0),0);
+      const tu=e.mesh.userData.tur; if(tu) tu.rotation.y=Math.atan2(ship.pos.x-p.x,ship.pos.z-p.z)-e.rot.y+Math.PI;
+      e.fireT-=dt; if(e.fireT<=0&&p.z<-22&&p.z>-170){ e.fireT=rand(1.5,2.4)/diff(); enemyShoot(p,bulletSpeed()*.8,1,0); sparks(p,0xffa040,5); } break;}
     case 'gturret':{ p.z+=sp*dt; e.fireT-=dt; if(e.fireT<=0&&p.z<-25){ e.fireT=rand(1.4,2.2)/diff(); enemyShoot(p,bulletSpeed()*.85,1,0); } e.rot.y=Math.atan2(ship.pos.x-p.x,ship.pos.z-p.z); break;}
     case 'fuel':{ p.z+=sp*dt; e.rot.x+=e.spin.x*dt; e.rot.y+=e.spin.y*dt; break;}
     case 'jelly':{ p.z+=sp*.75*dt; p.y+=Math.sin(G.time*1.6+e.ph)*3*dt; p.x+=Math.cos(G.time*.9+e.ph)*2.5*dt; e.mesh.scale.y=1+.15*Math.sin(G.time*4+e.ph); break;}
@@ -3523,7 +3619,8 @@ function spawnHazard(type,s){
       for(let i=0;i<3;i++) h.lines.push({mode:w?'rot':'static',a0:a0+Math.PI/2,w,d0:(i-1)*5.2,on:true});
       h.sw=[hzSwitch(h,0x40ff60,3),hzSwitch(h,0x40ff60,3)];
       h.onKill=()=>{ if(!h.lines[0].on) return; for(const l of h.lines){ l.on=false; } for(const e of h.sw) if(e.alive){ e.alive=false; scene.remove(e.mesh); } toast('PLASMAGITTER AUS','#7fff9a'); sfx.zap&&sfx.zap(); }; }
-    for(const l of h.lines){ l.o=new THREE.Mesh(hzBeamGeo,hzBeamO); l.i=new THREE.Mesh(hzBeamGeo,hzBeamI); l.p1=hzPod(); l.p2=hzPod(); scene.add(l.o); scene.add(l.i); h.meshes.push(l.o,l.i,l.p1,l.p2); }
+    { const hc=pick(LCOLS); for(const l of h.lines) l.col=hc; }
+    for(const l of h.lines){ l.o=new THREE.Mesh(hzBeamGeo,beamMat(l.col)); l.i=new THREE.Mesh(hzBeamGeo,hzBeamI); l.p1=hzPod(); l.p2=hzPod(); scene.add(l.o); scene.add(l.i); h.meshes.push(l.o,l.i,l.p1,l.p2); }
   } else if(type==='gate'){
     const vert=Math.random()<.5, ow=B.x+3, oh=B.y+3; spawnBulkhead(s,ow,oh);
     Object.assign(h,{vert,ow,oh,open:0,opening:false});
@@ -3577,12 +3674,89 @@ function spawnSpikes(s){
   for(let i=0;i<n;i++){ const x=-B.x+i*(2*B.x/(n-1))+rand(-2.5,2.5); if(Math.abs(x-gapAt)<6) continue; const top=rand(-B.y*.1,B.y*.75), hy=(top-gy)/2; addObst(s+rand(-6,6),x,gy+hy,rand(2.4,3.4),hy,2.6,'rock'); }
   curW=null;
 }
+// ================= Neonstadt: Luftstraßen & Laser zwischen Gebäuden · Station: Säulen aus dem Boden =================
+var lanes=[], cgates=[], popups=[]; const LCOLS=[0xff30c0,0x30e0ff,0x60ff80,0xff4020,0xffd020,0xa060ff,0xff8020];
+const carPaints=[0xd02030,0xf0f0f0,0xf0c020,0x2050d0,0x181820,0x20b0a0].map(c=>new THREE.MeshStandardMaterial({color:c,metalness:.65,roughness:.3,envMapIntensity:1.2}));
+const carGlass=new THREE.MeshStandardMaterial({color:0x101828,metalness:.9,roughness:.1});
+const beamMats={}; function beamMat(col,core){ const k=col+(core?'c':''); return beamMats[k]||(beamMats[k]=new THREE.MeshBasicMaterial({color:core?0xffffff:col,transparent:true,opacity:core?.9:.6,blending:core?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:false})); }
+function makeCar(){ const g=new THREE.Group(), body=new THREE.Mesh(loftHull(5.6,t=>({w:.85+.35*Math.sin(Math.min(1,t*1.6)*Math.PI/2),h:.45+.25*Math.sin(t*Math.PI),y:0}),{nr:12,dmg:0,capA:true,capB:true}),pick(carPaints));
+  body.rotation.y=Math.PI/2; g.add(body); const cab=mesh(geo.sphere,carGlass,2.2,.9,1.5,-.2,.45,0); g.add(cab);
+  g.add(mesh(geo.box,Bm(0xfff4d0),.2,.25,1.4,2.75,.05,0)); g.add(mesh(geo.box,Bm(0xff2020),.2,.25,1.5,-2.75,.1,0));
+  const ug=glowSprite(pick([0xff30c0,0x30e0ff,0x60ff80]),5,.55); ug.position.y=-.7; g.add(ug); const hl=glowSprite(0xfff0c0,3,.8); hl.position.x=3; g.add(hl); return g; }
+function spawnTraffic(s){
+  const n=2+Math.floor(Math.random()*2), X=B.x+70, ys=[]; for(let i=0;i<n;i++) ys.push(-B.y*.75+(i+.5)*(1.5*B.y/n)+rand(-1.5,1.5));
+  for(let i=0;i<n;i++){ const dir=(i%2?1:-1)*(Math.random()<.5?1:-1), y=ys[i], ls=s+i*rand(0,18), lane={s:ls,y,dir,v:rand(26,40),cars:[],road:new THREE.Group(),z:-999};
+    lane.road.add(mesh(geo.box,beamMat(0x30e0ff),2*X,.15,5,0,-1.4,0)); lane.road.add(mesh(geo.box,Bm(0xff30c0),2*X,.2,.25,0,-1.35,2.5)); lane.road.add(mesh(geo.box,Bm(0x30e0ff),2*X,.2,.25,0,-1.35,-2.5));
+    for(let k=-6;k<=6;k++){ const p=mesh(geo.box,Bm(0xffe080),1.6,.2,.3,k*X/6,-1.3,0); lane.road.add(p); }
+    scene.add(lane.road); let x=-X+rand(0,10); while(x<X){ const c=makeCar(); if(dir<0) c.rotation.y=Math.PI; scene.add(c); lane.cars.push({m:c,x,alive:true}); x+=rand(12,22); }
+    lanes.push(lane); }
+}
+function spawnCityGate(s,style){
+  const des=style==='desert', g={s,t:0,z:-999,beams:[],done:false,parts:[]}, X=B.x+9, gy=-(B.y+8), mode=pick(des?['sweep','sweep','sweep2','static']:['sweep','static','grid','sweep2']), col=pick(LCOLS);
+  if(des){ for(const sx of [-1,1]){ const b=new THREE.Group(); const rk=new THREE.Mesh(pick(rocks),M.rock); rk.scale.set(9,2*B.y+26,10); rk.position.set(sx*6,B.y+6,0); b.add(rk);
+      b.add(mesh(geo.box,M.stationDark,1.6,2*B.y+8,2.4,-sx*1.2,B.y+8,0)); b.add(mesh(geo.box,hazStripeMat,1.7,1,2.6,-sx*1.2,2*B.y+12,0)); b.add(mesh(geo.box,hazStripeMat,1.7,1,2.6,-sx*1.2,4,0)); const l=glowSprite(col,4,.8); l.position.set(-sx*1.5,2*B.y+14,0); b.add(l);
+      addStatic(b,s,sx*(X+.5),gy,null); } }
+  else for(const sx of [-1,1]){ const b=new THREE.Group(); b.add(mesh(geo.box,M.bldg,10,90,10,0,45,0)); for(let k=0;k<5;k++) b.add(mesh(geo.box,Bm(col),10.3,.4,10.3,0,8+k*16,0)); b.add(mesh(geo.box,Bm(col),.4,90,.4,-sx*5,45,5)); b.add(mesh(geo.box,M.stationDark,1.2,2*B.y+16,1.6,-sx*5.4,B.y+8,0)); addStatic(b,s,sx*(X+5),gy,null); }
+  if(mode==='grid'){ const br=new THREE.Group(); br.add(mesh(geo.box,M.bldg,2*X+10,4,6)); br.add(mesh(geo.box,Bm(col),2*X+10,.4,6.3,0,-2,0)); addStatic(br,s,0,B.y+8,null); }
+  const add=(o)=>{ const m1=new THREE.Mesh(hzBeamGeo,beamMat(col)), m2=new THREE.Mesh(hzBeamGeo,beamMat(col,true)), e1=new THREE.Group(), e2=new THREE.Group(); for(const e of [e1,e2]){ e.add(mesh(geo.box,M.stationDark,2,2,3)); const bl=mesh(geo.cyl,M.wreckDark,.6,1.6,.6); bl.rotation.z=Math.PI/2; e.add(bl); e.add(glowSprite(col,2.6,.9)); } for(const m of [m1,m2,e1,e2]) scene.add(m); g.beams.push(Object.assign(o,{m1,m2,e1,e2})); };
+  if(mode==='sweep') add({ax:'h',y0:0,amp:B.y*.85,w:rand(1.1,1.7),ph:rand(0,6)});
+  else if(mode==='sweep2'){ const w=rand(1,1.5); add({ax:'h',y0:0,amp:B.y*.85,w,ph:0}); add({ax:'h',y0:0,amp:B.y*.85,w,ph:Math.PI}); }
+  else if(mode==='static'){ const gap=rand(-B.y*.6,B.y*.6); for(const y of [-B.y*.85,-B.y*.3,B.y*.25,B.y*.8]) if(Math.abs(y-gap)>B.y*.3) add({ax:'h',y0:y,amp:0,w:0,ph:0}); }
+  else { add({ax:'h',y0:B.y*.35,amp:0,w:0,ph:0}); add({ax:'h',y0:-B.y*.4,amp:0,w:0,ph:0}); add({ax:'v',y0:0,amp:B.x*.7,w:rand(.7,1.1),ph:0}); add({ax:'v',y0:0,amp:B.x*.7,w:rand(.7,1.1),ph:Math.PI}); }
+  cgates.push(g);
+}
+const _sh=new THREE.Euler();
+function spawnPopup(s,x){
+  const y0=-(B.y+7), shape=pick(['cyl','box','cone']), top=rand(-B.y*.25,B.y*.85), H=top-y0, r=shape==='box'?rand(2.5,4):rand(2.4,4.2), g=new THREE.Group(), p=new THREE.Group();
+  if(shape==='cyl'){ p.add(mesh(geo.cyl,M.station,r*2,H,r*2,0,H/2,0)); for(let k=1;k<4;k++) p.add(mesh(geo.cyl,M.stationOr,r*2.08,.6,r*2.08,0,H*k/4,0)); p.add(mesh(geo.cyl,M.stationDark,r*2.2,1.2,r*2.2,0,H,0)); }
+  else if(shape==='box'){ p.add(mesh(geo.box,M.station,r*2,H,r*2,0,H/2,0)); p.add(mesh(geo.box,hazStripeMat,r*2.06,1.2,r*2.06,0,H-1.2,0)); for(const sx of [-1,1]) p.add(mesh(geo.box,M.stationDark,.5,H*.9,r*2.1,sx*r,H*.45,0)); }
+  else { p.add(mesh(geo.cone,M.stationDark,r*2,H,r*2,0,H/2,0)); for(let k=1;k<3;k++) p.add(mesh(geo.cyl,M.stationOr,r*2*(1-k/3)+.3,.5,r*2*(1-k/3)+.3,0,H*k/3,0)); }
+  const l=glowSprite(0xff3020,3,.9); l.position.y=H+.8; p.add(l); p.scale.y=.02; g.add(p);
+  g.add(mesh(geo.box,M.stationDark,r*2+5,1.4,r*2+5,0,-.7,0)); g.add(mesh(geo.box,hazStripeMat,r*2+5.3,.3,r*2+5.3,0,0,0));
+  addStatic(g,s,x,y0,null); popups.push({s,x,y0,r,H,shape,p,k:0,z:-999,hit:false,up:false});
+}
+function spawnPopGroup(s,n){ for(let i=0;i<n;i++){ const ss=s+i*rand(26,40); spawnDeck(ss); spawnPopup(ss,rand(-B.x*.7,B.x*.7)); if(Math.random()<.45) spawnPopup(ss+rand(-4,4),rand(-B.x*.7,B.x*.7)); } }
+function updateCityHz(dt){
+  for(let i=lanes.length-1;i>=0;i--){ const L=lanes[i], X=B.x+70; L.z=ENV.s-L.s; _hp.set(0,L.y,L.z); place(L.road,_hp,null);
+    for(const c of L.cars){ if(!c.alive) continue; c.x+=L.dir*L.v*dt; if(c.x>X) c.x-=2*X; if(c.x<-X) c.x+=2*X; _hp.set(c.x,L.y,L.z); place(c.m,_hp,null); c.m.rotateY(L.dir<0?Math.PI:0);
+      if(state==='play'&&Math.abs(L.z-ship.pos.z)<2.2&&Math.abs(c.x-ship.pos.x)<3.4&&Math.abs(L.y-ship.pos.y)<1.9){ c.alive=false; scene.remove(c.m); explosion(c.m.position,1.6); damagePlayer(20,true); G.trauma=.8; } }
+    if(L.z>40){ scene.remove(L.road); for(const c of L.cars) scene.remove(c.m); lanes.splice(i,1); } }
+  for(let i=cgates.length-1;i>=0;i--){ const g=cgates[i], pz=g.z; g.t+=dt; g.z=ENV.s-g.s; const X=B.x+9.5, cross=state==='play'&&pz<ship.pos.z&&g.z>=ship.pos.z&&!g.done;
+    for(const b of g.beams){ const v=b.y0+Math.sin(g.t*b.w+b.ph)*b.amp;
+      if(b.ax==='h'){ _ha.set(-X,v,g.z); _hb.set(X,v,g.z); } else { _ha.set(v,B.y+6,g.z); _hb.set(v,-(B.y+8),g.z); }
+      beamBetween(b.m1,_ha,_hb,.6+.1*Math.sin(G.time*30)); beamBetween(b.m2,_ha,_hb,.2); place(b.e1,_ha,null); place(b.e2,_hb,null);
+      if(cross&&(b.ax==='h'?Math.abs(ship.pos.y-v):Math.abs(ship.pos.x-v))<1.3){ g.done=true; damagePlayer(22,true); sparks(ship.pos,0xff40e0,16); G.trauma=.7; } }
+    if(cross) g.done=true;
+    if(g.z>40){ for(const b of g.beams) for(const m of [b.m1,b.m2,b.e1,b.e2]) scene.remove(m); cgates.splice(i,1); } }
+  for(let i=popups.length-1;i>=0;i--){ const p=popups[i]; p.z=ENV.s-p.s;
+    if(!p.up&&p.z>-150){ p.up=true; sfx.clang&&sfx.clang(); }
+    if(p.up&&p.k<1){ p.k=Math.min(1,p.k+dt*2.6); p.p.scale.y=Math.max(.02,1-Math.pow(1-p.k,3)); if(p.k<1&&Math.random()<.5){ L2W(p.x+rand(-p.r,p.r),p.y0+.5,p.z,_w); emit(_w.x,_w.y,_w.z,rand(-2,2),rand(1,4),rand(-2,2),0,-2,0,0xc0d0ff,rand(.5,1),.6); } }
+    if(!p.hit&&state==='play'&&Math.abs(p.z-ship.pos.z)<p.r+.8){ const hh=p.H*p.p.scale.y, yy=ship.pos.y-p.y0; if(yy<hh+.8){ const rr=p.shape==='cone'?p.r*(1-Math.max(0,yy)/p.H):p.r; if(Math.abs(ship.pos.x-p.x)<rr+.9){ p.hit=true; damagePlayer(24,true); G.trauma=.8; sparks(ship.pos,0xffc080,16); } } }
+    if(p.z>40) popups.splice(i,1); }
+  if(W0.pano==='dune'&&state==='play'&&!G.boss&&!G.passage){ G.dgT=(G.dgT??rand(8,12))-dt; if(G.dgT<=0){ G.dgT=rand(10,16); spawnCityGate(ENV.s+300,'desert'); }
+    G.tankT=(G.tankT??rand(4,7))-dt; if(G.tankT<=0){ G.tankT=rand(7,12); const n=1+Math.floor(Math.random()*3); for(let k=0;k<n;k++) spawnTank(-rand(170,240)); } }
+  if(W0.name==='ORBITALSTATION ORION'&&state==='play'&&!G.boss&&!G.passage){ G.popT=(G.popT??rand(6,10))-dt; if(G.popT<=0){ G.popT=rand(9,15); spawnPopGroup(ENV.s+300,1+Math.floor(Math.random()*2)); } }
+}
+let M_TANK=null;
+function spawnTank(z){
+  M_TANK=M_TANK||new THREE.MeshStandardMaterial({color:0xa88458,roughness:.85,metalness:.25});
+  const g=new THREE.Group(), body=new THREE.Mesh(loftHull(6,t=>({w:1.9-.5*Math.abs(t-.5),h:.75,y:0}),{nr:10,dmg:.2}),M_TANK); g.add(body);
+  for(const sx of [-1,1]){ g.add(mesh(geo.box,M.wreckDark,.9,1.1,6.4,sx*2,-.5,0)); for(let k=0;k<4;k++){ const w=mesh(geo.cyl,M.stationDark,.9,.95,.9,sx*2.05,-.55,-2.3+k*1.55); w.rotation.z=Math.PI/2; g.add(w); } }
+  const tur=new THREE.Group(); tur.add(mesh(geo.sphere,M_TANK,2.4,1.1,2.8,0,0,0)); const br=mesh(geo.cyl,M.wreckDark,.32,3.6,.32,0,.2,-2.4); br.rotation.x=Math.PI/2; tur.add(br); const l=glowSprite(0xff3020,1.6,.9); l.position.set(0,.8,.8); tur.add(l);
+  tur.position.y=.8; g.add(tur); g.userData.tur=tur;
+  const e=addEnemy('tank',g,{hp:7,maxHp:7,radius:2.8,score:220,collide:20,bs:1}); e.pos.set(rand(-B.x*.9,B.x*.9),-B.y-6,z); e.vx=pick([-1,1])*rand(4,9); e.fireT=rand(1,2.2); return e;
+}
+function clearCityHz(){ if(!lanes) return; for(const L of lanes){ scene.remove(L.road); for(const c of L.cars) scene.remove(c.m); } lanes.length=0; for(const g of cgates) for(const b of g.beams) for(const m of [b.m1,b.m2,b.e1,b.e2]) scene.remove(m); cgates.length=0; popups.length=0; }
+
 function startPassage(){
   clearFutureWrecks(); let sp=ENV.s+320; const sp0=sp, surf=!!W0.surface, lvl=Math.min(1,(G.worldNo||1)/6);
   const n=17+Math.floor(Math.random()*4)+Math.round(lvl*4);
   ENV.nextPillar=Math.max(ENV.nextPillar,ENV.s+2600);
   for(let i=0;i<n;i++){ while(ENV.wrecks.some(w=>!w.pillar&&sp>w.s0-40&&sp<w.s1+40)) sp+=40; if(sp>sp0+1900) break;
     const k=i/n; // wird nach hinten enger und schwerer
+    if(surf&&W0.pano==='dune'&&i!==4&&i!==n-4&&Math.random()<.45){ spawnCityGate(sp,'desert'); if(Math.random()<.4) spawnCityGate(sp+rand(22,32),'desert'); sp+=rand(70,90)-k*20; continue; }
+    if(surf&&W0.pano==='city'&&i!==4&&i!==n-4&&Math.random()<.55){ if(Math.random()<.5) spawnTraffic(sp); else spawnCityGate(sp); sp+=rand(70,90)-k*20; continue; }
+    if(!surf&&W0.name==='ORBITALSTATION ORION'&&Math.random()<.4){ spawnPopGroup(sp,1+Math.floor(k*2.5)); sp+=rand(70,95); continue; }
     if(surf){ const t=(i===4||i===n-4)?'tunnel':pick(k<.3?['arch','pillar','spikes']:['arch','arch','spikes','spikes','pillar']);
       if(t==='tunnel'){ const key=W0.tunnel?W0.tunnel.key:W0.gmat==='lava'?'lava':'rock'; spawnTunnel(sp,250,key); sp+=250; }
       else if(t==='spikes'){ spawnSpikes(sp); if(k>.25&&Math.random()<.7) spawnSpikes(sp+30); } else spawnPillar(sp,t==='arch'); }
@@ -4146,7 +4320,7 @@ function updatePlay(dt){
     if(lock&&lock.wp){ lockMk.visible=true; lockMk.position.copy(lock.wp); const pul=1+.12*Math.sin(G.time*10); lockMk.scale.setScalar(.085*pul*(innerWidth<innerHeight?1.5:1)); } else lockMk.visible=false;
   }
 
-  updateWaves(dt); updateHazards(dt); updateTPillars(); updateFlareWalls(dt); updateAllies(dt); updateBonus(dt); if(window.__padKnob) window.__padKnob();
+  updateWaves(dt); updateHazards(dt); updateTPillars(); updateFlareWalls(dt); updateCityHz(dt); updateAllies(dt); updateBonus(dt); if(window.__padKnob) window.__padKnob();
   updateBoss(dt); updateBossBeams(dt); updateFires(dt);
   for(const e of enemies) if(e.alive){ SHOOTER=e; updateEnemy(e,dt); } SHOOTER=null;
   for(let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if(!e.alive||(e.gone&&!e.boss)){ if(e.alive&&!e.boss) scene.remove(e.mesh); if(e.extras) for(const x of e.extras) scene.remove(x); enemies.splice(i,1); } }
