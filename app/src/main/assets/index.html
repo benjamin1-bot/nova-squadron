@@ -203,7 +203,7 @@
 <div id="banner"><div id="bt"></div><div id="bs"></div></div>
 <div id="toast"></div>
 <div id="dmg"></div>
-<div id="nova"></div><div id="nuke"></div>
+<div id="nova"></div><div id="pullind" style="position:fixed;left:0;right:0;top:46%;text-align:center;font-family:Orbitron;font-weight:900;font-size:22px;letter-spacing:6px;color:#ffb070;text-shadow:0 0 12px #ff7020;pointer-events:none;opacity:0"></div><div id="nuke"></div>
 <div id="warpfx"></div>
 <div id="pops"></div>
 
@@ -2011,7 +2011,8 @@ function updateWorldEvents(dt){
     if(strike&&!k.hit&&state==='play'&&dist<(k.hor?1.4:2.2)){ k.hit=true; damagePlayer(16); G.trauma=.7; }
     if(strike&&!k.fl&&!k.hor){ k.fl=true; G.warpFx=Math.max(G.warpFx||0,.25); sfx.boom&&sfx.boom(.5); }
     if(k.t>w+d+.15){ scene.remove(k.o); strikes.splice(i,1); } }
-  if(G.gT>0){ G.gT-=dt; if(state==='play') ship.tRaw.x+=G.gPull*dt; }
+  if(G.gT>0){ G.gT-=dt; if(state==='play') ship.tRaw.x+=G.gPull*.65*dt; }
+  { const el=document.getElementById('pullind'); if(el){ const on=G.gT>0&&state==='play'; el.style.opacity=on?(.6+.4*Math.sin(G.time*10)):0; if(on) el.textContent=G.gPull>0?'SOG ▶▶▶':'◀◀◀ SOG'; } }
   if(G.sandT>0){ G.sandT-=dt; scene.fog.density=(W0.dens||.005)*(1+1.6*Math.min(1,G.sandT)); } else if(W0.ev==='sandstorm') scene.fog.density=W0.dens||.005;
 }
 function updateWorldFx(dt){
@@ -3631,7 +3632,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden&&state==='
 const GP={prev:[],stickAim:false,lastR:0};
 // In der Android-App liefert die App den Controller direkt (zuverlässiger als die Browser-Schnittstelle)
 const NP={connected:false,axes:[0,0,0,0],buttons:[],vibrationActuator:{playEffect:(t,o)=>{ try{ window.AndroidPad&&AndroidPad.rumble(o.strongMagnitude||0,o.weakMagnitude||0,o.duration|0); }catch(e){} return Promise.resolve('complete'); }}};
-window.__nativePad=(a,b)=>{ NP.axes=a; NP.buttons=b.map(v=>({pressed:!!v,value:v})); if(!NP.connected){ NP.connected=true; try{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); }catch(e){} } };
+window.__nativePad=(a,b)=>{ NP.axes=a; NP.buttons=b.map(v=>({pressed:!!v,value:v})); if(!NP.connected&&!b.some(v=>v)) return; if(!NP.connected){ NP.connected=true; try{ toast('🎮 CONTROLLER VERBUNDEN','#7fe9ff'); rumble(.4,.6,250); }catch(e){} } };
 function getPad(){ if(NP.connected) return NP; GP.err='';
   try{ if(!navigator.getGamepads){ GP.err='nosupport'; return null; } const ps=navigator.getGamepads()||[]; for(const p of ps) if(p&&p.connected&&(p.buttons||[]).length) return p; }catch(e){ GP.err='blocked'; } return null; }
 function padStatus(){ const el=document.getElementById('padstat'); if(!el) return; const p=getPad();
@@ -3648,7 +3649,8 @@ function pollPad(dt){
   GP.rest=GP.rest||[0,0,0,0]; for(let i=0;i<4;i++){ const v=+(p.axes[i]||0); if(Math.abs(v-GP.rest[i])<.3) GP.rest[i]+=(v-GP.rest[i])*Math.min(1,dt*.25); }
   const A=i=>(+(p.axes[i]||0))-GP.rest[i];
   const b=i=>!!(p.buttons[i]&&p.buttons[i].pressed), just=i=>b(i)&&!GP.prev[i], dz=v=>Math.abs(v)<.26?0:(v-Math.sign(v)*.26)/.74, dzR=v=>Math.abs(v)<.12?0:(v-Math.sign(v)*.12)/.88;
-  if(state==='play'){
+  if(p.buttons.some(x=>x&&x.pressed)) GP.active=true;
+  if(state==='play'&&GP.active){
     let lx=A(0), ly=A(1); const lm=Math.hypot(lx,ly); if(lm<.26){ lx=0; ly=0; } else { const k=(lm-.26)/.74/lm; lx*=k; ly*=k; }
     const dx=lx+(b(15)?1:0)-(b(14)?1:0), dy=-ly+(b(12)?1:0)-(b(13)?1:0);
     ship.tRaw.x+=dx*34*dt; ship.tRaw.y+=dy*25*dt;
