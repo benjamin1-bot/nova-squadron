@@ -2151,7 +2151,7 @@ function spawnBeamDrone(axis,coord,col,opt={}){
   const g=makeBeamDrone(col), e=addEnemy('bdrone',g,{hp:2,maxHp:2,radius:2,score:120,collide:15,env:false});
   e.axis=axis; e.coord=coord; e.col=col; e.warn=opt.warn??1.2; e.fire=opt.fire??.45; e.dmg=opt.dmg??18; e.st='in';
   const sx=axis==='v'?coord:(opt.side||1)*(B.x+6), sy=axis==='v'?B.y+6:coord; e.tx=sx; e.ty=sy; e.pos.set(sx+rand(-20,20),sy+15,-160);
-  e.o=new THREE.Mesh(hzBeamGeo,new THREE.MeshBasicMaterial({map:plasmaTex,color:col,transparent:true,opacity:.95,blending:THREE.NormalBlending,depthWrite:false,toneMapped:false})); e.o.visible=false; scene.add(e.o);
+  e.o=new THREE.Mesh(hzBeamGeo,new THREE.MeshBasicMaterial({alphaMap:fringeTex,map:plasmaTex,color:col,transparent:true,opacity:.95,blending:THREE.NormalBlending,depthWrite:false,toneMapped:false})); e.o.visible=false; scene.add(e.o);
   return e; }
 function worldEvents(dt){
   if(G.forkPU&&ENV.s>G.forkPU.s-200){ spawnPickup(new V3(B.x*.55,0,-200),pick(['P','X','Z','S'])); G.forkPU=null; }
@@ -2944,7 +2944,7 @@ const _bA=new V3(), _bB=new V3();
 function beamBetween(m,a,b,r){ // a,b lokal
   L2W(a.x,a.y,a.z,_bA); L2W(b.x,b.y,b.z,_bB);
   const len=_bA.distanceTo(_bB); m.position.copy(_bA).add(_bB).multiplyScalar(.5);
-  _d.subVectors(_bB,_bA).normalize(); m.quaternion.setFromUnitVectors(WUP,_d); r*=(m.material.userData.core?2.3:1.2)*(1+.14*Math.sin(G.time*37+len)+.08*Math.sin(G.time*91)); m.scale.set(r,len,r);
+  _d.subVectors(_bB,_bA).normalize(); m.quaternion.setFromUnitVectors(WUP,_d); r*=(m.material.userData.core?2.3:1.55)*(1+.14*Math.sin(G.time*37+len)+.08*Math.sin(G.time*91)); m.scale.set(r,len,r);
 }
 function moveBoss(b,dt,enr){
   const p=b.pos, ft=b.ft, mv=b.def.move; let tx,ty,tz;
@@ -3670,7 +3670,10 @@ const brMat=new THREE.SpriteMaterial({map:wpTex,color:0x40ff50,transparent:true,
 const plasmaTex=(()=>{ const W=64,H=256,c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'), im=x.createImageData(W,H);
   for(let j=0;j<H;j++) for(let i=0;i<W;i++){ const a=i/W*Math.PI*2, n=vnoise(Math.cos(a)*1.5,Math.sin(a)*1.5,j*.045)*.6+vnoise(Math.cos(a)*4,Math.sin(a)*4+5,j*.14)*.4, v=Math.floor(255*clamp(.3+(n-.38)*2.4+(vnoise(Math.cos(a)*9,Math.sin(a)*9,j*.4)-.5)*.5,.22,1)), k=(j*W+i)*4; im.data[k]=im.data[k+1]=im.data[k+2]=v; im.data[k+3]=255; }
   x.putImageData(im,0,0); const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,3); return t; })();
-const hzBeamO=new THREE.MeshBasicMaterial({map:plasmaTex,color:0xff2ad0,transparent:true,opacity:.9,blending:THREE.NormalBlending,depthWrite:false,toneMapped:false,fog:false});
+const fringeTex=(()=>{ const W=64,H=256,c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'), im=x.createImageData(W,H);
+  for(let j=0;j<H;j++) for(let i=0;i<W;i++){ const a=i/W*Math.PI*2, n=vnoise(Math.cos(a)*3,Math.sin(a)*3,j*.035)*.65+vnoise(Math.cos(a)*8+3,Math.sin(a)*8,j*.09)*.35, v=Math.floor(255*clamp((n-.38)*3.2,0,1)), k=(j*W+i)*4; im.data[k]=im.data[k+1]=im.data[k+2]=v; im.data[k+3]=255; }
+  x.putImageData(im,0,0); const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1,2); return t; })();
+const hzBeamO=new THREE.MeshBasicMaterial({alphaMap:fringeTex,map:plasmaTex,color:0xff2ad0,transparent:true,opacity:.9,blending:THREE.NormalBlending,depthWrite:false,toneMapped:false,fog:false});
 hzBeamO.userData.core=false;
 const hzBeamI=new THREE.MeshBasicMaterial({map:plasmaTex,color:0xffe0ff,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false,fog:false}); hzBeamI.userData.core=true;
 const hzBeamGeo=new THREE.CylinderGeometry(1,1,1,10,1,true);
@@ -3767,7 +3770,7 @@ var lanes=[], cgates=[], popups=[]; const LCOLS=[0xff30c0,0x30e0ff,0x60ff80,0xff
 const carPaints=[0xd02030,0xf0f0f0,0xf0c020,0x2050d0,0x181820,0x20b0a0].map(c=>new THREE.MeshStandardMaterial({color:c,metalness:.65,roughness:.3,envMapIntensity:1.2}));
 const carGlass=new THREE.MeshStandardMaterial({color:0x101828,metalness:.9,roughness:.1});
 const beamMats={}; function beamMat(col,core){ const k=col+(core?'c':''); if(!beamMats[k]){ beamMats[k]=mkBeamMat(col,core); beamMats[k].userData.core=!!core; } return beamMats[k]; }
-function mkBeamMat(col,core){ return (new THREE.MeshBasicMaterial({map:plasmaTex,color:core?new THREE.Color(col).lerp(new THREE.Color(0xffffff),.45):new THREE.Color(col).multiplyScalar(1.4),transparent:true,opacity:core?1:.9,blending:core?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:false,toneMapped:false})); }
+function mkBeamMat(col,core){ return (new THREE.MeshBasicMaterial({map:plasmaTex,color:core?new THREE.Color(col).lerp(new THREE.Color(0xffffff),.45):new THREE.Color(col).multiplyScalar(1.4),transparent:true,opacity:core?1:.95,alphaMap:core?null:fringeTex,blending:core?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:false,toneMapped:false})); }
 function makeCar(){ const g=new THREE.Group(), body=new THREE.Mesh(loftHull(5.6,t=>({w:.85+.35*Math.sin(Math.min(1,t*1.6)*Math.PI/2),h:.45+.25*Math.sin(t*Math.PI),y:0}),{nr:12,dmg:0,capA:true,capB:true}),pick(carPaints));
   body.rotation.y=Math.PI/2; g.add(body); const cab=mesh(geo.sphere,carGlass,2.2,.9,1.5,-.2,.45,0); g.add(cab);
   g.add(mesh(geo.box,Bm(0xfff4d0),.2,.25,1.4,2.75,.05,0)); g.add(mesh(geo.box,Bm(0xff2020),.2,.25,1.5,-2.75,.1,0));
@@ -4578,7 +4581,7 @@ function loop(now){
     if(state==='play'||state==='dying'){ updatePlay(dt); hud(); }
     else updateIdle(dt);
     updateWorldFx(dt); updateWorldEvents(dt); updateUnder(); updateCubes(dt); updatePops(dt); updateCameraDust(dt); updatePS(PS,dt); updatePS(SMOKE,dt); updateChunks(dt); updateRings(dt); updateCamera(dt); updateArrows();
-    if(planet) planet.rotation.y+=dt*.01; updateHSun(dt); plasmaTex.offset.y=(plasmaTex.offset.y-dt*5.2)%1; plasmaTex.offset.x=(plasmaTex.offset.x+dt*1.1+Math.sin(G.time*7)*dt*.8)%1;
+    if(planet) planet.rotation.y+=dt*.01; updateHSun(dt); plasmaTex.offset.y=(plasmaTex.offset.y-dt*5.2)%1; fringeTex.offset.y=(fringeTex.offset.y-dt*7.5)%1; fringeTex.offset.x=(fringeTex.offset.x+dt*1.6)%1; plasmaTex.offset.x=(plasmaTex.offset.x+dt*1.1+Math.sin(G.time*7)*dt*.8)%1;
     autoQuality(dt);
   }
   sfx.want(state==='menu'?'menu':(state==='play'||state==='dying')?(G.boss?'boss':'play'):state==='over'?'over':null);
