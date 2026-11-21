@@ -1010,7 +1010,7 @@ function outlineMat(w){ const k=w.toFixed(3); if(!OUTLS[k]){ const m=OUTL.clone(
 OUTL.userData.w={value:.06};
 function outline(obj,w){
   if(obj.userData.hasOutl) return obj; obj.userData.hasOutl=1;
-  const list=[]; obj.traverse(o=>{ if(o.isMesh&&!o.isInstancedMesh&&!o.userData.outl&&o.material&&!o.material.transparent&&!o.material.isMeshBasicMaterial&&o.geometry&&o.geometry.attributes.normal) list.push(o); });
+  const list=[]; obj.traverse(o=>{ if(o.isMesh&&!o.isInstancedMesh&&!o.userData.outl&&!o.userData.noOutl&&o.material&&!o.material.transparent&&!o.material.isMeshBasicMaterial&&o.geometry&&o.geometry.attributes.normal) list.push(o); });
   const mt=outlineMat(w); for(const o of list){ const l=new THREE.Mesh(o.geometry,mt); l.userData.outl=1; l.raycast=()=>{}; o.add(l); }
   return obj;
 }
@@ -1869,7 +1869,7 @@ function spawnGround(s){
   const m=new THREE.Group(); m.userData.noDetail=true;
   if(sf.water){ if(!waterMats[sf.water]){ waterMats[sf.water]=new THREE.MeshStandardMaterial({color:sf.water,map:waveTex,bumpMap:waveTex,bumpScale:.35,metalness:.55,roughness:.16,envMapIntensity:1.6}); }
     const wg=new THREE.PlaneGeometry(Wd,L,4,15); wg.rotateX(-Math.PI/2); bendToRail(wg,s,gy+(sf.waterY??.4)); const wv=new THREE.Mesh(wg,waterMats[sf.water]); wv.visible=false; scene.add(wv); statics.push({mesh:wv,s:s+L/2,s0:s-L/2,w:curW});
-    if(W0.gmat==='ice') for(let i=0;i<9;i++){ const r=rand(2,6.5), fl=new THREE.Mesh(pick(floeGeos),floeMat); fl.scale.set(r,r*rand(.5,.8),r*rand(.6,1.1)); fl.position.set(rand(-Wd/2,Wd/2),(sf.waterY??.4)+.15,rand(-L/2,L/2)); fl.rotation.y=rand(0,6); m.add(fl); } }
+    if(W0.gmat==='ice') for(let i=0;i<9;i++){ const r=rand(2,6.5), fl=new THREE.Mesh(pick(floeGeos),floeMat); fl.scale.set(r,r*rand(.5,.8),r*rand(.6,1.1)); fl.position.set(rand(-Wd/2,Wd/2),(sf.waterY??.4)+.15,rand(-L/2,L/2)); fl.rotation.y=rand(0,6); fl.userData.noOutl=true; m.add(fl); } }
   if(sf.grid){ for(let k=-6;k<=6;k++){ const ln=mesh(geo.box,Bm(sf.grid),.18,.05,L,k*14,.3,0); m.add(ln); } m.add(mesh(geo.box,Bm(sf.grid),Wd,.05,.18,0,.3,0)); }
   addStatic(m,s,0,-(B.y+8),null,L/2);
 }
@@ -1965,7 +1965,7 @@ const WORLDS=[
   tunnel:{key:'rock',every:[1300,1900],len:[300,420]}},
  {name:'GEFRORENER OZEAN NIFL', pano:'berg', ev:'icefall', curv:.7, pitchK:.3, evName:'EISZAPFEN UND EISBERGE', exp:.78, bloom:.32, hemiI:.55, fog:0x14385a, dens:.0038, sky:[0x02081a,0x10406a,0x041628], neb:0x40ffa0, sun:0xe0f8ff, hemi:0x90d0ff, rim:0x60ffc0, motes:0xffffff,
   planet:[[230,240,255],[150,180,220]], ring:true, rock:[0x9ad8f0,0x6ab0d0], rockE:0x08304a, decor:{berg:1}, wrecks:0, tube:'ice', fx:'snow', gmat:'ice',
-  surface:{low:0x0a2a40,high:0x0a2a40,mid:0x0a2a40,canyon:0,flat:.15,water:0x1a5a80,waterY:3}, tunnel:{key:'ice',every:[700,1000],len:[380,520]}},
+  surface:{low:0x2a5a7a,high:0x3a7090,mid:0x2a6080,canyon:0,flat:.08,water:0x1a5a80,waterY:5}, tunnel:{key:'ice',every:[700,1000],len:[380,520]}},
  {name:'SCHIFFSFRIEDHOF', ev:'fuel', curv:1, evName:'TREIBSTOFFTANKS – EXPLOSIV!', exp:1, bloom:.5, fog:0x1a0c0c, dens:.0048, sky:[0x080404,0x2a1010,0x020000], neb:0xff4030, sun:0xffb090, hemi:0x806060, rim:0xff3020, motes:0xff8060,
   planet:[[140,90,80],[60,30,30]], ring:false, rock:[0x6a6058,0x50463e], rockE:0, decor:{girder:.6,hulk:.4}, wrecks:2.2, derelictEvery:[180,300], tube:'metal', fx:null},
  {name:'LAVAPLANET SURTR', pano:'volcano', ev:'eruption', curv:1.2, pitchK:.5, evName:'LAVA-AUSBRÜCHE', exp:.85, bloom:.3, hemiI:.5, fog:0x2e120c, dens:.0058, sky:[0x0e0606,0x4a1c12,0x1a0806], neb:0xc06040, sun:0xffc8a0, hemi:0xb08070, rim:0xff4020, motes:0xffa060, stars:false,
@@ -2137,7 +2137,7 @@ function buildPanoLayer(type,R,hMul,col,fogC,mix,seed){
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(cols,3)); g.setIndex(idx);
   const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,fog:false,side:THREE.DoubleSide})); m.renderOrder=-9; return m; }
 const floeGeos=[1,2,3,4,5].map(i=>cutRock(i*31+5,{sx:1,sy:.16,sz:1,cuts:9,flatTop:true}));
-const floeMat=new THREE.MeshStandardMaterial({color:0xe6f4ff,flatShading:true,roughness:.6,emissive:0x0c2a44});
+const floeMat=new THREE.MeshStandardMaterial({color:0xe6f4ff,flatShading:true,roughness:.6,emissive:0x0c2a44,side:THREE.DoubleSide});
 const bergMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.55,metalness:0,fog:false});
 // Gebirge wie in Coin City: zackige Kegel mit Grat-Rauschen, Farbe pro Punkt nach Höhe + Rauschen (keine gerade Grenze)
 const N2=(x,y,z,f,sd)=>(vnoise(x*f+sd,y*f,z*f-sd)-.5)*2;
@@ -4111,7 +4111,7 @@ function damagePlayer(d,force){
   if(G.bubble>0){ G.shieldFx=1; sfx.shield(); return; }
   if(G.rollT>0&&!force) return;
   if(force) d*=1.5;
-  G.shieldDelay=4.5; let rem=d;
+  G.shieldDelay=3; let rem=d;
   if(G.shield>0){ const s=Math.min(G.shield,rem); G.shield-=s; rem-=s; G.shieldFx=1; sfx.shield(); }
   rumble(rem>0?.85:.25,rem>0?.6:.45,rem>0?240:120);
   if(rem>0){ rem*=dset().dmg*(1-upl('armor')*.1); G.hull-=rem; G.dmgFx=1; sfx.hurt(); G.invul=Math.max(G.invul,.4); if(G.st) G.st.dmg+=rem; if(G.mult>1) toast('KOMBO VERLOREN','#ff8a6a'); G.chain=0; G.mult=1;
@@ -4398,7 +4398,7 @@ function resize(){
   const w=innerWidth,h=innerHeight,a=w/h;
   renderer.setSize(w,h,false);
   if(composer){ composer.setSize(w,h); if(window.__ink){ const pr=renderer.getPixelRatio(); window.__ink.uniforms.px.value.set(1/(w*pr),1/(h*pr)); } }
-  camera.aspect=a; baseFov=a<1?86:a>1.9?65:a>1.45?69:73; camera.fov=baseFov; camera.updateProjectionMatrix();
+  camera.aspect=a; baseFov=a<1?84:a>1.9?63:a>1.45?67:71; camera.fov=baseFov; camera.updateProjectionMatrix();
   B.x=Math.min(22,7+8*a); B.y=a<1?14:a>1.6?13:13.5; camFollowX=a<1?.8:.6;
   chFar.scale.setScalar(a<1?.19:.135); chGlow.scale.setScalar(a<1?.3:.22); chNear.scale.setScalar(a<1?.07:.045); chArc.scale.setScalar(a<1?.15:.1);
 }
@@ -4445,7 +4445,7 @@ function updatePlay(dt){
   place(shipMesh,ship.pos,ship.rot);
   shipFx(dt,wantB,wantS);
 
-  G.shieldDelay-=dt; if(G.shieldDelay<=0&&G.shield<100) G.shield=Math.min(100,G.shield+11*(1+upl('regen')*.25)*dt);
+  G.shieldDelay-=dt; if(G.shieldDelay<=0&&G.shield<100) G.shield=Math.min(100,G.shield+17*(1+upl('regen')*.25)*dt);
   const mMax=6+upl('mis')*2; if(G.missiles<mMax){ G.misRegen+=dt; if(G.misRegen>=9){ G.misRegen=0; G.missiles++; } } else G.misRegen=0;
   G.od=Math.max(0,(G.od||0)-dt);
   G.multT-=dt; if(G.multT<=0&&G.chain>0){ G.chain=0; G.mult=1; }
@@ -4584,7 +4584,7 @@ function updateCamera(dt){
   camS.x+=(ship.pos.x*camFollowX-camS.x)*Math.min(1,dt*3.5);
   camS.y+=(ship.pos.y*.6+2.1-camS.y)*Math.min(1,dt*3.5);
   railAt(ENV.s+20,FR); camS.bank+=(clamp(-FR.k*70,-.45,.45)-camS.bank)*Math.min(1,dt*3);
-  L2W(camS.x*1.12,camS.y*1.12+.8,13.8,camera.position); _camUp.copy(FR.U);
+  L2W(camS.x*1.08,camS.y*1.08+.6,12.2,camera.position); _camUp.copy(FR.U);
   L2W(ship.pos.x*camFollowX*.7,ship.pos.y*.45,-40,_look);
   G.trauma=Math.max(0,G.trauma-dt*1.4);
   const sh=G.trauma*G.trauma;
