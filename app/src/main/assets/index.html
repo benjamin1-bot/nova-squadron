@@ -2948,12 +2948,12 @@ function beamBetween(m,a,b,r){ // a,b lokal
 }
 function moveBoss(b,dt,enr){
   const p=b.pos, ft=b.ft, mv=b.def.move; let tx,ty,tz;
-  if(mv==='strafe'){ tx=Math.sin(ft*.9)*B.x*.9; ty=3+Math.sin(ft*.6)*3; tz=-46; }
-  else if(mv==='circle'){ tx=Math.cos(ft*.6)*B.x*.7; ty=2+Math.sin(ft*.6)*B.y*.5; tz=-50; }
+  if(mv==='strafe'){ tx=Math.sin(ft*.9)*B.x*.9; ty=3+Math.sin(ft*.6)*3; tz=-60; }
+  else if(mv==='circle'){ tx=Math.cos(ft*.6)*B.x*.7; ty=2+Math.sin(ft*.6)*B.y*.5; tz=-62; }
   else if(mv==='far'){ tx=Math.sin(ft*.25)*B.x*.6; ty=4+Math.sin(ft*.33)*3; tz=-74+Math.sin(ft*.2)*5; }
-  else if(mv==='drift'){ tx=Math.sin(ft*.22)*B.x*.5; ty=2+Math.sin(ft*.31)*2.5; tz=-54+Math.sin(ft*.17)*6; }
-  else { tx=Math.sin(ft*.35)*B.x*.75; ty=3+Math.sin(ft*.5)*3.5; tz=-48+Math.sin(ft*.21)*10; }
-  if(enr) tz+=10;
+  else if(mv==='drift'){ tx=Math.sin(ft*.22)*B.x*.5; ty=2+Math.sin(ft*.31)*2.5; tz=-66+Math.sin(ft*.17)*5; }
+  else { tx=Math.sin(ft*.35)*B.x*.75; ty=3+Math.sin(ft*.5)*3.5; tz=-62+Math.sin(ft*.21)*5; }
+  if(enr) tz+=3;
   // Seitenwechsel: der Boss zieht regelmäßig quer über den Schirm
   b.swT=(b.swT??rand(3,5))-dt; if(b.swT<=0){ b.swT=rand(4.5,7); b.swX=(b.swX>0?-1:1)*rand(B.x*.45,B.x*.8); }
   tx=tx*.35+(b.swX||0);
@@ -3043,8 +3043,8 @@ function updateBoss(dt){
     if(left.every(e=>e.kind==='core')) banner('KERN FREIGELEGT','FEUER AUF DEN REAKTOR',true); else toast('SCHILD AUSGEFALLEN – NEUE ZIELE','#7fe9ff'); }
   if(b.tbeam) b.tbeam.visible=false; b.warn.visible=false;
   if(b.state==='in'){
-    if(b.behind){ p.z-=48*dt; if(p.z<15) p.y+=(4-p.y)*Math.min(1,dt*1.1); b.rot.z=Math.sin(b.t*1.5)*.08; if(p.z<=-48){ p.z=-48; b.state='fight'; bossArrive(b); } }
-    else { p.z+=Math.max(24,(-48-p.z)*1.15)*dt; p.y+=(4-p.y)*Math.min(1,dt); if(p.z>=-48){ p.z=-48; b.state='fight'; bossArrive(b); } }
+    if(b.behind){ p.z-=48*dt; if(p.z<15) p.y+=(4-p.y)*Math.min(1,dt*1.1); b.rot.z=Math.sin(b.t*1.5)*.08; if(p.z<=-60){ p.z=-60; b.state='fight'; bossArrive(b); } }
+    else { p.z+=Math.max(24,(-60-p.z)*1.15)*dt; p.y+=(4-p.y)*Math.min(1,dt); if(p.z>=-60){ p.z=-60; b.state='fight'; bossArrive(b); } }
   } else if(b.state==='fight'){
     const enr=b.core&&!b.core.invul&&!(b.hatchShut);
     if(b.core&&b.minG>=b.core.grp&&def.p2){ ab=ab.concat(def.p2); if(!b.p2told){ b.p2told=true; toast('BOSS WIRD WÜTEND – NEUE ANGRIFFE!','#ff7a6a'); } }
@@ -3053,7 +3053,7 @@ function updateBoss(dt){
     if(ab.includes('arms')) updateBossArms(b,dt);
     if(b.mode==='normal'){
       moveBoss(b,dt,enr);
-      if(ab.includes('charge')){ b.chT-=dt; if(b.chT<=0){ b.mode='chargeTele'; b.mT=1.4; b.chX=ship.pos.x; b.chY=ship.pos.y; b.hitDone=false; toast('ACHTUNG – RAMMANGRIFF!','#ff6a6a'); sfx.alarm(); } }
+      if(ab.includes('charge')){ b.chT-=dt; if(b.chT<=0){ b.mode='chargeTele'; b.mT=1.4; b.chX=ship.pos.x; b.chY=ship.pos.y; b.hitDone=false; toast('ACHTUNG – BOSS-SALVE!','#ff6a6a'); sfx.alarm(); } }
       if(b.mode==='normal'&&ab.includes('tractor')){ b.trT-=dt; if(b.trT<=0){ b.mode='tractor'; b.mT=3.2; toast('TRAKTORSTRAHL – GEGENSTEUERN!','#7fb4ff'); sfx.charge(); } }
       if(b.mode==='normal'&&ab.includes('blink')){ b.blT-=dt; if(b.blT<=0){ b.mode='blinkOut'; b.mT=.4; sfx.zap(); } }
       if(b.mode==='normal'&&ab.includes('salvo')){ b.saT=(b.saT??4)-dt; if(b.saT<=0){ b.mode='salvoTele'; b.mT=.9; sfx.charge(); } }
@@ -3065,22 +3065,21 @@ function updateBoss(dt){
     } else if(b.mode==='flyby'){
       p.z-=95*dt; p.x+=(b.fyX-p.x)*Math.min(1,dt*2); p.y+=(b.fyY-p.y)*Math.min(1,dt*2);
       if(!b.fyHit&&state==='play'&&Math.abs(p.z-ship.pos.z)<6&&Math.hypot(p.x-ship.pos.x,p.y-ship.pos.y)<6){ b.fyHit=true; damagePlayer(30); }
-      if(p.z<-48){ p.z=-48; b.mode='normal'; b.fyHit=false; }
+      if(p.z<-60){ p.z=-60; b.mode='normal'; b.fyHit=false; }
     } else if(b.mode==='salvoTele'){
       moveBoss(b,dt*.3,enr); b.warn.visible=Math.sin(b.t*28)>0;
       if(b.mT<=0){ b.mode='normal'; b.saT=rand(5,6.5); for(const e of b.parts) if(e.alive&&!e.invul&&(e.kind==='turret'||e.kind==='spread'||e.kind==='flak')) enemyShoot(e.pos,bulletSpeed()*.95,3,.09); sfx.zap(); }
     } else if(b.mode==='chargeTele'){
       p.x+=(b.chX-p.x)*Math.min(1,dt*3); p.y+=(b.chY-p.y)*Math.min(1,dt*3);
       b.warn.visible=true; b.warn.scale.setScalar(26+Math.abs(Math.sin(b.t*14))*28); b.warn.material.opacity=.5+.45*Math.abs(Math.sin(b.t*14));
-      if(!window.CHR){ window.CHR=new THREE.Mesh(new THREE.TorusGeometry(3.2,.28,8,40),Bm(0xff2020)); scene.add(CHR); } G.chrT=.08; CHR.material.opacity=1; CHR.visible=Math.sin(b.t*20)>-.3; _hp.set(b.chX,b.chY,ship.pos.z-3); place(CHR,_hp,null); CHR.scale.setScalar(1+.25*Math.sin(b.t*14)); G.edgeWarn=1;
+      if(!window.CHR){ window.CHR=new THREE.Mesh(new THREE.TorusGeometry(3.2,.28,8,40),Bm(0xff2020)); scene.add(CHR); } G.chrT=.08; CHR.material.opacity=1; CHR.visible=false; _hp.set(b.chX,b.chY,-36); place(CHR,_hp,null); CHR.scale.setScalar(1+.25*Math.sin(b.t*14)); G.edgeWarn=1;
       if(b.mT<=0){ b.mode='charge'; b.mT=1; sfx.whoosh(); b.warn.scale.setScalar(24); }
     } else if(b.mode==='charge'){
-      p.z+=(-2-p.z)*Math.min(1,dt*5); b.warn.visible=true;
-      if(b.half&&!b.hitDone&&state==='play'&&Math.abs(ship.pos.z-p.z)<b.half.z+1&&Math.abs(ship.pos.x-p.x)<b.half.x+.8&&Math.abs(ship.pos.y-p.y)<b.half.y+.8){
-        b.hitDone=true; if(G.bubble<=0){ damagePlayer(30,true); G.trauma=1; } }
+      p.z+=(-36-p.z)*Math.min(1,dt*5); b.warn.visible=true;
+      if(!b.hitDone&&b.mT<.55){ b.hitDone=true; for(const e of b.parts) if(e.alive&&!e.invul) enemyShoot(e.pos,bulletSpeed()*1.05,3,.12); sfx.zap(); G.trauma=Math.max(G.trauma,.4); }
       if(b.mT<=0){ b.mode='retreat'; b.mT=1.3; }
     } else if(b.mode==='retreat'){
-      p.z+=(-48-p.z)*Math.min(1,dt*2.5); if(b.mT<=0){ b.mode='normal'; b.chT=rand(8,11); }
+      p.z+=(-60-p.z)*Math.min(1,dt*2.5); if(b.mT<=0){ b.mode='normal'; b.chT=rand(8,11); }
     } else if(b.mode==='tractor'){
       moveBoss(b,dt*.4,enr);
       if(state==='play'){ const dx=p.x-ship.tRaw.x, dy=p.y-ship.tRaw.y, f=7.5*dt;
@@ -3092,12 +3091,12 @@ function updateBoss(dt){
     } else if(b.mode==='blinkOut'){
       b.mesh.scale.setScalar(b.sc*Math.max(.01,b.mT/.4)); b.blinkHidden=true;
       if(b.mT<=0){ for(let i=0;i<30;i++) emitL(p.x+rand(-6,6),p.y+rand(-4,4),p.z,rand(-6,6),rand(-6,6),rand(-6,6),.9,def.glow,rand(.6,1.2),.6,1.5);
-        p.set(rand(-B.x*.7,B.x*.7),rand(-B.y*.3,B.y*.6)+2,rand(-56,-34)); b.mode='blinkIn'; b.mT=.4; }
+        p.set(rand(-B.x*.7,B.x*.7),rand(-B.y*.3,B.y*.6)+2,rand(-68,-52)); b.mode='blinkIn'; b.mT=.4; }
     } else if(b.mode==='blinkIn'){
       b.mesh.scale.setScalar(b.sc*Math.min(1,1-b.mT/.4+.01));
       if(b.mT<=0){ b.mesh.scale.setScalar(b.sc); b.blinkHidden=false; b.mode='normal'; b.blT=rand(5.5,8); }
     } else if(b.mode==='flank'){
-      const k=Math.min(1,dt*1.6); p.x+=(b.side*(B.x+14)-p.x)*k; p.y+=(2-p.y)*k; p.z+=(-14-p.z)*k;
+      const k=Math.min(1,dt*1.6); p.x+=(b.side*(B.x*.85)-p.x)*k; p.y+=(2-p.y)*k; p.z+=(-40-p.z)*k;
       if(b.mT<=0){ b.mode='normal'; b.flT=rand(8,11); }
     }
     b.spinBoost=Math.max(1,(b.spinBoost||1)-dt*.6);
