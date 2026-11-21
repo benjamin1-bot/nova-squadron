@@ -2460,7 +2460,7 @@ const TUN={
   ice:{label:'EISHÖHLE',c1:0x34c4e8,c2:0x062a5a,c3:0xb8f8ff,glow:.12,light:0x40c8ff,deco:'ice',fog:0x04244a},
   crystal:{label:'KRISTALLHÖHLE',c1:0x9a40d0,c2:0x1a0640,c3:0x40f0d8,glow:.12,light:0xb050ff,deco:'crystal',fog:0x180630},
   lava:{label:'LAVATUNNEL',c1:0x3a2016,c2:0x120604,c3:0xff6a10,glow:.55,light:0xff5010,deco:'lava',veins:true,fog:0x240602},
-  rock:{label:'ASTEROIDENTUNNEL',c1:0x9a7c58,c2:0x2e2216,c3:0xd8c090,glow:.03,light:0xffc890,deco:'rock',fog:0x140e08},
+  rock:{label:'ASTEROIDENTUNNEL',c1:0x7a6046,c2:0x261c12,c3:0xc8a878,glow:.03,light:0xffc890,deco:'rock',fog:0x140e08},
   emerald:{label:'SMARAGDHÖHLE',c1:0x139a50,c2:0x032412,c3:0x50ff90,glow:.14,gloss:true,light:0x50ff80,deco:'crystal',veins:true,fog:0x061a08}
 };
 const tunMats={};
@@ -2555,7 +2555,8 @@ function spawnTunnel(s0,len,key){
   for(let s=s0+(len<200?35:60);s<s0+len-25;s+=rand(34,58)){
     if(Math.random()<.6){ spawnTPillar(s,key); continue; }
     const top=Math.random()<.5, xx=rand(-B.x*.6,B.x*.6), edge=B.y+6, tip=top?rand(-B.y*.15,B.y*.45):rand(-B.y*.45,B.y*.15);
-    const hy=Math.abs(edge-(top?tip:-tip))/2; addObst(s,xx,top?(edge+tip)/2:(-edge+tip)/2,2.2,hy,2.2,'rock');
+    const hy=Math.abs(edge-(top?tip:-tip))/2; addObst(s,xx,top?(edge+tip)/2:(-edge+tip)/2,2.2,hy,2.2,'none');
+    { const wy=(top?1:-1)*(B.y+6)*1.75, L=Math.abs(wy-tip), m=new THREE.Mesh(pick(spires),key==='ice'?M2.iceRock:tunRockMat(key)); m.scale.set(rand(3.4,4.6),L,rand(3.4,4.6)); addStatic(m,s,xx,(wy+tip)/2,new THREE.Euler(top?Math.PI:0,rand(0,6),0)); }
   }
   curW=null;
 }
