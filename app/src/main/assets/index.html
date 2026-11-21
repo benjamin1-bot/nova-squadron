@@ -443,6 +443,7 @@ function railTrim(s){
 }
 const FR = {p:new V3(),R:new V3(),U:new V3(),F:new V3(),q:new THREE.Quaternion(),k:0};
 function railAt(s,o){
+  if(s>rail.base+(rail.P.length-2)*STEP) railGen(s+80);
   let f=(s-rail.base)/STEP; const n=rail.P.length-2; if(f<0)f=0; if(f>n)f=n;
   const i=Math.floor(f), t=f-i;
   o.p.lerpVectors(rail.P[i],rail.P[i+1],t);
@@ -3349,7 +3350,7 @@ function updateBonus(dt){ if(!(G.bonus>0)) return; G.bonus-=dt; const k=Math.min
 const _bonusC=new THREE.Color(0xffb030);
 // ---------- Rettungsmission: Verbündeter wird gejagt, gerettet fliegt er mit ----------
 var allies=[];
-function makeAlly(){ const g=shipMesh.clone(true); g.scale.setScalar(.75); g.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&!o.userData.outl){ o.material=o.material.clone(); if(o.material.color.getHex()===0xd82b3a||o.material.color.r>.7&&o.material.color.g<.3) o.material.color.setHex(0x30c060); } }); scene.add(g); return g; }
+function makeAlly(){ const g=shipMesh.clone(true); g.scale.setScalar(.75); { const rm=[]; g.traverse(o=>{ if(o.userData&&o.userData.outl) rm.push(o); }); for(const o of rm) o.parent&&o.parent.remove(o); } g.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&!o.userData.outl){ o.material=o.material.clone(); if(o.material.color.getHex()===0xd82b3a||o.material.color.r>.7&&o.material.color.g<.3) o.material.color.setHex(0x30c060); } }); scene.add(g); return g; }
 function spawnRescue(){
   const a={mesh:makeAlly(),pos:new V3(rand(-B.x*.5,B.x*.5),rand(-B.y*.3,B.y*.4),-90),state:'flee',t:0,hp:100,fireT:0,pur:[]};
   allies.push(a);
@@ -3361,11 +3362,11 @@ function updateAllies(dt){
     if(a.state==='flee'){ p.x=Math.sin(a.t*1.3)*B.x*.55; p.y=Math.sin(a.t*.9)*B.y*.4; p.z+=(-60-p.z)*Math.min(1,dt);
       if(a.pur.every(e=>!e.alive)){ a.state='wing'; a.t=0; toast('GERETTET! FLÜGELMANN FLIEGT MIT','#7fff9a'); giveCrystals(5); addScore(2000,true); }
       else { a.hp-=dt*(100/10); if(Math.random()<dt*3) sparks(p,0xff6040,4); if(a.hp<=0){ explosion(p.clone(),2); for(const e of a.pur) if(e.alive) e.gone=true; scene.remove(a.mesh); allies.splice(i,1); toast('VERBÜNDETER VERLOREN','#ff7a6a'); continue; } } }
-    else { if(a.sd===undefined) a.sd=allies.filter(o=>o.sd===1).length<=allies.filter(o=>o.sd===-1).length?1:-1; const sc=a.mesh.scale.x; a.mesh.scale.setScalar(sc+(.28-sc)*Math.min(1,dt*4));
-      const tx=ship.pos.x+a.sd*2.3, ty=ship.pos.y+.15+Math.sin(a.t*2.2)*.12; const k=a.t<1.2?Math.min(1,dt*4):1; p.x+=(tx-p.x)*k; p.y+=(ty-p.y)*k; p.z+=(ship.pos.z+.3-p.z)*k;
-      a.fireT-=dt; if(a.fireT<=0){ a.fireT=.22; let best=null,bd=1e9; for(const e of enemies){ if(!e.alive||e.env||e.invul||!e.wp) continue; const dz=p.z-e.pos.z; if(dz<15||dz>200) continue; const d=Math.hypot(e.pos.x-p.x,e.pos.y-p.y)+dz*.2; if(d<bd){ bd=d; best=e; } }
-        if(best){ L2W(p.x,p.y,p.z-1,_bo); const dir=new V3().subVectors(best.wp,_bo).normalize(); spawnPBullet(new V3(p.x,p.y,p.z-1),dir,0x60ff90,.8,1); } }
-      if(a.t>13||G.boss&&G.boss.state==='dying'){ a.state='leave'; toast('FLÜGELMANN DREHT AB','#7fe9ff'); } }
+    else { if(a.sd===undefined) a.sd=allies.filter(o=>o.sd===1).length<=allies.filter(o=>o.sd===-1).length?1:-1; const sc=a.mesh.scale.x; a.mesh.scale.setScalar(sc+(.42-sc)*Math.min(1,dt*4));
+      const tx=ship.pos.x+a.sd*2.8, ty=ship.pos.y+.15+Math.sin(a.t*2.2)*.12; const k=a.t<1.2?Math.min(1,dt*4):1; p.x+=(tx-p.x)*k; p.y+=(ty-p.y)*k; p.z+=(ship.pos.z+.3-p.z)*k;
+      a.fireT-=dt; if(a.fireT<=0){ a.fireT=.14; let best=null,bd=1e9; for(const e of enemies){ if(!e.alive||e.env||e.invul||!e.wp) continue; const dz=p.z-e.pos.z; if(dz<15||dz>200) continue; const d=Math.hypot(e.pos.x-p.x,e.pos.y-p.y)+dz*.2; if(d<bd){ bd=d; best=e; } }
+        if(best){ L2W(p.x,p.y,p.z-1,_bo); const dir=new V3().subVectors(best.wp,_bo).normalize(); spawnPBullet(new V3(p.x,p.y,p.z-1),dir,0x60ff90,1.6,1); } }
+      if(a.t>9||G.boss&&G.boss.state==='dying'){ a.state='leave'; toast('FLÜGELMANN DREHT AB','#7fe9ff'); } }
     if(a.state==='leave'){ p.y+=30*dt; p.z-=60*dt; if(p.z<-300){ scene.remove(a.mesh); allies.splice(i,1); continue; } }
     place(a.mesh,p,new THREE.Euler(0,0,Math.sin(a.t*2)*.3)); }
 }
@@ -4108,14 +4109,14 @@ function buildWave(n){
   for(let i=0;i<1+Math.floor(n/3);i++) add(R2(2,dur-2),spawnWorldEnemy);
   if(n%3===2) add(dur*.55,spawnMiniBoss);
   if(Math.random()<.45) add(R2(3,dur-4),spawnSecret);
-  if(n%3===1&&Math.random()<.6) add(R2(4,dur*.5),spawnRescue);
-  if(!W0.surface&&n%3===1&&Math.random()<.7) add(R2(4,dur*.6),spawnCapital);
+  if(n%4===2&&Math.random()<.6) add(R2(4,dur*.5),spawnRescue);
+  if(!W0.surface&&n%4===1&&Math.random()<.7) add(R2(4,dur*.6),spawnCapital);
   const nh=n>=3?Math.floor((n-1)/3):0; for(let i=0;i<nh;i++) add(5+i*(dur/Math.max(1,nh)),spawnHeavy);
   return q.sort((a,b)=>a.t-b.t);
 }
 function startWave(){
   G.wave++; G.waveClock=0; setT($('wave'),'WELLE '+G.wave);
-  if(G.wave%3===0){ ENV.calm=true; clearFutureWrecks(); G.queue=[{t:2.5,f:tryBoss}];  }
+  if(G.wave%4===0){ ENV.calm=true; clearFutureWrecks(); G.queue=[{t:2.5,f:tryBoss}];  }
   else { G.queue=buildWave(G.wave); banner('WELLE '+G.wave, pick(['FEINDLICHE STAFFEL','FEINDKONTAKT','JÄGER IM ANFLUG'])); }
 }
 function updateWaves(dt){
@@ -4130,7 +4131,7 @@ function updateWaves(dt){
   if(G.wave>0&&!G.queue.length&&!G.boss&&(rem===0||G.stallT>4)){
     G.interWave+=dt;
     if(G.interWave>1.1){ G.interWave=0; if(state==='play') addScore(250*G.wave,true);
-      if(G.wave%3!==0&&(G.wave+1)%3!==0&&(G.wave===1||Math.random()<.3)&&!(G.warp>0)) startPassage(); else { if(G.wave%3!==0&&(G.wave+1)%3!==0&&Math.random()<.35&&!(G.warp>0)) spawnFork(ENV.s+260); startWave(); } }
+      if(G.wave%4!==0&&(G.wave+1)%4!==0&&(G.wave%4===1||Math.random()<.4)&&!(G.warp>0)) startPassage(); else { if(G.wave%4!==0&&(G.wave+1)%4!==0&&Math.random()<.35&&!(G.warp>0)) spawnFork(ENV.s+260); startWave(); } }
   } else G.interWave=0;
 }
 
@@ -4329,7 +4330,7 @@ function resize(){
   const w=innerWidth,h=innerHeight,a=w/h;
   renderer.setSize(w,h,false);
   if(composer){ composer.setSize(w,h); if(window.__ink){ const pr=renderer.getPixelRatio(); window.__ink.uniforms.px.value.set(1/(w*pr),1/(h*pr)); } }
-  camera.aspect=a; baseFov=a<1?88:a>1.9?68:a>1.45?72:76; camera.fov=baseFov; camera.updateProjectionMatrix();
+  camera.aspect=a; baseFov=a<1?86:a>1.9?65:a>1.45?69:73; camera.fov=baseFov; camera.updateProjectionMatrix();
   B.x=Math.min(22,7+8*a); B.y=a<1?14:a>1.6?13:13.5; camFollowX=a<1?.8:.6;
   chFar.scale.setScalar(a<1?.19:.135); chGlow.scale.setScalar(a<1?.3:.22); chNear.scale.setScalar(a<1?.07:.045); chArc.scale.setScalar(a<1?.15:.1);
 }
@@ -4515,7 +4516,7 @@ function updateCamera(dt){
   camS.x+=(ship.pos.x*camFollowX-camS.x)*Math.min(1,dt*3.5);
   camS.y+=(ship.pos.y*.6+2.1-camS.y)*Math.min(1,dt*3.5);
   railAt(ENV.s+20,FR); camS.bank+=(clamp(-FR.k*70,-.45,.45)-camS.bank)*Math.min(1,dt*3);
-  L2W(camS.x*1.15,camS.y*1.15+1,15.5,camera.position); _camUp.copy(FR.U);
+  L2W(camS.x*1.12,camS.y*1.12+.8,13.8,camera.position); _camUp.copy(FR.U);
   L2W(ship.pos.x*camFollowX*.7,ship.pos.y*.45,-40,_look);
   G.trauma=Math.max(0,G.trauma-dt*1.4);
   const sh=G.trauma*G.trauma;
