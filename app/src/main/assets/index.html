@@ -853,18 +853,14 @@ function vnoise(x,y,z){
   return L(L(L(hash3(xi,yi,zi),hash3(xi+1,yi,zi),u),L(hash3(xi,yi+1,zi),hash3(xi+1,yi+1,zi),u),v),
            L(L(hash3(xi,yi,zi+1),hash3(xi+1,yi,zi+1),u),L(hash3(xi,yi+1,zi+1),hash3(xi+1,yi+1,zi+1),u),v),w);
 }
-function makeRock(seed){
-  const src=new THREE.IcosahedronGeometry(1,4), p=src.attributes.position, map=new Map(), pos=[], idx=[];
+function makeRock(seed){ // kantiger Low-Poly-Fels mit großen Facetten
+  const src=new THREE.IcosahedronGeometry(1,1), p=src.attributes.position, map=new Map(), pos=[], idx=[];
   for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i), k=Math.round(x*1e4)+','+Math.round(y*1e4)+','+Math.round(z*1e4);
     let j=map.get(k); if(j===undefined){ j=pos.length/3; map.set(k,j); pos.push(x,y,z); } idx.push(j); }
-  const sx=rand(.75,1.25), sy=rand(.7,1.1), sz=rand(.8,1.3);
-  for(let i=0;i<pos.length;i+=3){
-    const x=pos[i],y=pos[i+1],z=pos[i+2];
-    let n=0,a=1,f=1.4,t=0; for(let o=0;o<4;o++){ n+=vnoise(x*f+seed,y*f+seed*2,z*f-seed)*a; t+=a; a*=.5; f*=2.1; }
-    n/=t; const r=.72+n*.6;
-    pos[i]=x*r*sx; pos[i+1]=y*r*sy; pos[i+2]=z*r*sz;
-  }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals();
+  const sx=rand(.8,1.25), sy=rand(.75,1.15), sz=rand(.85,1.3);
+  for(let i=0;i<pos.length;i+=3){ const x=pos[i],y=pos[i+1],z=pos[i+2], n=vnoise(x*1.1+seed,y*1.1+seed*2,z*1.1-seed), r=.68+n*.55+(hsh(i*.37+seed)-.5)*.22;
+    pos[i]=x*r*sx; pos[i+1]=y*r*sy*(y>.3?1+(n-.4)*.5:1); pos[i+2]=z*r*sz; }
+  let g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g=g.toNonIndexed(); g.computeVertexNormals(); g.computeBoundingSphere();
   return g;
 }
 const rocks=[makeRock(3),makeRock(11),makeRock(19),makeRock(31),makeRock(47)], rocksBase=rocks.slice();
@@ -876,25 +872,18 @@ function makeCrystalRock(seed){ const pos=[], m4=new THREE.Matrix4(), q=new THRE
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); g.computeBoundingSphere(); return g; }
 const crysRocks=[makeCrystalRock(3),makeCrystalRock(7),makeCrystalRock(13),makeCrystalRock(21),makeCrystalRock(29)];
 // Felssäulen aus einem Stück: gestreckte, verwitterte Form mit Ausbuchtungen und leichter Neigung (Höhe 1, Radius ~1)
-function makeSpire(seed){
-  const src=new THREE.IcosahedronGeometry(1,4), p=src.attributes.position, map=new Map(), pos=[], idx=[];
-  for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i), k=Math.round(x*1e4)+','+Math.round(y*1e4)+','+Math.round(z*1e4);
-    let j=map.get(k); if(j===undefined){ j=pos.length/3; map.set(k,j); pos.push(x,y,z); } idx.push(j); }
-  const lean=rand(-.35,.35), lz=rand(-.2,.2);
-  for(let i=0;i<pos.length;i+=3){
-    const x=pos[i],y=pos[i+1],z=pos[i+2], t=(y+1)/2;
-    let n=0,a=1,f=1.3,tt=0; for(let o=0;o<4;o++){ n+=vnoise(x*f+seed,t*3.2*f+seed*.7,z*f-seed)*a; tt+=a; a*=.5; f*=2.05; } n/=tt;
-    const prof=Math.max(.06,1.12-.86*Math.pow(t,1.15))+.12*Math.sin(t*6.5+seed)*(1-t);
-    const strata=1-.07*Math.pow(Math.abs(Math.sin(t*22+seed)),6);
-    const r=prof*strata*(.55+n*.9);
-    pos[i]=x*r+lean*t*t; pos[i+1]=y*.5+(vnoise(x*2+seed,y*2,z*2)-.5)*.06; pos[i+2]=z*r+lz*t*t;
-  }
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+function makeSpire(seed){ // spitzer Low-Poly-Felsturm wie ein Berggipfel (Höhe 1, Radius ~1)
+  const RS=7, HS=5, pos=[], lean=rand(-.3,.3), lz=rand(-.2,.2), ring=[];
+  for(let h=0;h<=HS;h++){ const t=h/HS, row=[]; for(let k=0;k<RS;k++){ const a=k/RS*Math.PI*2+(hsh(seed+h*7+k)-.5)*.5, r=(h===HS?0:(1.05-.92*Math.pow(t,1.1))*(.75+hsh(seed*3+h*11+k)*.5));
+      row.push([Math.cos(a)*r+lean*t*t,(t-.5)+(h>0&&h<HS?(hsh(seed+h+k*5)-.5)*.08:0),Math.sin(a)*r+lz*t*t]); } ring.push(row); }
+  const tri=(A,Bv,C)=>pos.push(...A,...Bv,...C);
+  for(let h=0;h<HS;h++) for(let k=0;k<RS;k++){ const a=ring[h][k], b=ring[h][(k+1)%RS], c=ring[h+1][k], d=ring[h+1][(k+1)%RS]; tri(a,c,b); if(h<HS-1) tri(b,c,d); }
+  let g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
 }
 const spires=[makeSpire(5),makeSpire(13),makeSpire(23),makeSpire(37),makeSpire(53)];
 // Zackiges Felsmassiv mit einem Tunnelloch (lokal: x quer, y hoch, z Flugrichtung)
 function makeMassif(W,H,D,y0,hx,hy,rx,ry){
-  const seed=rand(0,90), src=new THREE.IcosahedronGeometry(1,5), p=src.attributes.position, map=new Map(), pos=[], idx=[];
+  const seed=rand(0,90), src=new THREE.IcosahedronGeometry(1,3), p=src.attributes.position, map=new Map(), pos=[], idx=[];
   for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i), k=Math.round(x*1e4)+','+Math.round(y*1e4)+','+Math.round(z*1e4);
     let j=map.get(k); if(j===undefined){ j=pos.length/3; map.set(k,j); pos.push(x,y,z); } idx.push(j); }
   for(let i=0;i<pos.length;i+=3){ const x=pos[i],y=pos[i+1],z=pos[i+2], t=(y+1)/2;
@@ -920,7 +909,7 @@ function makeMassif(W,H,D,y0,hx,hy,rx,ry){
     for(let i=0;i<NB;i++) if(a[i]===null){ let l=i,r=i,dl=0,dr=0; while(a[(l+NB)%NB]===null&&dl<NB){ l--; dl++; } while(a[r%NB]===null&&dr<NB){ r++; dr++; }
       const A=a[(l+NB)%NB]??def, Bv=a[r%NB]??def; a[i]=A+(Bv-A)*(dl/(dl+dr||1)); } return a; };
   const frF=avg(fs,fn), bkF=avg(bs,bn);
-  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(keep); g.computeVertexNormals();
+  let g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(keep); g=g.toNonIndexed(); g.computeVertexNormals();
   // Höhlenwand: gleicher Umriss an den Enden, innen unebene Felswand
   const tb=new THREE.CylinderGeometry(1,1,1,NB,12,true); tb.rotateX(Math.PI/2); const tp=tb.attributes.position;
   for(let i=0;i<tp.count;i++){ const x=tp.getX(i),y=tp.getY(i),z=tp.getZ(i), th=Math.atan2(y,x), bi=((Math.round((th+Math.PI)/(2*Math.PI)*NB))%NB+NB)%NB, t=z+.5;
@@ -2112,7 +2101,21 @@ function applyWorld(i){ try{ G.gT=0; G.sandT=0; G.evT=4; }catch(_){}
 // ---------- Panorama am Horizont: weite Landschaft statt engem Schlauch ----------
 const pano=new THREE.Group(); scene.add(pano); 
 function hsh(i){ const x=Math.sin(i*127.1)*43758.5; return x-Math.floor(x); }
+function buildPolyRange(type,R,hMul,col,fogC,mix,seed){
+  const NP=type==='berg'?30:34, pos=[], cols=[], cTop=new THREE.Color(col).lerp(new THREE.Color(fogC),mix), cBot=new THREE.Color(fogC), snow=type==='berg'?new THREE.Color(0xeef6ff).lerp(new THREE.Color(fogC),mix*.6):new THREE.Color(col).lerp(new THREE.Color(0xff8040),.25).lerp(new THREE.Color(fogC),mix);
+  const pk=[]; for(let i=0;i<NP;i++){ const a=(i+hsh(seed+i)*.6)/NP*Math.PI*2, h=(.35+Math.pow(hsh(seed*3+i),1.5)*.9)*hMul; pk.push({a,h}); }
+  const vy=[]; for(let i=0;i<NP;i++){ const A=pk[i], Bp=pk[(i+1)%NP]; let a2=Bp.a; if(a2<A.a) a2+=Math.PI*2; vy.push({a:A.a+(a2-A.a)*(.35+hsh(seed+i*9)*.3),h:Math.min(A.h,Bp.h)*(.25+hsh(seed+i*13)*.35)}); }
+  const P=(a,h)=>[Math.cos(a)*R,h,Math.sin(a)*R], base=-260, c=new THREE.Color();
+  const face=(A,Bv,C,shade,t)=>{ pos.push(...A,...Bv,...C); for(const V of [A,Bv,C]){ const k=clamp((V[1]-base)/(hMul*1.3-base),0,1); c.copy(cBot).lerp(cTop,Math.pow(k,.7)); if(V[1]>hMul*.55) c.lerp(snow,clamp((V[1]-hMul*.55)/(hMul*.6),0,1)*.85); c.multiplyScalar(shade); cols.push(c.r,c.g,c.b); } };
+  for(let i=0;i<NP;i++){ const v0=vy[(i-1+NP)%NP], A=pk[i], v1=vy[i]; let a0=v0.a; if(a0>A.a) a0-=Math.PI*2; let a1=v1.a; if(a1<A.a) a1+=Math.PI*2;
+    const top=P(A.a,A.h), l=P(a0,v0.h), r=P(a1,v1.h), lb=P(a0,base), rb=P(a1,base), mid=P(A.a+(hsh(seed+i*5)-.5)*.02,A.h*(.45+hsh(seed+i)*.2)), midb=P(A.a,base);
+    const sh1=1.05+hsh(seed+i*17)*.1, sh2=.66+hsh(seed+i*19)*.12;
+    face(l,top,mid,sh1); face(l,mid,lb,sh1*.92); face(lb,mid,midb,sh1*.85);
+    face(mid,top,r,sh2); face(mid,r,rb,sh2*.92); face(midb,mid,rb,sh2*.85); }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,fog:false,side:THREE.DoubleSide})); m.renderOrder=-9; return m; }
 function buildPanoLayer(type,R,hMul,col,fogC,mix,seed){
+  if(type==='berg'||type==='volcano') return buildPolyRange(type,R,hMul,col,fogC,mix,seed);
   const N=360, pos=[], cols=[], idx=[], c=new THREE.Color(), cTop=new THREE.Color(col).lerp(new THREE.Color(fogC),mix), cBot=new THREE.Color(fogC);
   const H=t=>{ const a=t*Math.PI*2; let h=0;
     if(type==='berg'){ for(let k=0;k<5;k++){ const f=2+k*3; h+=Math.pow(Math.abs(Math.sin(a*f*1.7+seed*k)),3)*(.8/(k+1)); } h=h*1.2+.1; }
