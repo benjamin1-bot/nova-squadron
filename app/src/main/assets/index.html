@@ -853,17 +853,23 @@ function vnoise(x,y,z){
   return L(L(L(hash3(xi,yi,zi),hash3(xi+1,yi,zi),u),L(hash3(xi,yi+1,zi),hash3(xi+1,yi+1,zi),u),v),
            L(L(hash3(xi,yi,zi+1),hash3(xi+1,yi,zi+1),u),L(hash3(xi,yi+1,zi+1),hash3(xi+1,yi+1,zi+1),u),v),w);
 }
-function makeRock(seed){ // kantiger Low-Poly-Fels mit großen Facetten
-  const src=new THREE.IcosahedronGeometry(1,1), p=src.attributes.position, map=new Map(), pos=[], idx=[];
+function cutRock(seed,o={}){ // Fels aus ebenen Bruchflächen: kantig, unregelmäßig, nicht oval
+  let rs=seed*7919+13; const rr=()=>{ rs=(rs*16807)%2147483647; return (rs%100000)/100000; };
+  const src=new THREE.IcosahedronGeometry(1,o.detail??2), p=src.attributes.position, map=new Map(), pos=[], idx=[];
   for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i), k=Math.round(x*1e4)+','+Math.round(y*1e4)+','+Math.round(z*1e4);
     let j=map.get(k); if(j===undefined){ j=pos.length/3; map.set(k,j); pos.push(x,y,z); } idx.push(j); }
-  const sx=rand(.8,1.25), sy=rand(.75,1.15), sz=rand(.85,1.3);
-  for(let i=0;i<pos.length;i+=3){ const x=pos[i],y=pos[i+1],z=pos[i+2], n=vnoise(x*1.1+seed,y*1.1+seed*2,z*1.1-seed), r=.68+n*.55+(hsh(i*.37+seed)-.5)*.22;
-    pos[i]=x*r*sx; pos[i+1]=y*r*sy*(y>.3?1+(n-.4)*.5:1); pos[i+2]=z*r*sz; }
-  let g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g=g.toNonIndexed(); g.computeVertexNormals(); g.computeBoundingSphere();
-  return g;
+  const sx=o.sx??(.75+rr()*.8), sy=o.sy??(.5+rr()*.6), sz=o.sz??(.75+rr()*.7);
+  for(let i=0;i<pos.length;i+=3){ pos[i]*=sx; pos[i+1]*=sy; pos[i+2]*=sz; if(o.peak){ const t=(pos[i+1]/sy+1)/2; const sh=1-Math.pow(t,1.6)*.85; pos[i]*=sh; pos[i+2]*=sh; pos[i]+=o.peak*(rr()-.5)*0; } }
+  const cuts=o.cuts??(9+Math.floor(rr()*7)), n=new V3();
+  for(let c=0;c<cuts;c++){ n.set(rr()-.5,(rr()-.5)*(o.flatTop&&c===0?0:1.2),rr()-.5); if(o.flatTop&&c===0) n.set(0,1,0); n.normalize();
+    let mx=-1e9; for(let i=0;i<pos.length;i+=3) mx=Math.max(mx,pos[i]*n.x+pos[i+1]*n.y+pos[i+2]*n.z);
+    const d=mx*(o.flatTop&&c===0?.7:(.55+rr()*.35));
+    for(let i=0;i<pos.length;i+=3){ const k=pos[i]*n.x+pos[i+1]*n.y+pos[i+2]*n.z-d; if(k>0){ pos[i]-=n.x*k; pos[i+1]-=n.y*k; pos[i+2]-=n.z*k; } } }
+  for(let i=0;i<pos.length;i+=3){ const j=(vnoise(pos[i]*3+seed,pos[i+1]*3,pos[i+2]*3)-.5)*.035; pos[i]+=j; pos[i+1]+=j*.6; pos[i+2]-=j; }
+  let g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g=g.toNonIndexed(); g.computeVertexNormals(); g.computeBoundingSphere(); return g;
 }
-const rocks=[makeRock(3),makeRock(11),makeRock(19),makeRock(31),makeRock(47)], rocksBase=rocks.slice();
+function makeRock(seed){ return cutRock(seed); }
+const rocks=[makeRock(3),makeRock(11),makeRock(19),makeRock(31),makeRock(47),makeRock(59),makeRock(71),makeRock(83)], rocksBase=rocks.slice();
 function makeCrystalRock(seed){ const pos=[], m4=new THREE.Matrix4(), q=new THREE.Quaternion(), e=new THREE.Euler(), v=new V3(); let rs=seed*9.13; const rr=()=>{ rs=(rs*16807+11)%2147483647; return (rs%10000)/10000; };
   const n=4+Math.floor(rr()*4);
   for(let i=0;i<n;i++){ const base=new THREE.OctahedronGeometry(1,0).toNonIndexed(), h=.7+rr()*1.1, w=.22+rr()*.3; e.set((rr()-.5)*2.2,rr()*6.28,(rr()-.5)*2.2); q.setFromEuler(e);
@@ -1089,7 +1095,7 @@ let state='menu';
 const G={};
 const enemies=[], pBullets=[], eBullets=[], missiles=[], pickups=[], statics=[], obst=[], cubes=[];
 function bagNext(key,n,avoid){ if(!G[key]||!G[key].length){ G[key]=[...Array(n).keys()].sort(()=>Math.random()-.5); if(G[key][G[key].length-1]===avoid&&n>1) G[key].unshift(G[key].pop()); } return G[key].pop(); }
-function resetGame(){ { const r=$('resov'); if(r) r.classList.add('hidden'); } clearFlareWalls(); clearCityHz();
+function resetGame(){ { const r=$('resov'); if(r) r.classList.add('hidden'); } clearFlareWalls(); clearCityHz(); if(spouts){ for(const w of spouts) scene.remove(w.g); spouts.length=0; }
   for(const arr of [enemies,pBullets,eBullets,missiles,pickups]){ for(const o of arr){ if(o.extras) for(const x of o.extras) scene.remove(x); if(o.boss) continue; if(o.mesh) scene.remove(o.mesh);} arr.length=0; }
   if(G.boss) removeBoss(G.boss);
   for(const c of cubes) scene.remove(c.mesh); cubes.length=0;
@@ -1863,7 +1869,7 @@ function spawnGround(s){
   const m=new THREE.Group(); m.userData.noDetail=true;
   if(sf.water){ if(!waterMats[sf.water]){ waterMats[sf.water]=new THREE.MeshStandardMaterial({color:sf.water,map:waveTex,bumpMap:waveTex,bumpScale:.35,metalness:.55,roughness:.16,envMapIntensity:1.6}); }
     const wg=new THREE.PlaneGeometry(Wd,L,4,15); wg.rotateX(-Math.PI/2); bendToRail(wg,s,gy+(sf.waterY??.4)); const wv=new THREE.Mesh(wg,waterMats[sf.water]); wv.visible=false; scene.add(wv); statics.push({mesh:wv,s:s+L/2,s0:s-L/2,w:curW});
-    for(let i=0;i<10;i++){ const fl=mesh(geo.cyl,M2.iceRock,rand(1.5,5),.6,rand(1.5,5),rand(-Wd/2,Wd/2),(sf.waterY??.4)+.1,rand(-L/2,L/2)); fl.rotation.y=rand(0,6); m.add(fl); } }
+    if(W0.gmat==='ice') for(let i=0;i<9;i++){ const r=rand(2,6.5), fl=new THREE.Mesh(pick(floeGeos),floeMat); fl.scale.set(r,r*rand(.5,.8),r*rand(.6,1.1)); fl.position.set(rand(-Wd/2,Wd/2),(sf.waterY??.4)+.15,rand(-L/2,L/2)); fl.rotation.y=rand(0,6); m.add(fl); } }
   if(sf.grid){ for(let k=-6;k<=6;k++){ const ln=mesh(geo.box,Bm(sf.grid),.18,.05,L,k*14,.3,0); m.add(ln); } m.add(mesh(geo.box,Bm(sf.grid),Wd,.05,.18,0,.3,0)); }
   addStatic(m,s,0,-(B.y+8),null,L/2);
 }
@@ -1928,7 +1934,7 @@ function updateEnvSpawn(dt){
   if(W0.surface){ while(ENV.nextGround<ahead+60){ spawnGround(ENV.nextGround); ENV.nextGround+=42; }
     if(ENV.calm) ENV.nextPillar=Math.max(ENV.nextPillar,ahead+200); else while(ENV.nextPillar<ahead){ if(!inWreck(ENV.nextPillar)) spawnPillar(ENV.nextPillar); ENV.nextPillar+=rand(110,190); } }
   if(state==='play'&&!ENV.calm&&!G.boss&&!(G.warp>0)&&ENV.s>ENV.nextCube){ ENV.nextCube=ENV.s+rand(1400,2100); if(!inWreck(ahead-60)&&!inWreck(ahead+20)) spawnCubeSet(ahead-60); }
-  while(ENV.nextDecor<ahead){ spawnDecor(ENV.nextDecor); if(Math.random()<.05) spawnShafts(ENV.nextDecor); if(W0.surface&&W0.decor&&!ENV.calmDecor){ for(let k=0;k<2;k++){ const sx=Math.random()<.5?-1:1; spawnGroundDecor(ENV.nextDecor+rand(-3,3),sx*rand(B.x+40,190),pickW(W0.decor)); } } if(W0.surface&&(W0.surface.canyon||0)>=.5&&!ENV.calmDecor) spawnWallRocks(ENV.nextDecor); ENV.nextDecor+=rand(4,9); }
+  while(ENV.nextDecor<ahead){ spawnDecor(ENV.nextDecor); if(Math.random()<.05) spawnShafts(ENV.nextDecor); if(W0.surface&&W0.decor&&!ENV.calmDecor){ for(let k=0;k<2;k++){ const sx=Math.random()<.5?-1:1; spawnGroundDecor(ENV.nextDecor+rand(-3,3),sx*rand(B.x+40,190),pickW(W0.decor)); } } if(W0.surface&&(W0.surface.canyon||0)>=.5&&!ENV.calmDecor&&(W0.gmat!=='fungus'||Math.random()<.3)) spawnWallRocks(ENV.nextDecor); ENV.nextDecor+=rand(4,9); }
   while(ENV.nextDerelict<ahead){ spawnDerelict(ENV.nextDerelict); ENV.nextDerelict+=W0.derelictEvery?rand(...W0.derelictEvery):rand(450,800); }
   if(ENV.s>ENV.nextRock){ ENV.nextRock=ENV.s+rand(24,46); if(!ENV.wrecks.some(w=>!w.pillar&&ahead>w.s0-10&&ahead<w.s1+4)&&!ENV.calm&&!G.passage) spawnTubeDebris(); }
   for(let i=statics.length-1;i>=0;i--){ const st=statics[i]; if(st.s<ENV.s-60){ scene.remove(st.mesh); statics.splice(i,1); } else st.mesh.visible=st.s0<ENV.s+560; }
@@ -1974,7 +1980,7 @@ const WORLDS=[
  {name:'ORBITALSTATION ORION', ev:'turrets', curv:.35, pitchK:.3, evName:'ABWEHRGESCHÜTZE DER STATION', fog:0x10244a, dens:.0042, sky:[0x041030,0x1c4880,0x020610], neb:0x6080ff, sun:0xfff0e0, hemi:0xa0b0e0, rim:0x40a0ff, motes:0x60a0ff,
   planet:[[110,160,230],[30,50,90]], ring:true, rock:[0xb0b0b8,0x8a8a92], rockE:0, decor:{tower:.4,girder:.3,chunk:.3}, wrecks:.6, tube:'mix', fx:null, deck:true},
  {name:'PILZWALD MYKOS', pano:'mush', ev:'jellies', curv:1.2, pitchK:.4, evName:'SCHWEBENDE QUALLEN', exp:.85, bloom:.55, hemiI:.5, fog:0x2a0e3a, dens:.006, sky:[0x0a0418,0x4a1a6a,0x120620], neb:0x60ffe0, sun:0xffd0ff, hemi:0xc080ff, rim:0x40ffd0, motes:0x80ffe0, stars:false,
-  planet:null, ring:false, rock:[0x6a4a7a,0x4a3458], rockE:0x200830, decor:{mush:1}, wrecks:0, tube:'rock', fx:null, gmat:'fungus', noMassif:true, pillarLook:'mush',
+  planet:null, ring:false, rock:[0x4c5a52,0x343e3a], rockE:0x200830, decor:{mush:1}, wrecks:0, tube:'rock', fx:null, gmat:'fungus', noMassif:true, pillarLook:'mush',
   surface:{low:0x3a1a4a,high:0x1a0a2a,mid:0x5a2a6a,canyon:.5}},
  {name:'GEWITTERNEBEL', ev:'lightning', curv:1.1, evName:'BLITZEINSCHLÄGE', fog:0x164a3c, dens:.0056, sky:[0x041a14,0x1e6a54,0x020a08], neb:0x60ffb0, sun:0xc0ffe0, hemi:0x90d0b0, rim:0x40ffb0, motes:0x80ffd0,
   planet:[[90,170,130],[20,50,40]], ring:false, rock:[0x8a9a90,0x6a7a70], rockE:0, decor:{rock:.6,chunk:.3,girder:.1}, wrecks:.7, tube:'mix', fx:'storm'},
@@ -2130,11 +2136,20 @@ function buildPanoLayer(type,R,hMul,col,fogC,mix,seed){
     if(i<N){ const k=i*2; idx.push(k,k+2,k+1, k+1,k+2,k+3); } }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(cols,3)); g.setIndex(idx);
   const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,fog:false,side:THREE.DoubleSide})); m.renderOrder=-9; return m; }
+const floeGeos=[1,2,3,4,5].map(i=>cutRock(i*31+5,{sx:1,sy:.16,sz:1,cuts:9,flatTop:true}));
+const floeMat=new THREE.MeshStandardMaterial({color:0xe6f4ff,flatShading:true,roughness:.6,emissive:0x0c2a44});
+const bergMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.55,metalness:0,fog:false});
+function buildIceRange(w){ const fogC=new THREE.Color(w.fog), cS=new THREE.Color(0xf2f8ff), cI=new THREE.Color(0x8fc4e8), cD=new THREE.Color(0x3a78a8), c=new THREE.Color();
+  for(let i=0;i<34;i++){ const a=i/34*Math.PI*2+rand(-.06,.06), R=rand(1150,1650), H=rand(220,560), W=rand(260,520), seed=i*13+rand(0,50);
+    const g=cutRock(seed,{detail:2,sx:1,sy:1.6,sz:.9,peak:1,cuts:11}); const P=g.attributes.position, N=g.attributes.normal, col=new Float32Array(P.count*3);
+    for(let k=0;k<P.count;k++){ const ny=N.getY(k), y=P.getY(k); c.copy(ny>.55?cS:ny>.1?cI:cD); if(y<-.6) c.lerp(cD,.5); c.lerp(fogC,.22+R/1650*.18); col[k*3]=c.r; col[k*3+1]=c.g; col[k*3+2]=c.b; }
+    g.setAttribute('color',new THREE.BufferAttribute(col,3)); const m=new THREE.Mesh(g,bergMat); m.scale.set(W,H,W*rand(.7,1)); m.rotation.y=rand(0,6.28); m.position.set(Math.cos(a)*R,H*.55-40,Math.sin(a)*R); m.renderOrder=-9; pano.add(m); } }
 function rebuildPano(w){
-  for(const c of [...pano.children]){ pano.remove(c); c.geometry.dispose(); }
+  for(const c of [...pano.children]){ pano.remove(c); if(c.geometry) c.geometry.dispose(); }
   pano.visible=!!(w.surface&&w.pano); if(!pano.visible) return;
   const t=w.pano, sd=rand(1,50), base=w.surface.high??0x555555, mid=w.surface.mid??base;
   const tall=t==='berg'?420:t==='volcano'?360:t==='city'?300:t==='mush'?260:t==='stack'?200:160;
+  if(t==='berg'){ buildIceRange(w); return; }
   pano.add(buildPanoLayer(t,1750,tall*1.25,t==='berg'?0x5a7ea4:t==='city'?0x181828:base,w.fog,.45,sd));
   pano.add(buildPanoLayer(t,1300,tall*.8,t==='berg'?0x4a6c90:t==='city'?0x10101c:mid,w.fog,.3,sd+7));
   if(t==='city'){ for(let i=0;i<260;i++){ const a=Math.random()*Math.PI*2, R=rand(1300,1700), l=glowSprite(pick([0xff30c0,0x30e0ff,0xffe080,0xffffff]),rand(4,9),.9); l.position.set(Math.cos(a)*R,rand(-40,200),Math.sin(a)*R); l.material.fog=false; pano.add(l); } }
@@ -2177,7 +2192,8 @@ function worldEvents(dt){
   else if(ev==='lightning'){ G.evT=rand(1.8,3); const x=clamp(ship.pos.x+rand(-6,6),-B.x,B.x); { const c=glowSprite(0xb0ffe0,22,.7); c.position.set(0,0,0); const cg=new THREE.Group(); cg.add(c); for(let k=0;k<5;k++){ const pf=new THREE.Sprite(new THREE.SpriteMaterial({map:fireTex,color:0x203040,transparent:true,opacity:.85,depthWrite:false})); pf.scale.setScalar(rand(14,22)); pf.position.set(rand(-8,8),rand(-2,3),rand(-3,3)); cg.add(pf); } scene.add(cg); strikes.push({cloud:cg,cx:x,t:0}); } const o=new THREE.Group(); scene.add(o); strikes.push({x,t:0,o,bolt:true}); }
   else if(ev==='gravity'){ G.evT=rand(5,8); const sd=blackHole.userData.side||1; G.gPull=sd*rand(5,8); G.gT=3.5; toast(G.gPull>0?'GRAVITATION NACH RECHTS!':'GRAVITATION NACH LINKS!','#ffb070'); for(let k=0;k<5;k++) later(k*.35,()=>flingRock(sd)); }
   else if(ev==='sandstorm'){ G.evT=rand(7,10); G.gPull=(Math.random()<.5?-1:1)*rand(4,6.5); G.gT=4; G.sandT=4; toast('SANDSTURM!','#ffd080'); }
-  else if(ev==='spouts'){ G.evT=rand(2.5,4); const x=rand(-B.x*.7,B.x*.7), z=-150, gy=-(B.y+8); const g=new THREE.Group(); const c=mesh(geo.cyl,M.spout||(M.spout=new THREE.MeshStandardMaterial({color:0xcfefff,transparent:true,opacity:.55,roughness:.1,emissive:0x2a5a7a})),5,B.y*3,5,0,B.y*1.5,0); g.add(c); g.add(mesh(geo.cone,M.spout,10,8,10,0,2,0));
+  else if(ev==='spouts'){ G.evT=rand(2.8,4.2); spawnSpout(); }
+  else if(ev==='spoutsOld'){ G.evT=rand(2.5,4); const x=rand(-B.x*.7,B.x*.7), z=-150, gy=-(B.y+8); const g=new THREE.Group(); const c=mesh(geo.cyl,M.spout||(M.spout=new THREE.MeshStandardMaterial({color:0xcfefff,transparent:true,opacity:.55,roughness:.1,emissive:0x2a5a7a})),5,B.y*3,5,0,B.y*1.5,0); g.add(c); g.add(mesh(geo.cone,M.spout,10,8,10,0,2,0));
     addStatic(g,ENV.s-z,x,gy,null); addObst(ENV.s-z,x,0,2.6,B.y+10,2.6,'none'); toast('WASSERHOSE!','#bfe8ff'); }
   else if(ev==='fuel'){ G.evT=rand(1.4,2.4); const g=new THREE.Group(); const c=mesh(geo.cyl,M.fuel||(M.fuel=new THREE.MeshStandardMaterial({color:0xd02010,metalness:.5,roughness:.4,emissive:0x400800})),2.4,4.5,2.4); c.rotation.z=Math.PI/2; g.add(c); g.add(mesh(geo.box,M.hazard,.4,2.6,2.6,1.2,0,0)); g.add(mesh(geo.box,M.hazard,.4,2.6,2.6,-1.2,0,0)); g.add(glowSprite(0xff4020,4,.6));
     const e=addEnemy('fuel',g,{hp:2,maxHp:2,radius:2.4,score:60,collide:20,bs:1,env:true}); e.pos.set(rand(-B.x*.8,B.x*.8),rand(-B.y*.7,B.y*.7),-170); e.spin=new V3(rand(-1,1),rand(-1,1),rand(-1,1)); }
@@ -2455,6 +2471,7 @@ function spawnTunnelChunk(s0,len,key,tS,tE){
   const m=new THREE.Mesh(g,tunnelMat(key)); m.frustumCulled=true; g.computeBoundingSphere();
   m.visible=false; scene.add(m); statics.push({mesh:m,s:s0+len,s0,w:curW});
 }
+const tunRockMats={}; function tunRockMat(key){ if(!tunRockMats[key]){ const st=TUN[key], c=new THREE.Color(st.c1).lerp(new THREE.Color(st.c2),.35); tunRockMats[key]=new THREE.MeshStandardMaterial({color:c,flatShading:true,roughness:st.gloss?.22:.88,metalness:st.gloss?.3:0,emissive:new THREE.Color(st.c3).multiplyScalar(st.glow*.25)}); } return tunRockMats[key]; }
 // ---------- Felssäulen von Wand zu Wand (Höhlen) ----------
 var tpillars=[]; const pillarGeos={};
 function pillarGeo(key){
@@ -2486,18 +2503,18 @@ function spawnTunnel(s0,len,key){
   const st=TUN[key], w={s0,s1:s0+len,name:st.label,told:false,tunnel:key}; ENV.wrecks.push(w); curW=w;
   for(let s=s0;s<s0+len;s+=60) spawnTunnelChunk(s,Math.min(60,s0+len-s),key,s0,s0+len);
   // Felsmassen um den Eingang
-  for(let i=0;i<10;i++){ const a=rand(0,Math.PI*2), r=rand(1.3,2.2); const m=new THREE.Mesh(pick(rocks),key==='ice'?M2.ice:key==='lava'?M2.lava:M.rock2);
+  for(let i=0;i<10;i++){ const a=rand(0,Math.PI*2), r=rand(1.3,2.2); const m=new THREE.Mesh(pick(rocksBase),key==='ice'?M2.ice:tunRockMat(key));
     m.scale.setScalar(rand(8,18)); addStatic(m,s0+rand(-6,10),Math.cos(a)*(B.x+7)*r,Math.sin(a)*(B.y+6)*r,new THREE.Euler(rand(0,6),rand(0,6),rand(0,6))); }
   // Felsmassen um den Ausgang (sonst sieht man das offene Röhrenende)
-  for(let i=0;i<12;i++){ const a=rand(0,Math.PI*2), r=rand(1.3,2.3); const m=new THREE.Mesh(pick(rocks),key==='ice'?M2.ice:key==='lava'?M2.lava:M.rock2);
+  for(let i=0;i<12;i++){ const a=rand(0,Math.PI*2), r=rand(1.3,2.3); const m=new THREE.Mesh(pick(rocksBase),key==='ice'?M2.ice:tunRockMat(key));
     m.scale.setScalar(rand(9,19)); addStatic(m,s0+len+rand(-10,6),Math.cos(a)*(B.x+7)*r,Math.sin(a)*(B.y+6)*r,new THREE.Euler(rand(0,6),rand(0,6),rand(0,6))); }
   // Felsvorsprünge in den Wänden (keine glatten Flächen)
-  for(let s=s0+8;s<s0+len-8;s+=rand(5,9)){ const a=rand(0,Math.PI*2), rr=Math.max(.84,tunnelR(a,s))*1.05, m=new THREE.Mesh(pick(rocks),key==='ice'?M2.iceRock:key==='lava'?M2.lava:M.rock2);
-    m.scale.set(rand(3,7),rand(3,7),rand(4,10)); addStatic(m,s,Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr,new THREE.Euler(rand(0,6),rand(0,6),rand(0,6))); }
+  for(let s=s0+8;s<s0+len-8;s+=rand(5,9)){ const a=rand(0,Math.PI*2), rr=Math.max(.84,tunnelR(a,s))*1.04, m=new THREE.Mesh(pick(rocksBase),key==='ice'?M2.iceRock:tunRockMat(key));
+    m.scale.set(rand(3.5,7),rand(2.5,5),rand(5,11)); addStatic(m,s,Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr,new THREE.Euler(rand(0,6),rand(0,6),rand(0,6))); }
   // Leuchtpilze in Höhlen der Pilzwelt
-  if(W0.gmat==='fungus') for(let s=s0+10;s<s0+len-6;s+=rand(5,9)){ const a=rand(0,Math.PI*2), rr=Math.max(.84,tunnelR(a,s))*.96, g=new THREE.Group(), n=2+Math.floor(Math.random()*4);
+  if(W0.gmat==='fungus') for(let s=s0+10;s<s0+len-6;s+=rand(9,15)){ const a=rand(0,Math.PI*2), rr=Math.max(.84,tunnelR(a,s))*.96, g=new THREE.Group(), n=2+Math.floor(Math.random()*4);
     for(let k=0;k<n;k++){ const h=rand(1.5,4.5), w=h*.15, ox=rand(-2,2), oz=rand(-2,2); g.add(mesh(geo.cyl,M2.fungus,w,h,w,ox,h/2,oz)); g.add(mesh(geo.sphere,M.mushCap,w*4,w*1.5,w*4,ox,h,oz)); }
-    const gl=glowSprite(0x60ffd0,rand(6,10),.6); gl.position.y=3; g.add(gl); addStatic(g,s,Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr,new THREE.Euler(0,0,a-Math.PI/2+Math.PI));
+    if(Math.random()<.35){ const gl=glowSprite(0x60ffd0,rand(3.5,5.5),.22); gl.position.y=3; g.add(gl); } addStatic(g,s,Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr,new THREE.Euler(0,0,a-Math.PI/2+Math.PI));
     if(Math.random()<.45) sporeGuns.push({w:curW,s,x:Math.cos(a)*(B.x+7)*rr*.92,y:Math.sin(a)*(B.y+6)*rr*.92,fired:false}); }
   // Kristalle / Lichter an den Wänden
   for(let s=s0+10;s<s0+len-6;s+=rand(6,11)){
@@ -3833,6 +3850,27 @@ function updateCityHz(dt){
   if(W0.name==='ORBITALSTATION ORION'&&state==='play'&&!G.boss&&!G.passage){ G.popT=(G.popT??rand(6,10))-dt; if(G.popT<=0){ G.popT=rand(9,15); spawnPopGroup(ENV.s+300,1+Math.floor(Math.random()*2)); } }
 }
 let M_TANK=null;
+var spouts=[];
+const spoutTex=(()=>{ const W=128,H=256,c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'), im=x.createImageData(W,H);
+  for(let j=0;j<H;j++) for(let i=0;i<W;i++){ const u=i/W, v=j/H, sw=u*6.283+v*9, n=vnoise(Math.cos(sw)*2,Math.sin(sw)*2,v*5)*.7+vnoise(Math.cos(sw*3)*2,Math.sin(sw*3)*2,v*14)*.3, k=(j*W+i)*4, a=clamp((n-.3)*1.8,0,1);
+    im.data[k]=200+55*n; im.data[k+1]=225+30*n; im.data[k+2]=255; im.data[k+3]=Math.floor(255*(.25+.75*a)); }
+  x.putImageData(im,0,0); const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(2,2); return t; })();
+const spoutMat=new THREE.MeshStandardMaterial({map:spoutTex,color:0x9ab8cc,transparent:true,opacity:.92,roughness:.35,metalness:.1,emissive:0x0a1824,side:THREE.DoubleSide,depthWrite:false});
+const spoutMat2=new THREE.MeshStandardMaterial({map:spoutTex,color:0x5a7a90,transparent:true,opacity:.75,roughness:.4,emissive:0x0a2030,side:THREE.DoubleSide,depthWrite:false});
+const spoutCloud=new THREE.MeshStandardMaterial({color:0x6a7a88,roughness:1,flatShading:true});
+function spawnSpout(){
+  const H=2*B.y+34, prof=[]; for(let i=0;i<=24;i++){ const t=i/24, y=t*H, r=t<.08?9-t/.08*5.6:t<.55?3.4+Math.sin(t*11)*.35+t*1.6:4.3+Math.pow((t-.55)/.45,1.6)*18; prof.push(new THREE.Vector2(r,y)); }
+  const g=new THREE.Group(), outer=new THREE.Mesh(new THREE.LatheGeometry(prof,28),spoutMat), inner=new THREE.Mesh(new THREE.LatheGeometry(prof.map(v=>new THREE.Vector2(v.x*.62,v.y)),20),spoutMat2);
+  g.add(inner); g.add(outer); for(let i=0;i<6;i++){ const cl=new THREE.Mesh(pick(rocksBase),spoutCloud); cl.scale.set(rand(12,22),rand(4,7),rand(12,22)); cl.position.set(rand(-14,14),H+rand(-1,4),rand(-14,14)); g.add(cl); }
+  const foam=new THREE.Mesh(new THREE.RingGeometry(3,10,32),new THREE.MeshBasicMaterial({color:0xf0faff,transparent:true,opacity:.45,side:THREE.DoubleSide,depthWrite:false})); foam.rotation.x=-Math.PI/2; foam.position.y=.5; g.add(foam);
+  scene.add(g); spouts.push({g,outer,inner,s:ENV.s+150,x:rand(-B.x*.7,B.x*.7),vx:rand(-3,3),H,hit:false,t:0}); toast('WASSERHOSE!','#bfe8ff');
+}
+function updateSpouts(dt){ if(!spouts.length) return; spoutTex.offset.x=(spoutTex.offset.x+dt*.9)%1; spoutTex.offset.y=(spoutTex.offset.y-dt*.6)%1;
+  for(let i=spouts.length-1;i>=0;i--){ const w=spouts[i]; w.t+=dt; w.x+=w.vx*dt; if(Math.abs(w.x)>B.x) w.vx=-w.vx; const z=ENV.s-w.s, gy=-(B.y+8)+(W0.surface?(W0.surface.waterY??0):0);
+    _hp.set(w.x+Math.sin(w.t*1.3)*.8,gy,z); place(w.g,_hp,null); w.outer.rotation.y+=dt*3.2; w.inner.rotation.y-=dt*4.5; w.g.rotation.z=Math.sin(w.t*.9)*.08; w.outer.scale.set(1+Math.sin(w.t*5)*.05,1,1+Math.cos(w.t*5)*.05);
+    if(Math.random()<.6){ const a=rand(0,6.28); L2W(w.x+Math.cos(a)*4,gy+.5,z+Math.sin(a)*4,_w); emit(_w.x,_w.y,_w.z,Math.cos(a)*rand(2,5),rand(2,6),Math.sin(a)*rand(2,5),0,-6,0,0xeaf8ff,rand(.5,1.1),1); }
+    if(!w.hit&&state==='play'&&Math.abs(z-ship.pos.z)<3&&Math.abs(ship.pos.x-w.x)<3.6){ w.hit=true; damagePlayer(20,true); G.trauma=.8; ship.vel.x+=Math.sign(ship.pos.x-w.x||1)*14; sparks(ship.pos,0xcfefff,18); }
+    if(z>40){ scene.remove(w.g); spouts.splice(i,1); } } }
 function flingRock(sd){ if(state!=='play'||!blackHole.visible) return;
   const m=new THREE.Mesh(pick(rocks),M.rock), r=rand(1.6,3.6); m.scale.set(r*rand(.8,1.3),r*rand(.7,1.1),r*rand(.8,1.3)); const g=new THREE.Group(); g.add(m); const t=glowSprite(0xffa060,r*2.2,.25); g.add(t);
   const e=addEnemy('thrown',g,{hp:3,maxHp:3,radius:r*1.05,score:60,collide:18,bs:1,env:true}); e.pos.set(-sd*(B.x+rand(30,55)),rand(-B.y*.9,B.y*.9),rand(-150,-85)); e.vel.set(sd*rand(22,34),rand(-3,3),ENV.speed*rand(.2,.45)); e.grav=0; e.spin=new V3(rand(-3,3),rand(-3,3),0); }
@@ -3843,7 +3881,7 @@ function fireSpore(sg){ const g=new THREE.Group(); g.add(mesh(geo.sphere,Bm(0x9f
   sparks(e.pos,0x60ffc0,8); }
 function updateSpores(){ if(!sporeGuns.length) return; for(let i=sporeGuns.length-1;i>=0;i--){ const sg=sporeGuns[i], z=ENV.s-sg.s; if(z>10){ sporeGuns.splice(i,1); continue; }
     if(!sg.fired&&z>-95&&z<-55&&state==='play'){ sg.fired=true; if(Math.random()<.75) fireSpore(sg); } } }
-function updateBHRocks(dt){ updateSpores(); if(!blackHole.visible||state!=='play'||G.boss) return; G.bhT=(G.bhT??2)-dt; if(G.bhT<=0){ G.bhT=rand(1.4,2.8); const sd=blackHole.userData.side||1; for(let k=0,n=1+Math.floor(Math.random()*2);k<n;k++) later(k*.3,()=>flingRock(sd)); } }
+function updateBHRocks(dt){ updateSpores(); updateSpouts(dt); if(!blackHole.visible||state!=='play'||G.boss) return; G.bhT=(G.bhT??2)-dt; if(G.bhT<=0){ G.bhT=rand(1.4,2.8); const sd=blackHole.userData.side||1; for(let k=0,n=1+Math.floor(Math.random()*2);k<n;k++) later(k*.3,()=>flingRock(sd)); } }
 function spawnTank(z){
   M_TANK=M_TANK||new THREE.MeshStandardMaterial({color:0xa88458,roughness:.85,metalness:.25});
   const g=new THREE.Group(), body=new THREE.Mesh(loftHull(6,t=>({w:1.9-.5*Math.abs(t-.5),h:.75,y:0}),{nr:10,dmg:.2}),M_TANK); g.add(body);
