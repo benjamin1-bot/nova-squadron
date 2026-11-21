@@ -2139,6 +2139,31 @@ function buildPanoLayer(type,R,hMul,col,fogC,mix,seed){
 const floeGeos=[1,2,3,4,5].map(i=>cutRock(i*31+5,{sx:1,sy:.16,sz:1,cuts:9,flatTop:true}));
 const floeMat=new THREE.MeshStandardMaterial({color:0xe6f4ff,flatShading:true,roughness:.6,emissive:0x0c2a44});
 const bergMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.55,metalness:0,fog:false});
+// Gebirge wie in Coin City: zackige Kegel mit Grat-Rauschen, Farbe pro Punkt nach Höhe + Rauschen (keine gerade Grenze)
+const N2=(x,y,z,f,sd)=>(vnoise(x*f+sd,y*f,z*f-sd)-.5)*2;
+function mountainGeo(rad,hgt,seed,pal){
+  const rings=18, segs=30, grid=[], c=new THREE.Color(), cA=new THREE.Color(), cB=new THREE.Color();
+  for(let r=0;r<=rings;r++){ const t=r/rings, row=[];
+    for(let k=0;k<segs;k++){ const a=k/segs*Math.PI*2, ridge=1+.32*N2(Math.cos(a)*60*.012,Math.sin(a)*60*.012,0,1,seed), radius=rad*Math.pow(t,.92)*ridge, bx=Math.cos(a)*radius, bz=Math.sin(a)*radius;
+      let y=hgt*Math.pow(1-t,1.25); y+=N2(bx,y,bz,.012,seed)*hgt*.14*(1-t*.5); y+=N2(bx,y,bz,.06,seed+13)*hgt*.025;
+      const x=bx+N2(bz,y,0,.012,seed)*rad*.05*t, z=bz+N2(y,bx,0,.012,seed+3)*rad*.05*t;
+      const elev=clamp(y/hgt,0,1.2), e=elev+N2(bx,y*1.5,bz,.018,seed+7)*.22+N2(bx,y,bz,.06,seed+13)*.07, sm=(a0,b0,v)=>{ const q=clamp((v-a0)/(b0-a0),0,1); return q*q*(3-2*q); };
+      cA.setHex(pal.base).lerp(cB.setHex(pal.base2),N2(bx*2,bz*2,0,.018,seed+7)*.5+.5); c.copy(cA);
+      c.lerp(cB.setHex(pal.mid),sm(.22,.38,e)*.6); cA.setHex(pal.rock).lerp(cB.setHex(pal.rock2),N2(bx,y,bz,.06,seed+13)*.5+.5); c.lerp(cA,sm(.34,.6,e));
+      if(hgt>pal.snowH) c.lerp(cB.setHex(pal.snow),sm(.8,.95,e+.05*N2(bx,y,bz,.06,seed+13)));
+      row.push([x,y,z,c.r,c.g,c.b]); }
+    grid.push(row); }
+  const pos=[], col=[];
+  for(let r=0;r<rings;r++) for(let k=0;k<segs;k++){ const k2=(k+1)%segs, A=grid[r][k], Bv=grid[r][k2], C=grid[r+1][k], D=grid[r+1][k2];
+    for(const v of [A,C,Bv,Bv,C,D]){ pos.push(v[0],v[1],v[2]); col.push(v[3],v[4],v[5]); } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.computeVertexNormals(); g.computeBoundingSphere(); return g; }
+const MPAL={ ice:{base:0x2a5a82,base2:0x3a7aa6,mid:0x7ab4d8,rock:0xb8daf0,rock2:0x94c2e2,snow:0xf6faff,snowH:180},
+             lava:{base:0x1a1210,base2:0x2a1a14,mid:0x3a2a22,rock:0x4a3a34,rock2:0x5a3020,snow:0xff6a20,snowH:330} };
+const mountMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95,fog:false});
+function buildMountainRing(w,palKey){ const pal=MPAL[palKey], fogC=new THREE.Color(w.fog);
+  for(let i=0;i<38;i++){ const a=(i+rand(-.3,.3))/38*Math.PI*2, d=rand(1150,1600), hgt=rand(230,640), rad=hgt*rand(.8,1.1);
+    const g=mountainGeo(rad,hgt,i*17+rand(0,99),pal), C=g.attributes.color; for(let k=0;k<C.count;k++){ const f=.12+(d-1150)/450*.15; C.setXYZ(k,C.getX(k)+(fogC.r-C.getX(k))*f,C.getY(k)+(fogC.g-C.getY(k))*f,C.getZ(k)+(fogC.b-C.getZ(k))*f); }
+    const m=new THREE.Mesh(g,mountMat); m.position.set(Math.cos(a)*d,-30,Math.sin(a)*d); m.rotation.y=rand(0,6.28); m.renderOrder=-9; pano.add(m); } }
 function buildIceRange(w){ const fogC=new THREE.Color(w.fog), cS=new THREE.Color(0xf2f8ff), cI=new THREE.Color(0x8fc4e8), cD=new THREE.Color(0x3a78a8), c=new THREE.Color();
   for(let i=0;i<34;i++){ const a=i/34*Math.PI*2+rand(-.06,.06), R=rand(1150,1650), H=rand(220,560), W=rand(260,520), seed=i*13+rand(0,50);
     const g=cutRock(seed,{detail:2,sx:1,sy:1.6,sz:.9,peak:1,cuts:11}); const P=g.attributes.position, N=g.attributes.normal, col=new Float32Array(P.count*3);
@@ -2149,7 +2174,8 @@ function rebuildPano(w){
   pano.visible=!!(w.surface&&w.pano); if(!pano.visible) return;
   const t=w.pano, sd=rand(1,50), base=w.surface.high??0x555555, mid=w.surface.mid??base;
   const tall=t==='berg'?420:t==='volcano'?360:t==='city'?300:t==='mush'?260:t==='stack'?200:160;
-  if(t==='berg'){ buildIceRange(w); return; }
+  if(t==='berg'){ buildMountainRing(w,'ice'); return; }
+  if(t==='volcano'){ buildMountainRing(w,'lava'); for(let i=0;i<10;i++){ const a=Math.random()*Math.PI*2, l=glowSprite(0xff5010,rand(80,160),.5); l.position.set(Math.cos(a)*1500,rand(300,520),Math.sin(a)*1500); pano.add(l); } return; }
   pano.add(buildPanoLayer(t,1750,tall*1.25,t==='berg'?0x5a7ea4:t==='city'?0x181828:base,w.fog,.45,sd));
   pano.add(buildPanoLayer(t,1300,tall*.8,t==='berg'?0x4a6c90:t==='city'?0x10101c:mid,w.fog,.3,sd+7));
   if(t==='city'){ for(let i=0;i<260;i++){ const a=Math.random()*Math.PI*2, R=rand(1300,1700), l=glowSprite(pick([0xff30c0,0x30e0ff,0xffe080,0xffffff]),rand(4,9),.9); l.position.set(Math.cos(a)*R,rand(-40,200),Math.sin(a)*R); l.material.fog=false; pano.add(l); } }
@@ -2513,7 +2539,7 @@ function spawnTunnel(s0,len,key){
     m.scale.set(rand(3.5,7),rand(2.5,5),rand(5,11)); addStatic(m,s,Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr,new THREE.Euler(rand(0,6),rand(0,6),rand(0,6))); }
   // Leuchtpilze in Höhlen der Pilzwelt
   if(W0.gmat==='fungus') for(let s=s0+10;s<s0+len-6;s+=rand(9,15)){ const a=rand(0,Math.PI*2), rr=Math.max(.84,tunnelR(a,s))*.96, g=new THREE.Group(), n=2+Math.floor(Math.random()*4);
-    for(let k=0;k<n;k++){ const h=rand(1.5,4.5), w=h*.15, ox=rand(-2,2), oz=rand(-2,2); g.add(mesh(geo.cyl,M2.fungus,w,h,w,ox,h/2,oz)); g.add(mesh(geo.sphere,M.mushCap,w*4,w*1.5,w*4,ox,h,oz)); }
+    for(let k=0;k<n;k++){ const h=rand(.6,1.7), w=h*.15, ox=rand(-1.5,1.5), oz=rand(-1.5,1.5); g.add(mesh(geo.cyl,M2.fungus,w,h,w,ox,h/2,oz)); g.add(mesh(geo.sphere,M.mushCap,w*4,w*1.5,w*4,ox,h,oz)); }
     if(Math.random()<.35){ const gl=glowSprite(0x60ffd0,rand(3.5,5.5),.22); gl.position.y=3; g.add(gl); } addStatic(g,s,Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr,new THREE.Euler(0,0,a-Math.PI/2+Math.PI));
     if(Math.random()<.45) sporeGuns.push({w:curW,s,x:Math.cos(a)*(B.x+7)*rr*.92,y:Math.sin(a)*(B.y+6)*rr*.92,fired:false}); }
   // Kristalle / Lichter an den Wänden
