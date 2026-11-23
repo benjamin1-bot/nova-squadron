@@ -2158,7 +2158,23 @@ function mountainGeo(rad,hgt,seed,pal){
     for(const v of [A,C,Bv,Bv,C,D]){ pos.push(v[0],v[1],v[2]); col.push(v[3],v[4],v[5]); } }
   const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.computeVertexNormals(); g.computeBoundingSphere(); return g; }
 const MPAL={ ice:{base:0x2a5a82,base2:0x3a7aa6,mid:0x7ab4d8,rock:0xb8daf0,rock2:0x94c2e2,snow:0xf6faff,snowH:180},
-             lava:{base:0x1a1210,base2:0x2a1a14,mid:0x3a2a22,rock:0x4a3a34,rock2:0x5a3020,snow:0xff6a20,snowH:330} };
+             lava:{base:0x1a1210,base2:0x2a1a14,mid:0x3a2a22,rock:0x4a3a34,rock2:0x5a3020,snow:0xff6a20,snowH:330},
+             dune:{base:0x7a4a26,base2:0x8a5a30,mid:0xa87040,rock:0xc08a52,rock2:0x9a6a3e,snow:0xe8c890,snowH:120},
+             fungus:{base:0x2a2434,base2:0x3a3046,mid:0x4a5a52,rock:0x5a645e,rock2:0x464e4a,snow:0x7affd8,snowH:140},
+             stack:{base:0x3a4a28,base2:0x4a5a30,mid:0x6a6a44,rock:0x8a7656,rock2:0x6e5c44,snow:0x5aa040,snowH:9999},
+             grass:{base:0x2a5a2a,base2:0x3a6a30,mid:0x6a7a40,rock:0x7a7066,rock2:0x5e5650,snow:0xf0f4ff,snowH:160} };
+const mountMatW=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.92});
+const palOf=w=>w.gmat==='ice'?'ice':w.gmat==='lava'?'lava':w.gmat==='fungus'?'fungus':w.pano==='dune'?'dune':w.pano==='stack'?'stack':'grass';
+// Tunnel auf Planeten immer in ein Bergmassiv einbetten (Berge wie im Eis-Panorama, Farben der Welt)
+function spawnTunnelMountains(s0,len){ const pal=MPAL[palOf(W0)], gy=-(B.y+8), EX=(B.x+7)*1.32, EY=(B.y+6)*1.32;
+  for(let s=s0-12, i=0; s<s0+len+14; s+=rand(38,52), i++){
+    const hgt=rand(75,120), rad=rand(70,95), sz=rand(.55,.8), g0=mountainGeo(rad,hgt,Math.floor(rand(0,1e4)),pal), P=g0.attributes.position, C=g0.attributes.color, ox=i===0?0:rand(-8,8);
+    const pos=[], col=[];
+    for(let t=0;t<P.count;t+=3){ let inside=false; for(let k=0;k<3;k++){ const x=P.getX(t+k)+ox, y=P.getY(t+k)+gy, z=P.getZ(t+k)*sz; if((x/EX)**2+(y/EY)**2<1) inside=true; }
+      if(inside) continue; for(let k=0;k<3;k++){ pos.push(P.getX(t+k),P.getY(t+k),P.getZ(t+k)); col.push(C.getX(t+k),C.getY(t+k),C.getZ(t+k)); } }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.computeVertexNormals();
+    const m=new THREE.Mesh(g,mountMatW); m.scale.set(1,1,sz); const gg=new THREE.Group(); gg.add(m); gg.userData.noDetail=true; addStatic(gg,s,ox,gy,null); }
+}
 const mountMat=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.95,fog:false});
 function buildMountainRing(w,palKey){ const pal=MPAL[palKey], fogC=new THREE.Color(w.fog);
   for(let i=0;i<38;i++){ const a=(i+rand(-.3,.3))/38*Math.PI*2, d=rand(1150,1600), hgt=rand(230,640), rad=hgt*rand(.8,1.1);
@@ -2175,6 +2191,11 @@ function rebuildPano(w){
   const t=w.pano, sd=rand(1,50), base=w.surface.high??0x555555, mid=w.surface.mid??base;
   const tall=t==='berg'?420:t==='volcano'?360:t==='city'?300:t==='mush'?260:t==='stack'?200:160;
   if(t==='berg'){ buildMountainRing(w,'ice'); return; }
+  if(t==='stack'){ const pal=MPAL.stack, fogC=new THREE.Color(w.fog), capM=new THREE.MeshStandardMaterial({color:new THREE.Color(0x3a9a3a).lerp(fogC,.2),flatShading:true,roughness:.9,fog:false});
+    for(let i=0;i<46;i++){ const a=(i+rand(-.3,.3))/46*Math.PI*2, d=rand(1100,1600), hgt=rand(180,420), rad=hgt*rand(.28,.4), g=mountainGeo(rad,hgt,i*23+rand(0,99),pal), C=g.attributes.color, f=.15+(d-1100)/500*.15;
+      for(let k=0;k<C.count;k++) C.setXYZ(k,C.getX(k)+(fogC.r-C.getX(k))*f,C.getY(k)+(fogC.g-C.getY(k))*f,C.getZ(k)+(fogC.b-C.getZ(k))*f);
+      const m=new THREE.Mesh(g,mountMat); m.position.set(Math.cos(a)*d,-30,Math.sin(a)*d); m.renderOrder=-9; pano.add(m);
+      const cap=new THREE.Mesh(new THREE.SphereGeometry(1,12,6),capM); cap.scale.set(rad*1.15,hgt*.07,rad*1.05); cap.position.set(m.position.x,-30+hgt*.93,m.position.z); cap.renderOrder=-9; pano.add(cap); } return; }
   if(t==='volcano'){ buildMountainRing(w,'lava'); for(let i=0;i<10;i++){ const a=Math.random()*Math.PI*2, l=glowSprite(0xff5010,rand(80,160),.5); l.position.set(Math.cos(a)*1500,rand(300,520),Math.sin(a)*1500); pano.add(l); } return; }
   pano.add(buildPanoLayer(t,1750,tall*1.25,t==='berg'?0x5a7ea4:t==='city'?0x181828:base,w.fog,.45,sd));
   pano.add(buildPanoLayer(t,1300,tall*.8,t==='berg'?0x4a6c90:t==='city'?0x10101c:mid,w.fog,.3,sd+7));
@@ -2526,6 +2547,7 @@ function updateTPillars(){
   }
 }
 function spawnTunnel(s0,len,key){
+  if(W0.surface) spawnTunnelMountains(s0,len);
   const st=TUN[key], w={s0,s1:s0+len,name:st.label,told:false,tunnel:key}; ENV.wrecks.push(w); curW=w;
   for(let s=s0;s<s0+len;s+=60) spawnTunnelChunk(s,Math.min(60,s0+len-s),key,s0,s0+len);
   // Felsmassen um den Eingang
