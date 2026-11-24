@@ -929,10 +929,14 @@ function spawnMassif(s){
   const gy=-(B.y+8), side=Math.random()<.5?-1:1;
   const sz=rand(.75,1.35), W=rand(B.x*1.2,B.x*2)*sz, cx=side*rand(B.x*.3,B.x*.85), top=B.y+rand(4,26)*sz, H=top-(gy-8), D=rand(18,42)*sz;
   const rx=rand(5.2,8.5), ry=rand(4.4,7), hx=cx+rand(-W*.18,W*.18), hy=rand(-B.y*.35,B.y*.4);
-  const {g,tube}=makeMassif(W,H,D,gy-8,hx-cx,hy,rx,ry), mat=W0.gmat==='lava'?M2.lava:W0.gmat==='ice'?M2.iceRock:pick([M.rock,M.rock2]);
-  const mat2=mat.clone(); mat2.side=THREE.DoubleSide; const gg=new THREE.Group(), m1=new THREE.Mesh(g,mat2), m2=new THREE.Mesh(tube,mat); m1.position.x=m2.position.x=cx; gg.add(m1); gg.add(m2);
-  if(W0.gmat==='lava'){ const gl=glowSprite(0xff6020,rx*3,.5); gl.position.set(hx,hy,0); gg.add(gl); }
-  addStatic(gg,s,0,0,null);
+  { const pal=MPAL[palOf(W0)], sd=rand(0,999), c=new THREE.Color(), cA=new THREE.Color(), cB=new THREE.Color(), Hm=top-gy;
+    const inner=(a,ss)=>{ const n=N2(Math.cos(a)*2,Math.sin(a)*2,ss*.05,1,sd)*.07; return [hx+Math.cos(a)*rx*(1+n),hy+Math.sin(a)*ry*(1+n)]; };
+    const outer=(a,ss)=>{ const ca=Math.cos(a), sa=Math.sin(a), n=N2(ca*2,sa*2,ss*.03,1,sd+3), e=Math.min(1,Math.min(ss-(s-D/2),(s+D/2)-ss)/(D*.35)), tp=.7+.3*Math.sin(Math.max(0,e)*Math.PI/2);
+      let x=hx+ca*(W/2)*(1+.18*n)*tp, y=sa>0?hy+sa*(top-hy)*(1+.12*n)*tp:hy+sa*(hy-gy+12); x+=ca*(N2(x,y,ss,.12,sd+5)*3.5+N2(x,y,ss,.35,sd+12)*1.2); y+=Math.max(0,sa)*(N2(x,y,ss,.1,sd+6)*6+N2(x,y,ss,.3,sd+13)*1.5); return [x,Math.max(y,gy-12)]; };
+    const colOut=(x,y,ss)=>_palCol(pal,(y-gy)/(Hm*1.1)+N2(x,y*1.5,ss,.05,sd+7)*.18,N2(x,ss,0,.05,sd+9),N2(x,y,ss,.12,sd+11),c,cA,cB);
+    const colIn=(x,y,ss)=>colOut(x,y,ss).multiplyScalar(.72);
+    boreBody({s0:s-D/2,len:D,inner,outer,colIn,colOut,mat:boreMatP,sd,seg:32,step:3,lipDepth:2.5,nl:6});
+    if(W0.gmat==='lava'){ const gg=new THREE.Group(), gl=glowSprite(0xff6020,rx*3,.5); gl.position.set(hx,hy,0); gg.add(gl); addStatic(gg,s,0,0,null); } }
   const iw=rx*.74, ih=ry*.74, hz=D*.36, L0=cx-W/2*.8, R0=cx+W/2*.8, T0=Math.min(top,hy+ih+ (top-hy)*.75), G0=gy;
   if(hx-iw>L0) addObst(s,(L0+hx-iw)/2,(G0+T0)/2,(hx-iw-L0)/2,(T0-G0)/2,hz,'none');
   if(R0>hx+iw) addObst(s,(R0+hx+iw)/2,(G0+T0)/2,(R0-hx-iw)/2,(T0-G0)/2,hz,'none');
@@ -2172,6 +2176,47 @@ function _palCol(pal,e,n1,n2,c,cA,cB){ const sm=(a0,b0,v)=>{ const q=clamp((v-a0
   cA.setHex(pal.rock).lerp(cB.setHex(pal.rock2),n2*.5+.5); c.lerp(cA,sm(.34,.6,e)); if(pal.snowH<200) c.lerp(cB.setHex(pal.snow),sm(.82,.97,e)); return c; }
 function _addMesh(pos,col,mat,s0,s1){ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.computeVertexNormals(); g.computeBoundingSphere();
   const m=new THREE.Mesh(g,mat); m.visible=false; scene.add(m); outline(m,.16); statics.push({mesh:m,s:s1,s0:s0,w:curW}); }
+// ===== Nahtlose Tunnelkörper: Innenwand, Mündungslippe und Außenhülle sind EIN zusammenhängendes Netz =====
+function boreBody(o){
+  const SEG=o.seg||40, STEP=o.step||2.6, s0=o.s0, s1=o.s0+o.len, NR=Math.max(2,Math.round(o.len/STEP)), NL=o.nl||7, c=new THREE.Color();
+  const ringS=r=>s0+(s1-s0)*r/NR;
+  const pIn=(k,s)=>o.inner(k/SEG*Math.PI*2,s), pOut=(k,s)=>o.outer(k/SEG*Math.PI*2,s);
+  const push=(pos,col,s,x,y,cf)=>{ _toWorld(pos,s,x,y); const cc=cf(x,y,s); col.push(cc.r,cc.g,cc.b); };
+  const quad=(pos,col,A,Bv,C,D)=>{ for(const v of [A,C,Bv,Bv,C,D]) push(pos,col,v[2],v[0],v[1],v[3]); };
+  const flush=(pos,col,a,b)=>{ if(!pos.length) return; const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.computeVertexNormals(); g.computeBoundingSphere();
+    const m=new THREE.Mesh(g,o.mat); m.visible=false; scene.add(m); statics.push({mesh:m,s:b,s0:a,w:curW}); };
+  // Innenwand und Außenhülle, in Stücken entlang der Bahn
+  for(let r0=0;r0<NR;r0+=22){ const r1=Math.min(NR,r0+22), pos=[], col=[];
+    for(let r=r0;r<r1;r++){ const sa=ringS(r), sb=ringS(r+1);
+      for(let k=0;k<SEG;k++){ const k2=(k+1)%SEG;
+        const a=pIn(k,sa), b=pIn(k2,sa), cI=pIn(k,sb), d=pIn(k2,sb); quad(pos,col,[...a,sa,o.colIn],[...b,sa,o.colIn],[...cI,sb,o.colIn],[...d,sb,o.colIn]);
+        const A=pOut(k,sa), Bo=pOut(k2,sa), C=pOut(k,sb), D=pOut(k2,sb); quad(pos,col,[...Bo,sa,o.colOut],[...A,sa,o.colOut],[...D,sb,o.colOut],[...C,sb,o.colOut]); } }
+    flush(pos,col,ringS(r0)-70,ringS(r1)+20); }
+  // Mündungen: Lippe vom Innenrand zur Außenkante (gleiche Randpunkte -> keine Kante, kein Spalt)
+  for(const [se,dir] of [[s0,1],[s1,-1]]){ const pos=[], col=[];
+    const P=(k,t)=>{ const i=pIn(k,se), u=pOut(k,se), x=i[0]+(u[0]-i[0])*t, y=i[1]+(u[1]-i[1])*t, a=k/SEG*Math.PI*2, bump=Math.sin(t*Math.PI)*(N2(Math.cos(a)*3,Math.sin(a)*3,t*3,1,o.sd||0)*.5+.5)*(o.lipDepth??5);
+      return [x,y,se+dir*bump,(xx,yy,ss)=>{ const ci=o.colIn(i[0],i[1],se).clone(), co=o.colOut(u[0],u[1],se); return ci.lerp(co,Math.min(1,t*1.6)); }]; };
+    for(let l=0;l<NL;l++) for(let k=0;k<SEG;k++){ const k2=(k+1)%SEG, t0=l/NL, t1=(l+1)/NL; const A=P(k,t0), Bv=P(k2,t0), C=P(k,t1), D=P(k2,t1); quad(pos,col,A.slice(0,2).concat([A[2],A[3]]),[Bv[0],Bv[1],Bv[2],Bv[3]],[C[0],C[1],C[2],C[3]],[D[0],D[1],D[2],D[3]]); }
+    flush(pos,col,se-70,se+20); }
+}
+const boreMatP=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.9,side:THREE.DoubleSide});
+function tunnelInner(key){ const st=TUN[key], c1=new THREE.Color(st.c1), c2=new THREE.Color(st.c2), c3=new THREE.Color(st.c3), c=new THREE.Color();
+  return { inner:(a,s)=>{ const rr=Math.max(.84,tunnelR(a,s)); return [Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr]; },
+    colIn:(x,y,s)=>{ const a=Math.atan2(y/(B.y+6),x/(B.x+7)), rr=Math.max(.84,tunnelR(a,s)), t=clamp((rr-.84)/.7,0,1), n=vnoise(Math.cos(a)*7,Math.sin(a)*7,s*.2); c.copy(c1).lerp(c2,t*.8+(n-.5)*.4);
+      if(st.veins&&vnoise(Math.cos(a)*4+9,Math.sin(a)*4,s*.07)>.66) c.copy(c3); else if(!st.veins&&n>.8) c.lerp(c3,.7); return c; } }; }
+function spawnTunnelBody(s0,len,key){
+  const TI=tunnelInner(key), sd=rand(0,999), c=new THREE.Color(), cA=new THREE.Color(), cB=new THREE.Color();
+  if(W0.surface){ const pal=MPAL[palOf(W0)], gy=-(B.y+8), Hb=rand(62,90), XS=rand(1.55,1.9);
+    const outer=(a,s)=>{ const ca=Math.cos(a), sa=Math.sin(a), R=62*(1+.22*N2(ca*2,sa*2,s*.012,1,sd)), up=Math.max(0,sa), H=Hb*(.8+.45*(N2(s,0,0,.012,sd+2)*.5+.5));
+      let x=ca*R*XS, y=sa>0?up*H*(1+.38*N2(ca*3.5,s*.025,0,1,sd+8))+12*(1-up):sa*R*.7; const j=(N2(x,y,s,.05,sd+3)*14+N2(x,y,s,.15,sd+5)*4)*(sa>-.2?1:.3); x+=ca*j; y+=Math.max(0,sa)*j+(sa>0?0:0); return [x,Math.max(y,gy-12)]; };
+    const colOut=(x,y,s)=>_palCol(pal,(y-gy)/(Hb*1.15)+N2(x,y*1.5,s,.03,sd+7)*.18,N2(x,s,0,.03,sd+9),N2(x,y,s,.09,sd+11),c,cA,cB);
+    boreBody({s0,len,inner:TI.inner,colIn:TI.colIn,outer,colOut,mat:tunnelMat(key),sd,lipDepth:6}); }
+  else { const st=TUN[key], c1=new THREE.Color(st.c1), c2=new THREE.Color(st.c2), c3=new THREE.Color(st.c3), R0=rand(55,72);
+    const outer=(a,s)=>{ const ca=Math.cos(a), sa=Math.sin(a), e=Math.min(1,Math.min(s-s0,s0+len-s)/34), tap=.55+.45*Math.sin(Math.max(0,e)*Math.PI/2),
+      R=R0*tap*(1+N2(ca*2,sa*2,s*.02,1,sd)*.26+N2(ca*6,sa*6,s*.06,1,sd+4)*.08)*(.85+.15*Math.sin(clamp((s-s0)/len,0,1)*Math.PI)); return [ca*R,sa*R*.84]; };
+    const colOut=(x,y,s)=>{ const n=N2(x,y,s,.05,sd+9)*.5+.5; c.copy(c2).lerp(c1,clamp(n*1.4,0,1)); if(n>.78) c.lerp(c3,.35); return c; };
+    boreBody({s0,len,inner:TI.inner,colIn:TI.colIn,outer,colOut,mat:tunnelMat(key),sd,lipDepth:4}); }
+}
 function spawnTunnelMountains(s0,len){
   const pal=MPAL[palOf(W0)], gy=-(B.y+8), XW=rand(110,140), Hb=rand(70,95), sd=rand(0,999), EX=(B.x+7)*.98, EY=(B.y+6)*.98, s1=s0+len, c=new THREE.Color(), cA=new THREE.Color(), cB=new THREE.Color();
   const ridgeY=(x,s)=>{ const p=Math.max(0,1-Math.pow(Math.abs(x)/XW,1.5)), H=Hb*(.8+.45*(N2(s,0,0,.01,sd)*.5+.5)); return gy+p*H+(N2(x,s,0,.045,sd+3)*11+N2(x,s,0,.14,sd+5)*3.5)*Math.min(1,p*3); };
@@ -2575,12 +2620,8 @@ function updateTPillars(){
   }
 }
 function spawnTunnel(s0,len,key){
-  if(W0.surface) spawnTunnelMountains(s0,len); else spawnTunnelAsteroid(s0,len,key);
   const st=TUN[key], w={s0,s1:s0+len,name:st.label,told:false,tunnel:key}; ENV.wrecks.push(w); curW=w;
-  for(let s=s0;s<s0+len;s+=60) spawnTunnelChunk(s,Math.min(60,s0+len-s),key,s0,s0+len);
-  // Felsvorsprünge in den Wänden (keine glatten Flächen)
-  for(let s=s0+8;s<s0+len-8;s+=rand(5,9)){ const a=rand(0,Math.PI*2), rr=Math.max(.84,tunnelR(a,s))*1.04, m=new THREE.Mesh(pick(rocksBase),key==='ice'?M2.iceRock:tunRockMat(key));
-    m.scale.set(rand(3.5,7),rand(2.5,5),rand(5,11)); addStatic(m,s,Math.cos(a)*(B.x+7)*rr,Math.sin(a)*(B.y+6)*rr,new THREE.Euler(rand(0,6),rand(0,6),rand(0,6))); }
+  spawnTunnelBody(s0,len,key);
   // Leuchtpilze in Höhlen der Pilzwelt
   if(W0.gmat==='fungus') for(let s=s0+10;s<s0+len-6;s+=rand(9,15)){ const a=rand(0,Math.PI*2), rr=Math.max(.84,tunnelR(a,s))*.96, g=new THREE.Group(), n=2+Math.floor(Math.random()*4);
     for(let k=0;k<n;k++){ const h=rand(.6,1.7), w=h*.15, ox=rand(-1.5,1.5), oz=rand(-1.5,1.5); g.add(mesh(geo.cyl,M2.fungus,w,h,w,ox,h/2,oz)); g.add(mesh(geo.sphere,M.mushCap,w*4,w*1.5,w*4,ox,h,oz)); }
