@@ -2,7 +2,8 @@ name: APK bauen
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, html-final ]
+    paths-ignore: [ 'godot/**', '.github/workflows/godot.yml' ]
   workflow_dispatch:
 
 permissions:
@@ -37,10 +38,10 @@ jobs:
       - name: Als Release veröffentlichen (einfacher Download aufs Handy)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Prismwing – Build ${{ github.run_number }}
+          tag_name: ${{ github.ref_name == 'html-final' && 'html-final-v67' || format('build-{0}', github.run_number) }}
+          name: ${{ github.ref_name == 'html-final' && 'Prismwing HTML-Version – gesichert (Stand Build 67)' || format('Prismwing – Build {0}', github.run_number) }}
           body: |
             APK zum Installieren auf Android: **Prismwing.apk** unten antippen.
             Beim ersten Mal „Installation aus unbekannten Quellen“ erlauben.
           files: Prismwing.apk
-          make_latest: true
+          make_latest: ${{ github.ref_name != 'html-final' }}
