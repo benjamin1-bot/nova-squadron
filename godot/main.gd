@@ -16,11 +16,11 @@ const WORLDS := [
 	{"name": "GEFRORENER OZEAN NIFL", "planet": true, "zenith": Color(0.06, 0.2, 0.42), "horizon": Color(0.62, 0.8, 0.95), "neb1": Color(0.2, 0.9, 0.6),
 	 "fog": Color(0.5, 0.68, 0.85), "fogd": 0.0032, "sun": Color(0.92, 0.97, 1.0), "rock": Color(0.75, 0.88, 0.97), "glow": Color(0.45, 0.9, 1.0),
 	 "pal": {"base": Color("2a5a82"), "base2": Color("3a7aa6"), "mid": Color("7ab4d8"), "rock": Color("b8daf0"), "rock2": Color("94c2e2"), "snow": Color("f6faff"), "snow_on": true},
-	 "liquid": Color(0.05, 0.22, 0.36), "liquid_glow": 0.0, "liquid_y": 2.5, "floor_off": -6.0, "tname": "EISHÖHLE"},
+	 "liquid": Color(0.05, 0.22, 0.36), "liquid_glow": 0.0, "liquid_y": -1.0, "floor_off": -3.0, "tname": "EISHÖHLE"},
 	{"name": "LAVAPLANET SURTR", "planet": true, "zenith": Color(0.07, 0.025, 0.02), "horizon": Color(0.5, 0.18, 0.08), "neb1": Color(0.6, 0.2, 0.1),
 	 "fog": Color(0.28, 0.1, 0.05), "fogd": 0.0042, "sun": Color(1.0, 0.78, 0.6), "rock": Color(0.36, 0.29, 0.26), "glow": Color(1.0, 0.45, 0.1),
 	 "pal": {"base": Color("1a1210"), "base2": Color("2a1a14"), "mid": Color("3a2a22"), "rock": Color("4a3a34"), "rock2": Color("5a3020"), "snow": Color("ff6a20"), "snow_on": false},
-	 "liquid": Color(1.0, 0.38, 0.06), "liquid_glow": 2.6, "liquid_y": 0.8, "floor_off": 0.0, "tname": "LAVAHÖHLE"},
+	 "liquid": Color(1.0, 0.38, 0.06), "liquid_glow": 2.6, "liquid_y": -1.6, "floor_off": 0.0, "tname": "LAVAHÖHLE"},
 ]
 var W: Dictionary
 const GY := -18.0
@@ -205,19 +205,22 @@ func _make_materials() -> void:
 	nt.as_normal_map = true
 	nt.bump_strength = 6.0
 	var fn := FastNoiseLite.new()
-	fn.frequency = 0.03
-	fn.fractal_octaves = 5
+	fn.noise_type = FastNoiseLite.TYPE_CELLULAR
+	fn.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	fn.frequency = 0.035
+	fn.fractal_type = FastNoiseLite.FRACTAL_FBM
+	fn.fractal_octaves = 3
 	nt.noise = fn
 	var ct := NoiseTexture2D.new()
 	ct.width = 256
 	ct.height = 256
 	ct.seamless = true
 	var fn2 := FastNoiseLite.new()
-	fn2.frequency = 0.012
-	fn2.fractal_octaves = 4
+	fn2.frequency = 0.04
+	fn2.fractal_octaves = 5
 	ct.noise = fn2
 	var grad := Gradient.new()
-	grad.set_color(0, Color(0.55, 0.5, 0.45))
+	grad.set_color(0, Color(0.62, 0.58, 0.54))
 	grad.set_color(1, Color(1.0, 0.97, 0.92))
 	ct.color_ramp = grad
 	rock_mat = _toon(Color(0.62, 0.56, 0.5), 0.92)
@@ -262,8 +265,8 @@ func _make_materials() -> void:
 			liquid_mat.uv1_triplanar = true
 			liquid_mat.uv1_scale = Vector3(0.03, 0.03, 0.03)
 		else:
-			liquid_mat.metallic = 0.6
-			liquid_mat.roughness = 0.12
+			liquid_mat.metallic = 0.15
+			liquid_mat.roughness = 0.25
 			liquid_mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
 	ship_mat = _toon(Color(0.86, 0.88, 0.92), 0.35, 0.6)
 	ship_dark = _toon(Color(0.12, 0.13, 0.16), 0.5, 0.5)
@@ -784,7 +787,7 @@ func _add_tunnel(s0: float, tl: float) -> void:
 	# leuchtende Kristalle an der Innenwand, dazu Lichter
 	var gm := _glow(W.glow, 3.0)
 	var cm := PrismMesh.new()
-	cm.size = Vector3(0.9, 3.2, 0.9)
+	cm.size = Vector3(1.5, 5.5, 1.5)
 	var cnt := 0
 	var sv := s0 + 14.0
 	while sv < s1 - 10.0:
@@ -879,10 +882,10 @@ func ground_h(x: float, sv: float) -> float:
 	var side := _sm(BX + 14.0, BX + 90.0, ax)
 	var n1 := noise.get_noise_2d(x * 0.025, sv * 0.025)
 	var n2 := noise.get_noise_2d(x * 0.09 + 40.0, sv * 0.09)
-	var h: float = n1 * 3.0 + n2 * 0.8 + W.floor_off * (1.0 - side)
+	var h: float = 1.0 + n1 * 3.5 + n2 * 0.8 + W.floor_off * (1.0 - side)
 	h += side * (14.0 + noise.get_noise_2d(x * 0.011 + 9.0, sv * 0.011) * 26.0 + absf(n1) * 18.0)
 	var river := noise.get_noise_2d(x * 0.008 - 20.0, sv * 0.006)
-	h -= _sm(0.15, 0.35, river) * 7.0 * (1.0 - side * 0.7)
+	h -= _sm(0.1, 0.4, river) * 5.0 * (1.0 - side * 0.7)
 	return h - _tunnel_sink(sv) * 34.0
 
 func _add_chunk(sa: float) -> void:
@@ -1109,7 +1112,7 @@ func _update_bullets(dt: float) -> void:
 			b.node.queue_free()
 			ebullets.remove_at(i)
 			continue
-		if b.s < s - 15.0:
+		if b.s < s - 1.5:
 			b.node.queue_free()
 			ebullets.remove_at(i)
 
