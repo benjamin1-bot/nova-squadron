@@ -323,6 +323,11 @@ func _make_materials() -> void:
 	line_mat.vertex_color_use_as_albedo = true
 	line_mat.albedo_color = Color(1.35, 1.35, 1.35)
 	line_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	if W.has("city"):
+		ground_mat.albedo_texture = null
+		ground_mat.normal_enabled = false
+		ground_mat.roughness = 0.35
+		ground_mat.metallic = 0.3
 	block_mat = _toon(Color(0.12, 0.12, 0.17), 0.4, 0.55)
 	block_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	block_mat.next_pass = null
@@ -1017,7 +1022,7 @@ func _tunnel_sink(sv: float) -> float:
 
 func ground_h(x: float, sv: float) -> float:
 	if W.has("city"):
-		return 0.7 if absf(x) > BX + 12.0 else 0.0
+		return 0.0
 	var ax := absf(x)
 	var side := _sm(BX + 14.0, BX + 90.0, ax)
 	var n1 := noise.get_noise_2d(x * 0.025, sv * 0.025)
@@ -1400,19 +1405,13 @@ func _wall_ribbon(st: SurfaceTool, sa: float, sb: float, x: float, y0: float, y1
 func _street_lines(sa: float) -> MeshInstance3D:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var y := GY + 0.06
-	var cy := Color(0.2, 0.9, 1.0)
-	var pk := Color(1.0, 0.2, 0.75)
-	_ribbon(st, sa, sa + CHUNK, BX + 11.4, BX + 12.0, y, cy)
-	_ribbon(st, sa, sa + CHUNK, -BX - 12.0, -BX - 11.4, y, cy)
-	_ribbon(st, sa, sa + CHUNK, BX + 12.0, BX + 12.2, GY + 0.76, pk)
-	_ribbon(st, sa, sa + CHUNK, -BX - 12.2, -BX - 12.0, GY + 0.76, pk)
-	var d := sa
-	while d < sa + CHUNK:
-		for lx in [-7.0, 0.0, 7.0]:
-			var c := Color(1.0, 0.8, 0.3) if lx == 0.0 else Color(0.85, 0.85, 0.95)
-			_ribbon(st, d, d + 4.0, lx - 0.18, lx + 0.18, y, c * 0.6)
-		d += 10.0
+	# Neon-Gitter wie in der HTML-Version: Längslinien alle 14 m, Querlinien
+	var y := GY + 0.08
+	var gc := Color(1.0, 0.19, 0.75)
+	for k in range(-6, 7):
+		_ribbon(st, sa, sa + CHUNK, k * 14.0 - 0.09, k * 14.0 + 0.09, y, gc, 6.0)
+	for q in [0.0, CHUNK * 0.5]:
+		_ribbon(st, sa + q, sa + q + 0.18, -84.0, 84.0, y, gc, 0.18)
 	var m := MeshInstance3D.new()
 	m.mesh = st.commit()
 	m.material_override = line_mat
