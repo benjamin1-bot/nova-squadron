@@ -70,7 +70,10 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libvulkan1 > /dev/null
           mkdir -p autotest
-          timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --out=$PWD/autotest 2>&1 | tee autotest/log.txt || true
+          for w in 0 1 2; do
+            mkdir -p autotest/welt$w
+            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --world=$w --out=$PWD/autotest/welt$w 2>&1 | grep -v ALSA | tee autotest/welt$w/log.txt || true
+          done
           cp check.txt autotest/ || true
           ls autotest
           zip -q -r autotest.zip autotest

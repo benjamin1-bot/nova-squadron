@@ -3,6 +3,9 @@ uniform vec3 neb1 : source_color = vec3(0.30, 0.10, 0.55);
 uniform vec3 neb2 : source_color = vec3(0.05, 0.30, 0.60);
 uniform vec3 base : source_color = vec3(0.004, 0.006, 0.018);
 uniform float neb_strength = 1.0;
+uniform float planet = 0.0;
+uniform vec3 zenith : source_color = vec3(0.05, 0.15, 0.35);
+uniform vec3 horizon : source_color = vec3(0.6, 0.75, 0.9);
 
 float hash(vec3 p) {
 	p = fract(p * 0.3183099 + 0.1);
@@ -39,5 +42,14 @@ void sky() {
 	col += vec3(st) * 1.2 + vec3(st2) * vec3(2.5, 2.3, 2.0);
 	float sd = max(dot(d, LIGHT0_DIRECTION), 0.0);
 	col += LIGHT0_COLOR * (pow(sd, 900.0) * 14.0 + pow(sd, 40.0) * 0.35 + pow(sd, 6.0) * 0.06);
+	if (planet > 0.5) {
+		float h = clamp(d.y, -1.0, 1.0);
+		vec3 g = mix(horizon, zenith, smoothstep(-0.02, 0.55, h));
+		float cl = fbm(vec3(d.x / max(h + 0.15, 0.08), 0.0, d.z / max(h + 0.15, 0.08)) * 1.4);
+		g = mix(g, horizon * 1.15 + vec3(0.04), smoothstep(0.5, 0.8, cl) * smoothstep(-0.02, 0.15, h) * 0.55);
+		g += neb1 * pow(n, 3.0) * 0.6 * neb_strength * smoothstep(0.1, 0.6, h);
+		g += LIGHT0_COLOR * (pow(sd, 700.0) * 10.0 + pow(sd, 30.0) * 0.4 + pow(sd, 4.0) * 0.12);
+		col = g;
+	}
 	COLOR = col;
 }

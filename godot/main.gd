@@ -8,6 +8,30 @@ const BY := 10.0
 const STEP := 4.0
 const BULLET_SPEED := 170.0
 
+static var world_idx := 0
+const WORLDS := [
+	{"name": "ASTEROIDENGÜRTEL KEPLER", "planet": false, "neb1": Color(0.3, 0.1, 0.55), "neb2": Color(0.05, 0.3, 0.6), "base": Color(0.004, 0.006, 0.018),
+	 "fog": Color(0.1, 0.1, 0.22), "fogd": 0.0028, "sun": Color(1.0, 0.94, 0.86), "rock": Color(0.62, 0.56, 0.5), "glow": Color(0.3, 0.9, 1.0),
+	 "tin": [Color(0.42, 0.34, 0.26), Color(0.2, 0.16, 0.12)], "tout": [Color(0.5, 0.44, 0.36), Color(0.32, 0.27, 0.22)], "tname": "ASTEROIDENTUNNEL"},
+	{"name": "GEFRORENER OZEAN NIFL", "planet": true, "zenith": Color(0.06, 0.2, 0.42), "horizon": Color(0.62, 0.8, 0.95), "neb1": Color(0.2, 0.9, 0.6),
+	 "fog": Color(0.5, 0.68, 0.85), "fogd": 0.0032, "sun": Color(0.92, 0.97, 1.0), "rock": Color(0.75, 0.88, 0.97), "glow": Color(0.45, 0.9, 1.0),
+	 "pal": {"base": Color("2a5a82"), "base2": Color("3a7aa6"), "mid": Color("7ab4d8"), "rock": Color("b8daf0"), "rock2": Color("94c2e2"), "snow": Color("f6faff"), "snow_on": true},
+	 "liquid": Color(0.05, 0.22, 0.36), "liquid_glow": 0.0, "liquid_y": 2.5, "floor_off": -6.0, "tname": "EISHÖHLE"},
+	{"name": "LAVAPLANET SURTR", "planet": true, "zenith": Color(0.07, 0.025, 0.02), "horizon": Color(0.5, 0.18, 0.08), "neb1": Color(0.6, 0.2, 0.1),
+	 "fog": Color(0.28, 0.1, 0.05), "fogd": 0.0042, "sun": Color(1.0, 0.78, 0.6), "rock": Color(0.36, 0.29, 0.26), "glow": Color(1.0, 0.45, 0.1),
+	 "pal": {"base": Color("1a1210"), "base2": Color("2a1a14"), "mid": Color("3a2a22"), "rock": Color("4a3a34"), "rock2": Color("5a3020"), "snow": Color("ff6a20"), "snow_on": false},
+	 "liquid": Color(1.0, 0.38, 0.06), "liquid_glow": 2.6, "liquid_y": 0.8, "floor_off": 0.0, "tname": "LAVAHÖHLE"},
+]
+var W: Dictionary
+const GY := -18.0
+var ground_mat: StandardMaterial3D
+var mount_mat: StandardMaterial3D
+var liquid_mat: StandardMaterial3D
+var chunks: Array = []       # {s1, nodes}
+var next_chunk_s := -40.0
+var next_mount_s := 0.0
+const CHUNK := 120.0
+
 var speed := 42.0
 var s := 30.0
 var t_game := 0.0
@@ -91,6 +115,10 @@ func _ready() -> void:
 			autotest = true
 		elif a.begins_with("--out="):
 			at_dir = a.substr(6)
+		elif a.begins_with("--world="):
+			world_idx = int(a.substr(8))
+	world_idx = clampi(world_idx, 0, WORLDS.size() - 1)
+	W = WORLDS[world_idx]
 	if autotest and at_dir == "":
 		at_dir = OS.get_user_data_dir() + "/autotest"
 	if autotest:
@@ -103,7 +131,9 @@ func _ready() -> void:
 	_make_hud()
 	if autotest:
 		next_tunnel_s = 260.0
-	show_msg("ASTEROIDENGÜRTEL KEPLER", 3.0)
+	show_msg(W.name, 3.0)
+	if autotest:
+		log_at("Welt: " + W.name)
 
 # ======================= Bahn =======================
 func _extend_rail(to_s: float) -> void:
@@ -198,9 +228,43 @@ func _make_materials() -> void:
 	rock_mat.normal_scale = 1.4
 	rock_mat.uv1_triplanar = true
 	rock_mat.uv1_scale = Vector3(0.12, 0.12, 0.12)
+	rock_mat.albedo_color = W.rock
 	tunnel_mat = rock_mat.duplicate() as StandardMaterial3D
 	tunnel_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	tunnel_mat.next_pass = null
+	tunnel_mat.albedo_color = Color.WHITE
+	tunnel_mat.uv1_scale = Vector3(0.22, 0.22, 0.22)
+	tunnel_mat.normal_scale = 0.9
+	ground_mat = tunnel_mat.duplicate() as StandardMaterial3D
+	ground_mat.cull_mode = BaseMaterial3D.CULL_BACK
+	ground_mat.uv1_scale = Vector3(0.06, 0.06, 0.06)
+	mount_mat = ground_mat.duplicate() as StandardMaterial3D
+	mount_mat.uv1_scale = Vector3(0.035, 0.035, 0.035)
+	mount_mat.next_pass = outline_mat
+	liquid_mat = StandardMaterial3D.new()
+	if W.planet:
+		liquid_mat.albedo_color = W.liquid
+		if W.liquid_glow > 0.0:
+			liquid_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			var lt := NoiseTexture2D.new()
+			lt.seamless = true
+			var lfn := FastNoiseLite.new()
+			lfn.frequency = 0.02
+			lfn.fractal_octaves = 4
+			lt.noise = lfn
+			var lg := Gradient.new()
+			lg.set_color(0, Color(0.55, 0.08, 0.02))
+			lg.set_color(1, Color(1.0, 0.85, 0.3))
+			lg.add_point(0.55, Color(1.0, 0.4, 0.05))
+			lt.color_ramp = lg
+			liquid_mat.albedo_texture = lt
+			liquid_mat.albedo_color = Color(1.6, 1.2, 1.0)
+			liquid_mat.uv1_triplanar = true
+			liquid_mat.uv1_scale = Vector3(0.03, 0.03, 0.03)
+		else:
+			liquid_mat.metallic = 0.6
+			liquid_mat.roughness = 0.12
+			liquid_mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
 	ship_mat = _toon(Color(0.86, 0.88, 0.92), 0.35, 0.6)
 	ship_dark = _toon(Color(0.12, 0.13, 0.16), 0.5, 0.5)
 	enemy_mat = _toon(Color(0.55, 0.12, 0.14), 0.4, 0.5)
@@ -256,7 +320,7 @@ func _cut_rock(seed_v: int, detail: int) -> ArrayMesh:
 func _make_environment() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-35, 40, 0)
-	sun.light_color = Color(1.0, 0.94, 0.86)
+	sun.light_color = W.sun
 	sun.light_energy = 1.6
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 220.0
@@ -268,6 +332,14 @@ func _make_environment() -> void:
 	add_child(fill)
 	var sky_mat := ShaderMaterial.new()
 	sky_mat.shader = load("res://space_sky.gdshader")
+	sky_mat.set_shader_parameter("neb1", W.neb1)
+	if W.planet:
+		sky_mat.set_shader_parameter("planet", 1.0)
+		sky_mat.set_shader_parameter("zenith", W.zenith)
+		sky_mat.set_shader_parameter("horizon", W.horizon)
+	else:
+		sky_mat.set_shader_parameter("neb2", W.neb2)
+		sky_mat.set_shader_parameter("base", W.base)
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
 	var env := Environment.new()
@@ -283,9 +355,11 @@ func _make_environment() -> void:
 	env.glow_bloom = 0.08
 	env.glow_hdr_threshold = 1.0
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.1, 0.1, 0.22)
-	env.fog_density = 0.0028
+	env.fog_light_color = W.fog
+	env.fog_density = W.fogd
 	env.fog_sky_affect = 0.0
+	if W.planet:
+		env.fog_aerial_perspective = 0.6
 	env.adjustment_enabled = true
 	env.adjustment_saturation = 1.12
 	env.adjustment_contrast = 1.05
@@ -372,6 +446,16 @@ func _make_hud() -> void:
 	hud_info.add_theme_font_size_override("font_size", 14)
 	hud_info.modulate = Color(1, 1, 1, 0.6)
 	cl.add_child(hud_info)
+	var wb := Button.new()
+	wb.text = "WELT ▶"
+	wb.position = Vector2(1130, 14)
+	wb.size = Vector2(130, 54)
+	wb.add_theme_font_size_override("font_size", 22)
+	wb.focus_mode = Control.FOCUS_NONE
+	wb.pressed.connect(func():
+		world_idx = (world_idx + 1) % WORLDS.size()
+		get_tree().reload_current_scene())
+	cl.add_child(wb)
 	hud_msg = Label.new()
 	hud_msg.add_theme_font_size_override("font_size", 34)
 	hud_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -511,10 +595,30 @@ func _fire() -> void:
 
 # ======================= Welt erzeugen =======================
 func _spawn_world() -> void:
+	if next_tunnel_s < s + 900.0:
+		var tl := rng.randf_range(220.0, 320.0)
+		_add_tunnel(next_tunnel_s, tl)
+		next_tunnel_s += tl + rng.randf_range(900.0, 1400.0)
+	if W.planet:
+		while next_chunk_s < s + 720.0:
+			_add_chunk(next_chunk_s)
+			next_chunk_s += CHUNK
+		while next_mount_s < s + 900.0:
+			var sv := next_mount_s
+			next_mount_s += rng.randf_range(35.0, 70.0)
+			_add_mountain(sv)
+		for i in range(chunks.size() - 1, -1, -1):
+			if chunks[i].s1 < s - 40.0:
+				for n in chunks[i].nodes:
+					n.queue_free()
+				chunks.remove_at(i)
 	while next_rock_s < s + 520.0:
 		var sv := next_rock_s
 		next_rock_s += rng.randf_range(3.0, 7.0)
 		if not _in_tunnel(sv).is_empty():
+			continue
+		if W.planet:
+			_add_ground_rock(sv)
 			continue
 		var inside := rng.randf() < 0.12
 		var x := 0.0
@@ -539,10 +643,6 @@ func _spawn_world() -> void:
 		var n := 1 + rng.randi() % 3
 		for i in n:
 			_add_enemy(sv2 + i * 6.0)
-	if next_tunnel_s < s + 600.0:
-		var tl := rng.randf_range(220.0, 320.0)
-		_add_tunnel(next_tunnel_s, tl)
-		next_tunnel_s += tl + rng.randf_range(900.0, 1400.0)
 
 func _near_tunnel(sv: float, m: float) -> bool:
 	for t in tunnels:
@@ -589,27 +689,53 @@ func _inner(a: float, sv: float) -> Vector2:
 func _outer(a: float, sv: float, s0: float, s1: float, r0: float, sd: float) -> Vector2:
 	var ca := cos(a)
 	var sa := sin(a)
+	if W.planet:
+		var e2 := clampf(minf(sv - s0, s1 - sv) / 55.0, 0.0, 1.0)
+		var tap2 := 0.6 + 0.4 * sin(e2 * PI / 2.0)
+		var mid2 := 0.75 + 0.25 * sin(clampf((sv - s0) / (s1 - s0), 0.0, 1.0) * PI)
+		var R2 := r0 * tap2 * mid2 * (1.0 + noise.get_noise_3d(ca * 2.0 + sd, sa * 2.0, sv * 0.02) * 0.35 + noise.get_noise_3d(ca * 6.0, sa * 6.0 + sd, sv * 0.06) * 0.1)
+		var y2 := sa * R2 * (1.25 if sa > 0.0 else 1.0)
+		return Vector2(ca * R2 * 1.5, maxf(y2, GY - 9.0))
 	var e := clampf(minf(sv - s0, s1 - sv) / 40.0, 0.0, 1.0)
 	var tap := 0.5 + 0.5 * sin(e * PI / 2.0)
 	var mid := 0.85 + 0.15 * sin(clampf((sv - s0) / (s1 - s0), 0.0, 1.0) * PI)
 	var R := r0 * tap * mid * (1.0 + noise.get_noise_3d(ca * 2.0 + sd, sa * 2.0, sv * 0.02) * 0.3 + noise.get_noise_3d(ca * 6.0, sa * 6.0 + sd, sv * 0.06) * 0.08)
 	return Vector2(ca * R, sa * R * 0.85)
 
+func _sm(a: float, b: float, v: float) -> float:
+	var q := clampf((v - a) / (b - a), 0.0, 1.0)
+	return q * q * (3.0 - 2.0 * q)
+
+func _pal_col(e: float, n1: float, n2: float) -> Color:
+	var p: Dictionary = W.pal
+	var c: Color = p.base.lerp(p.base2, n1 * 0.5 + 0.5)
+	c = c.lerp(p.mid, _sm(0.22, 0.38, e) * 0.6)
+	var rc: Color = p.rock.lerp(p.rock2, n2 * 0.5 + 0.5)
+	c = c.lerp(rc, _sm(0.34, 0.6, e))
+	if p.snow_on:
+		c = c.lerp(p.snow, _sm(0.82, 0.97, e))
+	return c
+
 func _col_in(a: float, sv: float) -> Color:
 	var n := noise.get_noise_3d(cos(a) * 7.0, sin(a) * 7.0, sv * 0.2) * 0.5 + 0.5
-	var c := Color(0.42, 0.34, 0.26).lerp(Color(0.2, 0.16, 0.12), n)
-	return c
+	if W.planet:
+		var p: Dictionary = W.pal
+		return p.rock2.lerp(p.base2, n * 0.8).darkened(0.25)
+	return W.tin[0].lerp(W.tin[1], n)
 
 func _col_out(a: float, sv: float) -> Color:
 	var n := noise.get_noise_3d(cos(a) * 3.0, sin(a) * 3.0, sv * 0.04) * 0.5 + 0.5
-	return Color(0.5, 0.44, 0.36).lerp(Color(0.32, 0.27, 0.22), n)
+	if W.planet:
+		var y := sin(a)
+		return _pal_col(clampf(0.2 + y * 0.75, 0.0, 1.0), n * 2.0 - 1.0, noise.get_noise_3d(cos(a) * 9.0, sin(a) * 9.0, sv * 0.1))
+	return W.tout[0].lerp(W.tout[1], n)
 
 func _add_tunnel(s0: float, tl: float) -> void:
 	var s1 := s0 + tl
 	var SEG := 40
 	var STEPT := 2.6
 	var nr := int(round(tl / STEPT))
-	var r0 := rng.randf_range(58.0, 78.0)
+	var r0 := rng.randf_range(58.0, 78.0) if not W.planet else rng.randf_range(70.0, 95.0)
 	var sd := rng.randf() * 50.0
 	var nodes: Array = []
 	var ring_s := func(r: int) -> float: return s0 + tl * float(r) / float(nr)
@@ -655,6 +781,46 @@ func _add_tunnel(s0: float, tl: float) -> void:
 						st2.set_color(cs[j])
 						st2.add_vertex(p[j])
 		nodes.append(_commit(st2))
+	# leuchtende Kristalle an der Innenwand, dazu Lichter
+	var gm := _glow(W.glow, 3.0)
+	var cm := PrismMesh.new()
+	cm.size = Vector3(0.9, 3.2, 0.9)
+	var cnt := 0
+	var sv := s0 + 14.0
+	while sv < s1 - 10.0:
+		var a := rng.randf() * TAU
+		if W.planet and sin(a) < -0.5:
+			a = -a
+		var ip := _inner(a, sv) * 0.97
+		var fr := frame(sv)
+		var base := fr.origin + fr.basis.x * ip.x + fr.basis.y * ip.y
+		var inward := -(fr.basis.x * cos(a) + fr.basis.y * sin(a)).normalized()
+		var grp := Node3D.new()
+		add_child(grp)
+		grp.global_position = base
+		var nn := 2 + rng.randi() % 3
+		for c in nn:
+			var mi := MeshInstance3D.new()
+			mi.mesh = cm
+			mi.material_override = gm
+			grp.add_child(mi)
+			var d := (inward + Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-0.5, 0.5), rng.randf_range(-0.5, 0.5))).normalized()
+			var up := d
+			var side := up.cross(Vector3(0.3, 0.9, 0.1)).normalized()
+			mi.basis = Basis(side, up, side.cross(up)).scaled(Vector3.ONE * rng.randf_range(0.6, 1.4))
+			mi.position = d * 1.0
+		nodes.append(grp)
+		if cnt % 2 == 0:
+			var ol := OmniLight3D.new()
+			ol.light_color = W.glow
+			ol.light_energy = 2.2
+			ol.omni_range = 30.0
+			ol.omni_attenuation = 1.4
+			add_child(ol)
+			ol.global_position = base + inward * 3.0
+			nodes.append(ol)
+		cnt += 1
+		sv += rng.randf_range(16.0, 26.0)
 	tunnels.append({"s0": s0, "s1": s1, "nodes": nodes, "told": false})
 
 func _lip(a: float, se: float, t: float, dir: float, s0: float, s1: float, r0: float, sd: float) -> Vector3:
@@ -694,22 +860,181 @@ func _update_tunnels() -> void:
 		var t: Dictionary = tunnels[i]
 		if not t.told and s > t.s0 - 60.0:
 			t.told = true
-			show_msg("ASTEROIDENTUNNEL", 2.0)
+			show_msg(W.tname, 2.0)
 		if s > t.s1 + 80.0:
 			for n in t.nodes:
 				n.queue_free()
 			tunnels.remove_at(i)
 
+# ======================= Planetenoberfläche =======================
+func _tunnel_sink(sv: float) -> float:
+	var k := 0.0
+	for t in tunnels:
+		var e := minf(sv - (t.s0 + 6.0), (t.s1 - 6.0) - sv)
+		k = maxf(k, clampf(e / 10.0, 0.0, 1.0))
+	return k
+
+func ground_h(x: float, sv: float) -> float:
+	var ax := absf(x)
+	var side := _sm(BX + 14.0, BX + 90.0, ax)
+	var n1 := noise.get_noise_2d(x * 0.025, sv * 0.025)
+	var n2 := noise.get_noise_2d(x * 0.09 + 40.0, sv * 0.09)
+	var h := n1 * 3.0 + n2 * 0.8 + W.floor_off * (1.0 - side)
+	h += side * (14.0 + noise.get_noise_2d(x * 0.011 + 9.0, sv * 0.011) * 26.0 + absf(n1) * 18.0)
+	var river := noise.get_noise_2d(x * 0.008 - 20.0, sv * 0.006)
+	h -= _sm(0.15, 0.35, river) * 7.0 * (1.0 - side * 0.7)
+	return h - _tunnel_sink(sv) * 34.0
+
+func _add_chunk(sa: float) -> void:
+	var nodes: Array = []
+	var DS := 4.0
+	var xs: Array = []
+	var x := -300.0
+	while x <= 300.0:
+		xs.append(x)
+		x += 4.0 if absf(x) < 60.0 else 9.0
+	var rows := int(CHUNK / DS)
+	var grid: Array = []
+	for r in rows + 1:
+		var sv := sa + r * DS
+		var fr := frame(sv)
+		var row: Array = []
+		for xx in xs:
+			var h := ground_h(xx, sv)
+			var p: Vector3 = fr.origin + fr.basis.x * xx + fr.basis.y * (GY + h)
+			var e := clampf((h + 4.0) / 70.0, 0.0, 1.2) + noise.get_noise_2d(xx * 0.05, sv * 0.05) * 0.12
+			var c := _pal_col(e, noise.get_noise_2d(xx * 0.03, sv * 0.03), noise.get_noise_2d(xx * 0.12, sv * 0.12))
+			row.append([p, c])
+		grid.append(row)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for r in rows:
+		for k in xs.size() - 1:
+			var A = grid[r][k]
+			var B = grid[r][k + 1]
+			var C = grid[r + 1][k]
+			var D = grid[r + 1][k + 1]
+			for v in [A, B, C, B, D, C]:
+				st.set_color(v[1])
+				st.add_vertex(v[0])
+	st.generate_normals()
+	var m := MeshInstance3D.new()
+	m.mesh = st.commit()
+	m.material_override = ground_mat
+	add_child(m)
+	nodes.append(m)
+	# Flüssigkeit (Wasser / Lava) als Fläche, folgt der Bahn
+	var st2 := SurfaceTool.new()
+	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var lx := [-300.0, -150.0, -60.0, 0.0, 60.0, 150.0, 300.0]
+	var rows2 := int(CHUNK / 8.0)
+	for r in rows2:
+		var fa := frame(sa + r * 8.0)
+		var fb := frame(sa + (r + 1) * 8.0)
+		for k in lx.size() - 1:
+			var ly := GY + W.liquid_y
+			var p1: Vector3 = fa.origin + fa.basis.x * lx[k] + fa.basis.y * ly
+			var p2: Vector3 = fa.origin + fa.basis.x * lx[k + 1] + fa.basis.y * ly
+			var p3: Vector3 = fb.origin + fb.basis.x * lx[k] + fb.basis.y * ly
+			var p4: Vector3 = fb.origin + fb.basis.x * lx[k + 1] + fb.basis.y * ly
+			for v in [p1, p2, p3, p2, p4, p3]:
+				st2.set_normal(fa.basis.y)
+				st2.add_vertex(v)
+	var lm := MeshInstance3D.new()
+	lm.mesh = st2.commit()
+	lm.material_override = liquid_mat
+	add_child(lm)
+	nodes.append(lm)
+	chunks.append({"s1": sa + CHUNK, "nodes": nodes})
+
+## Berg nach dem Vorbild aus Coin City (_mountain_mesh): Grat-Rauschen, Höhenstufen-Farben, Schnee
+func _mountain_mesh(rad: float, hgt: float, sd: int) -> ArrayMesh:
+	var rings := 18
+	var segs := 30
+	var grid: Array = []
+	for r in rings + 1:
+		var t := float(r) / rings
+		var row: Array = []
+		for k in segs:
+			var a := float(k) / segs * TAU
+			var ridge := 1.0 + 0.32 * noise.get_noise_3d(cos(a) * 0.72, sin(a) * 0.72, sd)
+			var radius := rad * pow(t, 0.92) * ridge
+			var bx := cos(a) * radius
+			var bz := sin(a) * radius
+			var y := hgt * pow(1.0 - t, 1.25)
+			y += noise.get_noise_3d(bx * 0.012, y * 0.012, bz * 0.012 + sd) * hgt * 0.14 * (1.0 - t * 0.5)
+			y += noise.get_noise_3d(bx * 0.06, y * 0.06, bz * 0.06 + sd + 13) * hgt * 0.025
+			var x := bx + noise.get_noise_3d(bz * 0.012, y * 0.012, sd) * rad * 0.05 * t
+			var z := bz + noise.get_noise_3d(y * 0.012, bx * 0.012, sd + 3) * rad * 0.05 * t
+			var e := clampf(y / 150.0, 0.0, 1.2) + noise.get_noise_3d(bx * 0.018, y * 0.027, bz * 0.018 + sd + 7) * 0.22
+			var c := _pal_col(e, noise.get_noise_3d(bx * 0.036, bz * 0.036, sd + 7), noise.get_noise_3d(bx * 0.06, y * 0.06, bz * 0.06 + sd + 13))
+			row.append([Vector3(x, y, z), c])
+		grid.append(row)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for r in rings:
+		for k in segs:
+			var k2 := (k + 1) % segs
+			for v in [grid[r][k], grid[r + 1][k], grid[r][k2], grid[r][k2], grid[r + 1][k], grid[r + 1][k2]]:
+				st.set_color(v[1])
+				st.add_vertex(v[0])
+	st.generate_normals()
+	return st.commit()
+
+var mount_meshes: Array = []
+func _add_mountain(sv: float) -> void:
+	if mount_meshes.is_empty():
+		for i in 6:
+			mount_meshes.append(_mountain_mesh(100.0, 120.0 + i * 12.0, i * 17 + 3))
+	var side := -1.0 if rng.randf() < 0.5 else 1.0
+	var rad := rng.randf_range(55.0, 140.0)
+	var x := side * (BX + 30.0 + rad * 0.85 + rng.randf_range(0.0, 120.0))
+	var m := MeshInstance3D.new()
+	m.mesh = mount_meshes[rng.randi() % mount_meshes.size()]
+	m.material_override = mount_mat
+	add_child(m)
+	place(m, sv, x, GY + ground_h(x, sv) - 6.0)
+	m.rotate_object_local(Vector3.UP, rng.randf() * TAU)
+	var hs := rng.randf_range(0.45, 1.2)
+	m.scale = Vector3(rad / 100.0, hs * rad / 100.0 + 0.25, rad / 100.0)
+	rocks.append({"node": m, "s": sv + rad, "x": x, "y": 0.0, "r": rad, "hard": false, "big": true})
+
+func _add_ground_rock(sv: float) -> void:
+	var near := rng.randf() < 0.22
+	var x := rng.randf_range(-BX - 4.0, BX + 4.0) if near else (rng.randf_range(BX + 6.0, 120.0) * (-1.0 if rng.randf() < 0.5 else 1.0))
+	var r := rng.randf_range(1.6, 3.4) if near else rng.randf_range(2.5, 9.0)
+	var m := MeshInstance3D.new()
+	m.mesh = rock_meshes[rng.randi() % rock_meshes.size()]
+	m.material_override = rock_mat
+	add_child(m)
+	var gy := GY + ground_h(x, sv)
+	var tall := 1.0
+	if near:
+		tall = rng.randf_range(2.2, 4.2)
+	place(m, sv, x, gy + r * 0.35 * tall)
+	m.rotate_object_local(Vector3.UP, rng.randf() * TAU)
+	m.scale = Vector3(r * 0.5, r * 0.5 * tall, r * 0.5)
+	var d := {"node": m, "s": sv, "x": x, "y": gy, "r": r, "hard": false, "still": true}
+	if near:
+		d["top"] = gy + r * 0.6 * tall + r * 0.3
+	rocks.append(d)
+
 # ======================= Updates =======================
 func _update_rocks(dt: float) -> void:
 	for i in range(rocks.size() - 1, -1, -1):
 		var r: Dictionary = rocks[i]
-		if r.s < s - 30.0:
+		if r.s < s - 30.0 - (r.r if r.has("big") else 0.0):
 			r.node.queue_free()
 			rocks.remove_at(i)
 			continue
-		r.node.rotate_object_local(Vector3(0.3, 1, 0.2).normalized(), dt * 0.3)
-		if r.hard and absf(r.s - s) < r.r and Vector2(r.x - ship_x, r.y - ship_y).length() < r.r * 0.8 + 1.0:
+		if not r.has("still") and not r.has("big"):
+			r.node.rotate_object_local(Vector3(0.3, 1, 0.2).normalized(), dt * 0.3)
+		var hit_ship := false
+		if r.has("top"):
+			hit_ship = absf(r.s - s) < r.r * 0.7 and absf(r.x - ship_x) < r.r * 0.75 + 0.8 and ship_y < r.top
+		elif r.hard:
+			hit_ship = absf(r.s - s) < r.r and Vector2(r.x - ship_x, r.y - ship_y).length() < r.r * 0.8 + 1.0
+		if hit_ship:
 			damage(18.0)
 			_explode(l2w(r.s, r.x, r.y), Color(0.8, 0.7, 0.6), 1.2)
 			r.node.queue_free()
@@ -763,7 +1088,11 @@ func _update_bullets(dt: float) -> void:
 				break
 		if not hit:
 			for r in rocks:
-				if r.hard and absf(r.s - b.s) < r.r and Vector2(r.x - b.x, r.y - b.y).length() < r.r:
+				if r.has("top"):
+					if absf(r.s - b.s) < r.r * 0.7 and absf(r.x - b.x) < r.r * 0.75 and b.y < r.top:
+						hit = true
+						break
+				elif r.hard and absf(r.s - b.s) < r.r and Vector2(r.x - b.x, r.y - b.y).length() < r.r:
 					hit = true
 					break
 		if hit or b.life <= 0.0:
@@ -848,7 +1177,7 @@ func _autotest_step(dt: float) -> void:
 	if at_shot_t <= 0.0:
 		at_shot_t = 3.0
 		_screenshot("flug")
-	if t_game > 42.0:
+	if t_game > 36.0:
 		log_at("Fertig. Frames: %d, mittlere FPS: %.1f, Strecke: %.0f, Tunnel: %d" % [at_frames, at_fps_sum / maxf(1, at_frames), s, tunnels.size()])
 		var f := FileAccess.open(at_dir + "/bericht.txt", FileAccess.WRITE)
 		if f:
