@@ -1264,7 +1264,7 @@ func _add_module(sv: float, x: float, y: float) -> void:
 		ring.inner_radius = rad * 1.02
 		ring.outer_radius = rad * 1.25
 		g.add_child(_mi(ring, metal_mat, Vector3(0, 0, z + rad * 1.6), Vector3.ONE, Vector3(PI / 2, 0, 0)))
-		g.add_child(_box(Vector3(rad * 0.15, rad * 0.15, rad * 0.8), neon_mats[1], Vector3(0, rad * 1.0, z)))
+		g.add_child(_box(Vector3(rad * 0.15, rad * 0.15, rad * 0.8), neon_mats[2], Vector3(0, rad * 1.0, z)))
 		if i < n - 1:
 			g.add_child(_box(Vector3(rad * 0.8, rad * 0.8, rad * 1.4), metal_mat, Vector3(0, 0, z + rad * 2.1)))
 	var sx := 1.0 if x > 0 else -1.0
