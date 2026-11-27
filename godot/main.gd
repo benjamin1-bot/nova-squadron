@@ -321,7 +321,7 @@ func _make_materials() -> void:
 	line_mat = StandardMaterial3D.new()
 	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	line_mat.vertex_color_use_as_albedo = true
-	line_mat.albedo_color = Color(2.6, 2.6, 2.6)
+	line_mat.albedo_color = Color(1.35, 1.35, 1.35)
 	line_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	block_mat = _toon(Color(0.12, 0.12, 0.17), 0.4, 0.55)
 	block_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
