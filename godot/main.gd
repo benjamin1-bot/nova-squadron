@@ -326,8 +326,9 @@ func _make_materials() -> void:
 	if W.has("city"):
 		ground_mat.albedo_texture = null
 		ground_mat.normal_enabled = false
-		ground_mat.roughness = 0.35
-		ground_mat.metallic = 0.3
+		ground_mat.roughness = 0.45
+		ground_mat.metallic = 0.1
+		ground_mat.albedo_color = Color(0.55, 0.55, 0.6)
 	block_mat = _toon(Color(0.12, 0.12, 0.17), 0.4, 0.55)
 	block_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	block_mat.next_pass = null
