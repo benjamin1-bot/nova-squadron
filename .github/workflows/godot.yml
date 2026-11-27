@@ -86,7 +86,7 @@ jobs:
             timeout 400 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --world=$1 --out=$PWD/autotest/welt$1 > autotest/welt$1/log.txt 2>&1 || true
           }
           export -f run_world
-          seq 0 13 | xargs -P 3 -I{} bash -c 'sleep $(( {} % 3 * 2 )); run_world {}'
+          cat godot/autotest_worlds.txt | tr ' ' '\n' | grep . | xargs -P 3 -I{} bash -c 'sleep $(( {} % 3 * 2 )); run_world {}'
           grep -h "AUTOTEST: \(Welt\|Fertig\)\|SCRIPT ERROR" autotest/welt*/log.txt || true
           cp check.txt autotest/ || true
           ls autotest

@@ -21,7 +21,7 @@ const WORLDS := [
 	 "fog": Color(0.28, 0.1, 0.05), "fogd": 0.0042, "sun": Color(1.0, 0.78, 0.6), "rock": Color(0.36, 0.29, 0.26), "glow": Color(1.0, 0.45, 0.1),
 	 "pal": {"base": Color("1a1210"), "base2": Color("2a1a14"), "mid": Color("3a2a22"), "rock": Color("4a3a34"), "rock2": Color("5a3020"), "snow": Color("ff6a20"), "snow_on": false},
 	 "liquid": Color(1.0, 0.38, 0.06), "liquid_glow": 2.6, "liquid_y": -1.6, "floor_off": 0.0, "tname": "LAVAHÖHLE"},
-	{"name": "KRISTALLNEBEL", "planet": false, "neb1": Color(0.55, 0.15, 0.6), "neb2": Color(0.8, 0.35, 0.85), "base": Color(0.02, 0.008, 0.05),
+	{"name": "KRISTALLNEBEL", "planet": false, "neb": 0.45, "neb1": Color(0.55, 0.15, 0.6), "neb2": Color(0.8, 0.35, 0.85), "base": Color(0.02, 0.008, 0.05),
 	 "fog": Color(0.18, 0.06, 0.27), "fogd": 0.0034, "sun": Color(1.0, 0.86, 1.0), "rock": Color(0.66, 0.6, 0.76), "glow": Color(1.0, 0.45, 1.0),
 	 "tin": [Color(0.4, 0.32, 0.48), Color(0.18, 0.12, 0.26)], "tout": [Color(0.55, 0.48, 0.64), Color(0.34, 0.28, 0.42)], "tname": "KRISTALLTUNNEL", "crystals": 0.45},
 	{"name": "OZEANWELT THALASSA", "planet": true, "zenith": Color(0.1, 0.35, 0.66), "horizon": Color(0.66, 0.84, 0.95), "neb1": Color(0.8, 0.9, 1.0),
@@ -36,16 +36,16 @@ const WORLDS := [
 	 "fog": Color(0.72, 0.57, 0.4), "fogd": 0.0026, "sun": Color(1.0, 0.93, 0.8), "rock": Color(0.85, 0.7, 0.48), "glow": Color(1.0, 0.75, 0.3),
 	 "pal": {"base": Color("7a4a26"), "base2": Color("8a5a30"), "mid": Color("a87040"), "rock": Color("c08a52"), "rock2": Color("9a6a3e"), "snow": Color("e8c890"), "snow_on": true},
 	 "liquid": Color(0, 0, 0), "liquid_glow": 0.0, "liquid_y": -999.0, "floor_off": 0.0, "tname": "SANDSTEINSCHLUCHT", "stacks": 0.2},
-	{"name": "SMARAGDGÜRTEL", "planet": false, "neb1": Color(0.1, 0.55, 0.25), "neb2": Color(0.3, 0.75, 0.35), "base": Color(0.005, 0.02, 0.01),
+	{"name": "SMARAGDGÜRTEL", "planet": false, "neb": 0.45, "neb1": Color(0.1, 0.55, 0.25), "neb2": Color(0.3, 0.75, 0.35), "base": Color(0.005, 0.02, 0.01),
 	 "fog": Color(0.08, 0.25, 0.12), "fogd": 0.0032, "sun": Color(0.95, 1.0, 0.9), "rock": Color(0.42, 0.47, 0.42), "glow": Color(0.1, 1.0, 0.5),
 	 "tin": [Color(0.26, 0.32, 0.27), Color(0.1, 0.14, 0.11)], "tout": [Color(0.4, 0.46, 0.4), Color(0.24, 0.3, 0.25)], "tname": "SMARAGDTUNNEL", "crystals": 0.3},
-	{"name": "SCHIFFSFRIEDHOF", "planet": false, "neb1": Color(0.5, 0.12, 0.08), "neb2": Color(0.25, 0.08, 0.1), "base": Color(0.012, 0.004, 0.004),
+	{"name": "SCHIFFSFRIEDHOF", "planet": false, "neb": 0.45, "neb1": Color(0.5, 0.12, 0.08), "neb2": Color(0.25, 0.08, 0.1), "base": Color(0.012, 0.004, 0.004),
 	 "fog": Color(0.12, 0.05, 0.05), "fogd": 0.004, "sun": Color(1.0, 0.75, 0.6), "rock": Color(0.42, 0.4, 0.38), "glow": Color(1.0, 0.25, 0.15),
 	 "tin": [Color(0.3, 0.29, 0.28), Color(0.14, 0.13, 0.13)], "tout": [Color(0.4, 0.38, 0.36), Color(0.24, 0.22, 0.21)], "tname": "WRACKSCHACHT", "wrecks": 0.12},
-	{"name": "ORBITALSTATION ORION", "planet": false, "neb1": Color(0.1, 0.25, 0.6), "neb2": Color(0.2, 0.45, 0.8), "base": Color(0.004, 0.01, 0.03),
+	{"name": "ORBITALSTATION ORION", "planet": false, "neb": 0.45, "neb1": Color(0.1, 0.25, 0.6), "neb2": Color(0.2, 0.45, 0.8), "base": Color(0.004, 0.01, 0.03),
 	 "fog": Color(0.06, 0.14, 0.3), "fogd": 0.0026, "sun": Color(1.0, 0.97, 0.92), "rock": Color(0.62, 0.62, 0.66), "glow": Color(0.3, 0.75, 1.0),
 	 "tin": [Color(0.38, 0.38, 0.42), Color(0.18, 0.18, 0.22)], "tout": [Color(0.5, 0.5, 0.55), Color(0.3, 0.3, 0.34)], "tname": "VERSORGUNGSSCHACHT", "station": 0.1},
-	{"name": "GEWITTERNEBEL", "planet": false, "neb1": Color(0.12, 0.5, 0.4), "neb2": Color(0.25, 0.6, 0.5), "base": Color(0.004, 0.02, 0.015),
+	{"name": "GEWITTERNEBEL", "planet": false, "neb": 0.45, "neb1": Color(0.12, 0.5, 0.4), "neb2": Color(0.25, 0.6, 0.5), "base": Color(0.004, 0.02, 0.015),
 	 "fog": Color(0.09, 0.27, 0.22), "fogd": 0.0042, "sun": Color(0.85, 1.0, 0.95), "rock": Color(0.5, 0.56, 0.52), "glow": Color(0.6, 1.0, 0.9),
 	 "tin": [Color(0.3, 0.36, 0.33), Color(0.12, 0.16, 0.14)], "tout": [Color(0.45, 0.5, 0.47), Color(0.27, 0.31, 0.29)], "tname": "GEWITTERSCHLUND", "storm": true},
 	{"name": "NEONSTADT VEGA-9", "planet": true, "zenith": Color(0.01, 0.01, 0.05), "horizon": Color(0.22, 0.06, 0.3), "neb1": Color(0.4, 0.1, 0.6),
@@ -55,7 +55,7 @@ const WORLDS := [
 	{"name": "EREIGNISHORIZONT", "planet": false, "neb1": Color(0.4, 0.15, 0.45), "neb2": Color(0.15, 0.08, 0.3), "base": Color(0.004, 0.002, 0.008),
 	 "fog": Color(0.07, 0.04, 0.12), "fogd": 0.0026, "sun": Color(1.0, 0.75, 0.5), "rock": Color(0.55, 0.5, 0.47), "glow": Color(1.0, 0.6, 0.25),
 	 "tin": [Color(0.34, 0.3, 0.28), Color(0.14, 0.12, 0.12)], "tout": [Color(0.46, 0.42, 0.39), Color(0.27, 0.24, 0.22)], "tname": "GRAVITATIONSSCHACHT", "hole": true},
-	{"name": "SONNENKORONA HELIOS", "planet": false, "neb1": Color(0.9, 0.35, 0.05), "neb2": Color(0.6, 0.15, 0.02), "base": Color(0.05, 0.012, 0.0),
+	{"name": "SONNENKORONA HELIOS", "planet": false, "neb": 0.45, "neb1": Color(0.9, 0.35, 0.05), "neb2": Color(0.6, 0.15, 0.02), "base": Color(0.05, 0.012, 0.0),
 	 "fog": Color(0.35, 0.1, 0.02), "fogd": 0.0036, "sun": Color(1.0, 0.72, 0.4), "rock": Color(0.24, 0.18, 0.14), "glow": Color(1.0, 0.55, 0.1),
 	 "tin": [Color(0.24, 0.16, 0.12), Color(0.1, 0.06, 0.04)], "tout": [Color(0.3, 0.22, 0.17), Color(0.16, 0.11, 0.08)], "tname": "SCHLACKETUNNEL", "bigsun": true, "sun_rot": Vector3(-10, 180, 0)},
 ]
@@ -306,17 +306,18 @@ func _make_materials() -> void:
 	wr.seed = 9
 	for yy in 32:
 		for xx in 32:
-			var lit := (xx % 4 != 3) and (yy % 4 != 3) and wr.randf() < 0.38
+			var lit := (xx % 4 != 3) and (yy % 4 != 3) and wr.randf() < 0.25
 			var cc := Color(1.0, 0.85, 0.55) if wr.randf() < 0.7 else Color(0.5, 0.8, 1.0)
 			wi.set_pixel(xx, yy, cc * wr.randf_range(0.6, 1.0) if lit else Color(0, 0, 0))
+	wi.generate_mipmaps()
 	var wt := ImageTexture.create_from_image(wi)
 	city_mat = _toon(Color(0.11, 0.11, 0.16), 0.4, 0.4)
 	city_mat.emission_enabled = true
 	city_mat.emission_texture = wt
 	city_mat.emission = Color.WHITE
-	city_mat.emission_energy_multiplier = 1.6
+	city_mat.emission_energy_multiplier = 1.0
 	city_mat.uv1_triplanar = true
-	city_mat.uv1_scale = Vector3(0.08, 0.08, 0.08)
+	city_mat.uv1_scale = Vector3(0.031, 0.031, 0.031)
 	city_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 	for nc in [Color(1.0, 0.2, 0.75), Color(0.2, 0.9, 1.0), Color(1.0, 0.75, 0.2)]:
 		neon_mats.append(_glow(nc, 3.0))
@@ -440,6 +441,7 @@ func _make_environment() -> void:
 	else:
 		sky_mat.set_shader_parameter("neb2", W.neb2)
 		sky_mat.set_shader_parameter("hole", 1.0 if W.has("hole") else 0.0)
+		sky_mat.set_shader_parameter("neb_strength", W.get("neb", 1.0))
 		sky_mat.set_shader_parameter("bigsun", 1.0 if W.has("bigsun") else 0.0)
 		sky_mat.set_shader_parameter("base", W.base)
 	var sky := Sky.new()
