@@ -301,25 +301,10 @@ func _make_materials() -> void:
 	panel_mat.emission_enabled = true
 	panel_mat.emission = Color(0.1, 0.25, 0.6)
 	panel_mat.emission_energy_multiplier = 0.4
-	var wi := Image.create(32, 32, false, Image.FORMAT_RGB8)
-	var wr := RandomNumberGenerator.new()
-	wr.seed = 9
-	for yy in 32:
-		for xx in 32:
-			var lit := (xx % 4 != 3) and (yy % 4 != 3) and wr.randf() < 0.25
-			var cc := Color(1.0, 0.85, 0.55) if wr.randf() < 0.7 else Color(0.5, 0.8, 1.0)
-			wi.set_pixel(xx, yy, cc * wr.randf_range(0.6, 1.0) if lit else Color(0, 0, 0))
-	wi.generate_mipmaps()
-	var wt := ImageTexture.create_from_image(wi)
-	city_mat = _toon(Color(0.11, 0.11, 0.16), 0.4, 0.4)
-	city_mat.emission_enabled = true
-	city_mat.emission_texture = wt
-	city_mat.emission = Color.WHITE
-	city_mat.emission_energy_multiplier = 1.0
-	city_mat.uv1_triplanar = true
-	city_mat.uv1_scale = Vector3(0.031, 0.031, 0.031)
-	city_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
-	for nc in [Color(1.0, 0.2, 0.75), Color(0.2, 0.9, 1.0), Color(1.0, 0.75, 0.2)]:
+	city_mat = _toon(Color(0.1, 0.1, 0.14), 0.35, 0.5)
+	var win_mat := _glow(Color(1.0, 0.82, 0.55), 1.4)
+	neon_mats.append(win_mat)
+	for nc in [Color(1.0, 0.2, 0.75), Color(0.2, 0.9, 1.0), Color(1.0, 0.45, 0.1)]:
 		neon_mats.append(_glow(nc, 3.0))
 	crystal_mat = StandardMaterial3D.new()
 	crystal_mat.albedo_color = W.glow.lerp(Color.WHITE, 0.35)
@@ -1296,10 +1281,22 @@ func _add_building(sv: float) -> void:
 	var g := Node3D.new()
 	add_child(g)
 	place(g, sv, x, GY + ground_h(x, sv) - 2.0)
-	g.add_child(_box(Vector3(w, h, w * rng.randf_range(0.7, 1.3)), city_mat, Vector3(0, h * 0.5, 0)))
+	var dz0 := w
+	g.add_child(_box(Vector3(w, h, dz0), city_mat, Vector3(0, h * 0.5, 0)))
 	if rng.randf() < 0.6:
 		g.add_child(_box(Vector3(w * 0.6, h * 0.25, w * 0.6), city_mat, Vector3(0, h * 1.12, 0)))
-	var nm: Material = neon_mats[rng.randi() % neon_mats.size()]
+	var dz := dz0
+	var floors := int(h / 4.5)
+	var wm: Material = neon_mats[0]
+	for f in floors:
+		if rng.randf() < 0.45:
+			var len_f := w * rng.randf_range(0.25, 0.9)
+			var off := rng.randf_range(-(w - len_f) * 0.5, (w - len_f) * 0.5)
+			var fy := 3.0 + f * 4.5
+			g.add_child(_box(Vector3(len_f, 1.4, 0.3), wm, Vector3(off, fy, dz * 0.5 + 0.1)))
+			if rng.randf() < 0.5:
+				g.add_child(_box(Vector3(0.3, 1.4, len_f * dz / w), wm, Vector3(-signf(x) * (w * 0.5 + 0.1), fy, off * dz / w)))
+	var nm: Material = neon_mats[1 + rng.randi() % (neon_mats.size() - 1)]
 	for k in 1 + rng.randi() % 3:
 		g.add_child(_box(Vector3(w * 1.02, 0.7, 0.7), nm, Vector3(0, h * rng.randf_range(0.3, 0.98), w * 0.5)))
 	g.add_child(_box(Vector3(0.6, h * 0.12, 0.6), glow_red, Vector3(0, h + h * 0.06, 0)))
