@@ -9,7 +9,7 @@ const STEP := 4.0
 const BULLET_SPEED := 170.0
 
 var speed := 42.0
-var s := 0.0
+var s := 30.0
 var t_game := 0.0
 
 # --- Bahn ---
