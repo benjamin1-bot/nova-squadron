@@ -4,6 +4,9 @@ uniform vec3 neb2 : source_color = vec3(0.05, 0.30, 0.60);
 uniform vec3 base : source_color = vec3(0.004, 0.006, 0.018);
 uniform float neb_strength = 1.0;
 uniform float planet = 0.0;
+uniform float hole = 0.0;
+uniform vec3 hole_dir = vec3(0.25, 0.18, -1.0);
+uniform float bigsun = 0.0;
 uniform vec3 zenith : source_color = vec3(0.05, 0.15, 0.35);
 uniform vec3 horizon : source_color = vec3(0.6, 0.75, 0.9);
 
@@ -42,6 +45,28 @@ void sky() {
 	col += vec3(st) * 1.2 + vec3(st2) * vec3(2.5, 2.3, 2.0);
 	float sd = max(dot(d, LIGHT0_DIRECTION), 0.0);
 	col += LIGHT0_COLOR * (pow(sd, 900.0) * 14.0 + pow(sd, 40.0) * 0.35 + pow(sd, 6.0) * 0.06);
+	if (hole > 0.5) {
+		vec3 hd = normalize(hole_dir);
+		float c = dot(d, hd);
+		float ang = acos(clamp(c, -1.0, 1.0));
+		float r0 = 0.2;
+		vec3 up = normalize(cross(hd, vec3(0.25, 1.0, 0.1)));
+		float pl = abs(dot(d, up));
+		float disk = smoothstep(0.045, 0.0, pl) * smoothstep(r0 * 0.95, r0 * 1.25, ang) * smoothstep(0.9, 0.3, ang);
+		float swirl = fbm(vec3(ang * 18.0, dot(d, cross(hd, up)) * 9.0, 1.0));
+		float photon = smoothstep(0.025, 0.0, abs(ang - r0 * 1.04));
+		float lens = smoothstep(r0 * 2.2, r0, ang) * 0.6;
+		col *= 1.0 - lens;
+		col += vec3(1.0, 0.55, 0.2) * disk * (1.2 + swirl * 2.5) + vec3(1.0, 0.8, 0.55) * photon * 2.2;
+		col *= smoothstep(r0 * 0.96, r0 * 1.0, ang) * 0.999 + 0.001;
+	}
+	if (bigsun > 0.5) {
+		float sa2 = acos(clamp(dot(d, LIGHT0_DIRECTION), -1.0, 1.0));
+		float gran = fbm(d * 40.0);
+		float disc = smoothstep(0.30, 0.285, sa2);
+		col = mix(col, vec3(1.6, 1.0, 0.45) * (0.75 + gran * 0.6), disc);
+		col += vec3(1.0, 0.45, 0.1) * (exp(-(sa2 - 0.29) * 7.0) * 0.9) * (1.0 - disc) * (0.7 + fbm(d * 8.0 + vec3(3.0)) * 0.8);
+	}
 	if (planet > 0.5) {
 		float h = clamp(d.y, -1.0, 1.0);
 		vec3 g = mix(horizon, zenith, smoothstep(-0.02, 0.55, h));

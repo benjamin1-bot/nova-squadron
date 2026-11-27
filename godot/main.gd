@@ -39,8 +39,35 @@ const WORLDS := [
 	{"name": "SMARAGDGÜRTEL", "planet": false, "neb1": Color(0.1, 0.55, 0.25), "neb2": Color(0.3, 0.75, 0.35), "base": Color(0.005, 0.02, 0.01),
 	 "fog": Color(0.08, 0.25, 0.12), "fogd": 0.0032, "sun": Color(0.95, 1.0, 0.9), "rock": Color(0.42, 0.47, 0.42), "glow": Color(0.1, 1.0, 0.5),
 	 "tin": [Color(0.26, 0.32, 0.27), Color(0.1, 0.14, 0.11)], "tout": [Color(0.4, 0.46, 0.4), Color(0.24, 0.3, 0.25)], "tname": "SMARAGDTUNNEL", "crystals": 0.3},
+	{"name": "SCHIFFSFRIEDHOF", "planet": false, "neb1": Color(0.5, 0.12, 0.08), "neb2": Color(0.25, 0.08, 0.1), "base": Color(0.012, 0.004, 0.004),
+	 "fog": Color(0.12, 0.05, 0.05), "fogd": 0.004, "sun": Color(1.0, 0.75, 0.6), "rock": Color(0.42, 0.4, 0.38), "glow": Color(1.0, 0.25, 0.15),
+	 "tin": [Color(0.3, 0.29, 0.28), Color(0.14, 0.13, 0.13)], "tout": [Color(0.4, 0.38, 0.36), Color(0.24, 0.22, 0.21)], "tname": "WRACKSCHACHT", "wrecks": 0.12},
+	{"name": "ORBITALSTATION ORION", "planet": false, "neb1": Color(0.1, 0.25, 0.6), "neb2": Color(0.2, 0.45, 0.8), "base": Color(0.004, 0.01, 0.03),
+	 "fog": Color(0.06, 0.14, 0.3), "fogd": 0.0026, "sun": Color(1.0, 0.97, 0.92), "rock": Color(0.62, 0.62, 0.66), "glow": Color(0.3, 0.75, 1.0),
+	 "tin": [Color(0.38, 0.38, 0.42), Color(0.18, 0.18, 0.22)], "tout": [Color(0.5, 0.5, 0.55), Color(0.3, 0.3, 0.34)], "tname": "VERSORGUNGSSCHACHT", "station": 0.1},
+	{"name": "GEWITTERNEBEL", "planet": false, "neb1": Color(0.12, 0.5, 0.4), "neb2": Color(0.25, 0.6, 0.5), "base": Color(0.004, 0.02, 0.015),
+	 "fog": Color(0.09, 0.27, 0.22), "fogd": 0.0042, "sun": Color(0.85, 1.0, 0.95), "rock": Color(0.5, 0.56, 0.52), "glow": Color(0.6, 1.0, 0.9),
+	 "tin": [Color(0.3, 0.36, 0.33), Color(0.12, 0.16, 0.14)], "tout": [Color(0.45, 0.5, 0.47), Color(0.27, 0.31, 0.29)], "tname": "GEWITTERSCHLUND", "storm": true},
+	{"name": "NEONSTADT VEGA-9", "planet": true, "zenith": Color(0.01, 0.01, 0.05), "horizon": Color(0.22, 0.06, 0.3), "neb1": Color(0.4, 0.1, 0.6),
+	 "fog": Color(0.06, 0.04, 0.14), "fogd": 0.0036, "sun": Color(0.7, 0.6, 1.0), "rock": Color(0.35, 0.35, 0.42), "glow": Color(1.0, 0.2, 0.75),
+	 "pal": {"base": Color("10101c"), "base2": Color("181828"), "mid": Color("1a1a2a"), "rock": Color("22223a"), "rock2": Color("1c1c30"), "snow": Color("ff30c0"), "snow_on": false},
+	 "liquid": Color(0, 0, 0), "liquid_glow": 0.0, "liquid_y": -999.0, "floor_off": 0.0, "tname": "UNTERFÜHRUNG", "city": true},
+	{"name": "EREIGNISHORIZONT", "planet": false, "neb1": Color(0.4, 0.15, 0.45), "neb2": Color(0.15, 0.08, 0.3), "base": Color(0.004, 0.002, 0.008),
+	 "fog": Color(0.07, 0.04, 0.12), "fogd": 0.0026, "sun": Color(1.0, 0.75, 0.5), "rock": Color(0.55, 0.5, 0.47), "glow": Color(1.0, 0.6, 0.25),
+	 "tin": [Color(0.34, 0.3, 0.28), Color(0.14, 0.12, 0.12)], "tout": [Color(0.46, 0.42, 0.39), Color(0.27, 0.24, 0.22)], "tname": "GRAVITATIONSSCHACHT", "hole": true},
+	{"name": "SONNENKORONA HELIOS", "planet": false, "neb1": Color(0.9, 0.35, 0.05), "neb2": Color(0.6, 0.15, 0.02), "base": Color(0.05, 0.012, 0.0),
+	 "fog": Color(0.35, 0.1, 0.02), "fogd": 0.0036, "sun": Color(1.0, 0.72, 0.4), "rock": Color(0.24, 0.18, 0.14), "glow": Color(1.0, 0.55, 0.1),
+	 "tin": [Color(0.24, 0.16, 0.12), Color(0.1, 0.06, 0.04)], "tout": [Color(0.3, 0.22, 0.17), Color(0.16, 0.11, 0.08)], "tname": "SCHLACKETUNNEL", "bigsun": true, "sun_rot": Vector3(-10, 180, 0)},
 ]
 var W: Dictionary
+var sun: DirectionalLight3D
+var sun_energy := 1.6
+var storm_t := 2.0
+var flash := 0.0
+var metal_mat: StandardMaterial3D
+var panel_mat: StandardMaterial3D
+var city_mat: StandardMaterial3D
+var neon_mats: Array = []
 var env: Environment
 var amb_base := 0.7
 var fog_base := 0.003
@@ -269,6 +296,30 @@ func _make_materials() -> void:
 	mount_mat = ground_mat.duplicate() as StandardMaterial3D
 	mount_mat.uv1_scale = Vector3(0.035, 0.035, 0.035)
 	mount_mat.next_pass = outline_mat
+	metal_mat = _toon(Color(0.36, 0.35, 0.36), 0.45, 0.7)
+	panel_mat = _toon(Color(0.12, 0.22, 0.5), 0.25, 0.6)
+	panel_mat.emission_enabled = true
+	panel_mat.emission = Color(0.1, 0.25, 0.6)
+	panel_mat.emission_energy_multiplier = 0.4
+	var wi := Image.create(32, 32, false, Image.FORMAT_RGB8)
+	var wr := RandomNumberGenerator.new()
+	wr.seed = 9
+	for yy in 32:
+		for xx in 32:
+			var lit := (xx % 4 != 3) and (yy % 4 != 3) and wr.randf() < 0.38
+			var cc := Color(1.0, 0.85, 0.55) if wr.randf() < 0.7 else Color(0.5, 0.8, 1.0)
+			wi.set_pixel(xx, yy, cc * wr.randf_range(0.6, 1.0) if lit else Color(0, 0, 0))
+	var wt := ImageTexture.create_from_image(wi)
+	city_mat = _toon(Color(0.11, 0.11, 0.16), 0.4, 0.4)
+	city_mat.emission_enabled = true
+	city_mat.emission_texture = wt
+	city_mat.emission = Color.WHITE
+	city_mat.emission_energy_multiplier = 1.6
+	city_mat.uv1_triplanar = true
+	city_mat.uv1_scale = Vector3(0.08, 0.08, 0.08)
+	city_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+	for nc in [Color(1.0, 0.2, 0.75), Color(0.2, 0.9, 1.0), Color(1.0, 0.75, 0.2)]:
+		neon_mats.append(_glow(nc, 3.0))
 	crystal_mat = StandardMaterial3D.new()
 	crystal_mat.albedo_color = W.glow.lerp(Color.WHITE, 0.35)
 	crystal_mat.emission_enabled = true
@@ -367,8 +418,8 @@ func _cut_rock(seed_v: int, detail: int) -> ArrayMesh:
 
 # ======================= Umgebung =======================
 func _make_environment() -> void:
-	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-35, 40, 0)
+	sun = DirectionalLight3D.new()
+	sun.rotation_degrees = W.get("sun_rot", Vector3(-35, 40, 0))
 	sun.light_color = W.sun
 	sun.light_energy = 1.6
 	sun.shadow_enabled = true
@@ -388,6 +439,8 @@ func _make_environment() -> void:
 		sky_mat.set_shader_parameter("horizon", W.horizon)
 	else:
 		sky_mat.set_shader_parameter("neb2", W.neb2)
+		sky_mat.set_shader_parameter("hole", 1.0 if W.has("hole") else 0.0)
+		sky_mat.set_shader_parameter("bigsun", 1.0 if W.has("bigsun") else 0.0)
 		sky_mat.set_shader_parameter("base", W.base)
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
@@ -563,6 +616,8 @@ func _process(delta: float) -> void:
 	_update_tunnels()
 	_update_camera(dt)
 	_update_hud(dt)
+	if W.has("storm"):
+		_update_storm(dt)
 	if autotest:
 		_autotest_step(dt)
 
@@ -690,6 +745,12 @@ func _spawn_world() -> void:
 			x = cos(a) * dist
 			y = sin(a) * dist * 0.75
 			r = rng.randf_range(2.0, 9.0) if dist < 60.0 else rng.randf_range(4.0, 22.0)
+		if not inside and W.has("wrecks") and rng.randf() < W.wrecks and dist_ok(x, y) and absf(x) > 45.0:
+			_add_wreck(sv, x, y)
+			continue
+		if not inside and W.has("station") and rng.randf() < W.station and dist_ok(x, y) and absf(x) > 40.0:
+			_add_module(sv, x, y)
+			continue
 		if not inside and W.has("crystals") and rng.randf() < W.crystals and dist_ok(x, y):
 			_add_crystal_cluster(sv, x, y, r)
 		else:
@@ -1053,6 +1114,9 @@ func _mountain_mesh(rad: float, hgt: float, sd: int) -> ArrayMesh:
 
 var mount_meshes: Array = []
 func _add_mountain(sv: float) -> void:
+	if W.has("city"):
+		_add_building(sv)
+		return
 	if mount_meshes.is_empty():
 		for i in 6:
 			mount_meshes.append(_mountain_mesh(100.0, 120.0 + i * 12.0, i * 17 + 3))
@@ -1116,6 +1180,8 @@ func _add_mushroom(sv: float, x: float, big: bool) -> void:
 	rocks.append({"node": g, "s": sv, "x": x, "y": 0.0, "r": cr, "hard": false, "still": true})
 
 func _add_ground_rock(sv: float) -> void:
+	if W.has("city"):
+		return
 	if W.has("mush") and rng.randf() < W.mush:
 		var big := rng.randf() < 0.35
 		var mx := rng.randf_range(BX + 8.0, 140.0) if big else rng.randf_range(BX + 3.0, 90.0)
@@ -1160,6 +1226,112 @@ func _add_stack(sv: float) -> void:
 	if inside:
 		d["top"] = 99.0
 	rocks.append(d)
+
+# ======================= Sonderdeko der Welten =======================
+func _box(sz: Vector3, mat: Material, pos: Vector3, rot := Vector3.ZERO) -> MeshInstance3D:
+	var b := BoxMesh.new()
+	b.size = sz
+	return _mi(b, mat, pos, Vector3.ONE, rot)
+
+func _add_wreck(sv: float, x: float, y: float) -> void:
+	var g := Node3D.new()
+	add_child(g)
+	place(g, sv, x, y)
+	g.rotate_object_local(Vector3(rng.randf(), rng.randf(), rng.randf()).normalized(), rng.randf() * TAU)
+	var L := rng.randf_range(40.0, 110.0)
+	var Wd := L * rng.randf_range(0.16, 0.24)
+	# Rumpf mit abgerissenem Heck: vorderer Teil geschlossen, hinten nur Spanten
+	g.add_child(_box(Vector3(Wd, Wd * 0.45, L * 0.55), metal_mat, Vector3(0, 0, -L * 0.2)))
+	g.add_child(_box(Vector3(Wd * 0.6, Wd * 0.3, L * 0.25), metal_mat, Vector3(0, Wd * 0.3, -L * 0.35)))
+	var pm := PrismMesh.new()
+	pm.size = Vector3(Wd, L * 0.3, Wd * 0.45)
+	g.add_child(_mi(pm, metal_mat, Vector3(0, 0, -L * 0.62), Vector3.ONE, Vector3(-PI / 2, 0, 0)))
+	for i in 6:
+		var z := L * 0.1 + i * L * 0.06
+		g.add_child(_box(Vector3(Wd * 1.02, Wd * 0.06, Wd * 0.05), metal_mat, Vector3(0, Wd * 0.2, z), Vector3(0, 0, rng.randf_range(-0.2, 0.2))))
+		g.add_child(_box(Vector3(Wd * 0.06, Wd * 0.45, Wd * 0.05), metal_mat, Vector3(-Wd * 0.48, 0, z)))
+		if rng.randf() < 0.6:
+			g.add_child(_box(Vector3(Wd * 0.06, Wd * 0.45, Wd * 0.05), metal_mat, Vector3(Wd * 0.48, 0, z)))
+	g.add_child(_box(Vector3(Wd * 0.95, Wd * 0.04, L * 0.38), metal_mat, Vector3(0, -Wd * 0.21, L * 0.24)))
+	for i in 4:
+		var lm := _box(Vector3.ONE * 0.6, glow_red, Vector3(rng.randf_range(-0.5, 0.5) * Wd, Wd * 0.24, rng.randf_range(-0.45, 0.05) * L))
+		g.add_child(lm)
+	rocks.append({"node": g, "s": sv, "x": x, "y": y, "r": L, "hard": false, "big": true})
+
+func _add_module(sv: float, x: float, y: float) -> void:
+	var g := Node3D.new()
+	add_child(g)
+	place(g, sv, x, y)
+	g.rotate_object_local(Vector3.UP, rng.randf_range(-0.4, 0.4))
+	var n := 2 + rng.randi() % 3
+	var rad := rng.randf_range(5.0, 9.0)
+	for i in n:
+		var c := CylinderMesh.new()
+		c.top_radius = rad
+		c.bottom_radius = rad
+		c.height = rad * 3.5
+		c.radial_segments = 16
+		var z := (i - n * 0.5) * rad * 4.2
+		g.add_child(_mi(c, metal_mat, Vector3(0, 0, z), Vector3.ONE, Vector3(PI / 2, 0, 0)))
+		var ring := TorusMesh.new()
+		ring.inner_radius = rad * 1.02
+		ring.outer_radius = rad * 1.25
+		g.add_child(_mi(ring, metal_mat, Vector3(0, 0, z + rad * 1.6), Vector3.ONE, Vector3(PI / 2, 0, 0)))
+		g.add_child(_box(Vector3(rad * 0.15, rad * 0.15, rad * 0.8), neon_mats[1], Vector3(0, rad * 1.0, z)))
+		if i < n - 1:
+			g.add_child(_box(Vector3(rad * 0.8, rad * 0.8, rad * 1.4), metal_mat, Vector3(0, 0, z + rad * 2.1)))
+	var sx := 1.0 if x > 0 else -1.0
+	g.add_child(_box(Vector3(rad * 9.0, 0.4, rad * 2.6), panel_mat, Vector3(sx * rad * 5.5, 0, 0)))
+	g.add_child(_box(Vector3(rad * 9.0, 0.4, rad * 2.6), panel_mat, Vector3(sx * rad * 5.5, 0, rad * 3.0)))
+	g.add_child(_box(Vector3(rad * 10.0, 0.6, 0.6), metal_mat, Vector3(sx * rad * 5.5, 0, rad * 1.5)))
+	rocks.append({"node": g, "s": sv, "x": x, "y": y, "r": rad * n * 4.0, "hard": false, "big": true})
+
+func _add_building(sv: float) -> void:
+	var side := -1.0 if rng.randf() < 0.5 else 1.0
+	var w := rng.randf_range(16.0, 40.0)
+	var h := rng.randf_range(40.0, 190.0)
+	var x := side * (BX + 18.0 + w * 0.5 + rng.randf_range(0.0, 200.0))
+	var g := Node3D.new()
+	add_child(g)
+	place(g, sv, x, GY + ground_h(x, sv) - 2.0)
+	g.add_child(_box(Vector3(w, h, w * rng.randf_range(0.7, 1.3)), city_mat, Vector3(0, h * 0.5, 0)))
+	if rng.randf() < 0.6:
+		g.add_child(_box(Vector3(w * 0.6, h * 0.25, w * 0.6), city_mat, Vector3(0, h * 1.12, 0)))
+	var nm: Material = neon_mats[rng.randi() % neon_mats.size()]
+	for k in 1 + rng.randi() % 3:
+		g.add_child(_box(Vector3(w * 1.02, 0.7, 0.7), nm, Vector3(0, h * rng.randf_range(0.3, 0.98), w * 0.5)))
+	g.add_child(_box(Vector3(0.6, h * 0.12, 0.6), glow_red, Vector3(0, h + h * 0.06, 0)))
+	rocks.append({"node": g, "s": sv, "x": x, "y": 0.0, "r": w, "hard": false, "big": true})
+
+func _update_storm(dt: float) -> void:
+	storm_t -= dt
+	flash = maxf(0.0, flash - dt * 3.0)
+	sun.light_energy = sun_energy + flash * 2.5
+	if storm_t <= 0.0:
+		storm_t = rng.randf_range(1.5, 4.5)
+		flash = 1.0
+		var sv := s + rng.randf_range(150.0, 400.0)
+		var x := rng.randf_range(60.0, 220.0) * (-1.0 if rng.randf() < 0.5 else 1.0)
+		var y := rng.randf_range(-40.0, 80.0)
+		var p := l2w(sv, x, y + 90.0)
+		var bolt := Node3D.new()
+		add_child(bolt)
+		var mat := _glow(Color(0.7, 1.0, 0.95), 5.0)
+		var pts := [p]
+		for i in 9:
+			var q: Vector3 = pts[-1] + Vector3(rng.randf_range(-12, 12), -20.0, rng.randf_range(-12, 12))
+			pts.append(q)
+		for i in pts.size() - 1:
+			var a: Vector3 = pts[i]
+			var b: Vector3 = pts[i + 1]
+			var seg := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = Vector3(0.9, 0.9, a.distance_to(b))
+			seg.mesh = bm
+			seg.material_override = mat
+			bolt.add_child(seg)
+			seg.look_at_from_position((a + b) * 0.5, b, Vector3.UP if absf((b - a).normalized().y) < 0.99 else Vector3.RIGHT)
+		get_tree().create_timer(0.22).timeout.connect(bolt.queue_free)
 
 # ======================= Updates =======================
 func _update_rocks(dt: float) -> void:
@@ -1319,7 +1491,7 @@ func _autotest_step(dt: float) -> void:
 	if at_shot_t <= 0.0:
 		at_shot_t = 3.0
 		_screenshot("flug")
-	if t_game > 30.0 or Time.get_ticks_msec() > 330000:
+	if t_game > 26.0 or Time.get_ticks_msec() > 330000:
 		log_at("Fertig. Frames: %d, mittlere FPS: %.1f, Strecke: %.0f, Tunnel: %d" % [at_frames, at_fps_sum / maxf(1, at_frames), s, tunnels.size()])
 		var f := FileAccess.open(at_dir + "/bericht.txt", FileAccess.WRITE)
 		if f:
