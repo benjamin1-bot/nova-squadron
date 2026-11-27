@@ -77,6 +77,16 @@ func setup(main) -> void:
 	_make_assets()
 	_make_hud()
 	wave = M.start_wave - 1
+	var c: Dictionary = M.get_carry()
+	if not c.is_empty():
+		score = c.score
+		wave = c.wave
+		nmis = c.nmis
+		nukes = c.nukes
+		wpn = c.wpn
+		wlv = c.wlv
+		M.hull = c.hull
+		M.set_carry({})
 	start_wave()
 
 func rand(a: float, b: float) -> float:
@@ -178,12 +188,7 @@ func _make_assets() -> void:
 	dod.radial_segments = 6
 	dod.rings = 4
 	shapes.dodec = dod
-	var tor := TorusMesh.new()
-	tor.inner_radius = 0.9
-	tor.outer_radius = 1.1
-	tor.rings = 32
-	tor.ring_segments = 8
-	shapes.ring = tor
+	shapes.ring = torus_mesh(1.0, 0.1, TAU, 32, 8)
 	var fl := CylinderMesh.new()
 	fl.top_radius = 0.5
 	fl.bottom_radius = 0.0
@@ -227,6 +232,25 @@ func _make_assets() -> void:
 	rt.height = 128
 	ring_tex = rt
 
+## Torus in der xy-Ebene (wie three.js), auch als Teilbogen
+func torus_mesh(R: float, tube: float, arc: float, segs := 40, sides := 10) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in segs:
+		var a0 := arc * i / segs
+		var a1 := arc * (i + 1) / segs
+		for j in sides:
+			var b0 := TAU * j / sides
+			var b1 := TAU * (j + 1) / sides
+			var p := [_tp(R, tube, a0, b0), _tp(R, tube, a1, b0), _tp(R, tube, a0, b1), _tp(R, tube, a1, b1)]
+			for k in [0, 2, 1, 1, 2, 3]:
+				st.add_vertex(p[k])
+	st.generate_normals()
+	return st.commit()
+
+func _tp(R: float, r: float, a: float, b: float) -> Vector3:
+	return Vector3((R + r * cos(b)) * cos(a), (R + r * cos(b)) * sin(a), r * sin(b))
+
 func _octa() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -250,7 +274,7 @@ func glow_mat(col: Color, op := 0.8, ring := false) -> StandardMaterial3D:
 	m.albedo_texture = ring_tex if ring else glow_tex
 	m.albedo_color = Color(col.r * 1.6, col.g * 1.6, col.b * 1.6, op)
 	m.no_depth_test = false
-	m.disable_fog = true
+	m.set("disable_fog", true)
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	glow_mats[key] = m
 	return m
@@ -502,7 +526,7 @@ func make_mine() -> Node3D:
 	g.add_child(mk("sphere", mats.mine, 0.9, 0.9, 0.9))
 	for v in [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.FORWARD, Vector3.BACK]:
 		var sp := mk("cone", mats.eDark, 0.3, 0.8, 0.3)
-		var side := v.cross(Vector3(0.3, 0.5, 0.8)).normalized()
+		var side: Vector3 = v.cross(Vector3(0.3, 0.5, 0.8)).normalized()
 		sp.basis = Basis(side, v, side.cross(v)).scaled(Vector3(0.3, 0.8, 0.3))
 		sp.position = v * 0.95
 		g.add_child(sp)
@@ -653,7 +677,7 @@ func glow_line_mat(col: Color) -> StandardMaterial3D:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	m.albedo_color = Color(col.r * 2.0, col.g * 2.0, col.b * 2.0, 0.6)
-	m.disable_fog = true
+	m.set("disable_fog", true)
 	return m
 
 func spawn_swarm(n: int) -> void:
@@ -1159,7 +1183,7 @@ func update_enemy(e: Dictionary, dt: float) -> void:
 		"brander":
 			e.vs = minf(95, e.vs + 28 * dt)
 			if e.z < -22:
-				var d := (Vector3(M.ship_x, M.ship_y, 0) - Vector3(e.x, e.y, e.z)).normalized() * e.vs
+				var d: Vector3 = (Vector3(M.ship_x, M.ship_y, 0) - Vector3(e.x, e.y, e.z)).normalized() * e.vs
 				var v := Vector3(e.vx, e.vy, e.vz).lerp(d, minf(1, dt * 1.6))
 				e.vx = v.x
 				e.vy = v.y
@@ -1492,10 +1516,10 @@ func spawn_pickup(x: float, y: float, z: float, kind: String) -> void:
 		"Z":
 			model.add_child(mk("sphere", mat, 0.8, 0.8, 0.8))
 			for a in [0.0, 1.05, 2.1]:
-				model.add_child(mk("ring", mats.white, 1.15, 1.15, 1.5, a, a * 0.7, 0))
+				model.add_child(mk("ring", mats.white, 1.15, 1.15, 1.5, 0, 0, 0, a, a * 0.7, 0))
 		"S":
 			model.add_child(mk("ring", mat, 1.05, 1.05, 2))
-			model.add_child(mk("ring", mat, 1.05, 1.05, 2, PI / 2))
+			model.add_child(mk("ring", mat, 1.05, 1.05, 2, 0, 0, 0, PI / 2))
 			model.add_child(mk("sphere", mats.white, 0.25, 0.25, 0.25))
 		_:
 			for a in [0.0, PI / 3, 2 * PI / 3]:

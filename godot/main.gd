@@ -9,6 +9,17 @@ const STEP := 4.0
 const BULLET_SPEED := 170.0
 
 static var world_idx := 0
+static var carry := {}
+
+func get_carry() -> Dictionary:
+	return carry
+
+func set_carry(d: Dictionary) -> void:
+	carry = d
+
+func goto_next_world() -> void:
+	world_idx = (world_idx + 1) % WORLDS.size()
+	get_tree().reload_current_scene()
 const WORLDS := [
 	{"name": "ASTEROIDENGÜRTEL KEPLER", "planet": false, "neb1": Color(0.3, 0.1, 0.55), "neb2": Color(0.05, 0.3, 0.6), "base": Color(0.004, 0.006, 0.018),
 	 "fog": Color(0.1, 0.1, 0.22), "fogd": 0.0028, "sun": Color(1.0, 0.94, 0.86), "rock": Color(0.62, 0.56, 0.5), "glow": Color(0.3, 0.9, 1.0),
@@ -182,6 +193,9 @@ func _ready() -> void:
 			autotest = true
 		elif a.begins_with("--out="):
 			at_dir = a.substr(6)
+		elif a.begins_with("--boss="):
+			set_meta("force_boss", int(a.substr(7)))
+			start_wave = 4
 		elif a.begins_with("--wave="):
 			start_wave = int(a.substr(7))
 		elif a.begins_with("--world="):
@@ -199,7 +213,7 @@ func _ready() -> void:
 	_make_environment()
 	_make_ship()
 	_make_hud()
-	game = load("res://game.gd").new()
+	game = load("res://game_boss.gd").new()
 	add_child(game)
 	game.setup(self)
 	if autotest:
