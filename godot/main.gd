@@ -113,6 +113,12 @@ var shield := 100.0
 var shield_delay := 0.0
 var invul := 0.0
 var score := 0
+var game
+var widx := 0
+var start_wave := 1
+var shield_fx := 0.0
+var dmg_fx := 0.0
+var flash_fx := 0.0
 var fire_t := 0.0
 var cam: Camera3D
 var headlight: SpotLight3D
@@ -176,10 +182,13 @@ func _ready() -> void:
 			autotest = true
 		elif a.begins_with("--out="):
 			at_dir = a.substr(6)
+		elif a.begins_with("--wave="):
+			start_wave = int(a.substr(7))
 		elif a.begins_with("--world="):
 			world_idx = int(a.substr(8))
 	world_idx = clampi(world_idx, 0, WORLDS.size() - 1)
 	W = WORLDS[world_idx]
+	widx = world_idx
 	if autotest and at_dir == "":
 		at_dir = OS.get_user_data_dir() + "/autotest"
 	if autotest:
@@ -190,6 +199,9 @@ func _ready() -> void:
 	_make_environment()
 	_make_ship()
 	_make_hud()
+	game = load("res://game.gd").new()
+	add_child(game)
+	game.setup(self)
 	if autotest:
 		next_tunnel_s = 260.0
 	show_msg(W.name, 3.0)
@@ -624,8 +636,7 @@ func _process(delta: float) -> void:
 	_update_ship(dt)
 	_spawn_world()
 	_update_rocks(dt)
-	_update_enemies(dt)
-	_update_bullets(dt)
+	game.update(dt)
 	_update_tunnels()
 	if W.has("city"):
 		_update_cars(dt)
@@ -644,6 +655,8 @@ func _in_tunnel(sv: float) -> Dictionary:
 
 func _update_ship(dt: float) -> void:
 	var v := _input_vec()
+	if game.state != "play":
+		v = Vector2.ZERO
 	if autotest:
 		var ty := sin(t_game * 0.7) * BY * 0.5
 		var tx := sin(t_game * 0.45) * BX * 0.55
@@ -681,24 +694,14 @@ func _update_ship(dt: float) -> void:
 	var k_in := 1.0 if not _in_tunnel(s + 4).is_empty() else 0.0
 	env.ambient_light_energy = lerpf(env.ambient_light_energy, amb_base * (1.0 - 0.7 * k_in), minf(1.0, dt * 2.0))
 	env.fog_density = lerpf(env.fog_density, fog_base * (1.0 - 0.75 * k_in), minf(1.0, dt * 2.0))
-	fire_t -= dt
-	if fire_t <= 0.0:
-		fire_t = 0.11
-		_fire()
+	if game.roll_t > 0.0:
+		var k: float = 1.0 - game.roll_t / game.ROLL
+		ship.rotate_object_local(Vector3.FORWARD, game.roll_dir * (k * k * (3.0 - 2.0 * k)) * TAU)
+	shield_fx = maxf(0.0, shield_fx - dt * 2.5)
+	dmg_fx = maxf(0.0, dmg_fx - dt * 2.0)
 
 func damage(d: float) -> void:
-	if invul > 0.0 or autotest:
-		return
-	shield_delay = 3.0
-	invul = 0.4
-	var a := minf(shield, d)
-	shield -= a
-	hull -= (d - a)
-	if hull <= 0.0:
-		hull = 100.0
-		shield = 100.0
-		score = 0
-		show_msg("SCHIFF ZERSTÖRT – NEUSTART", 2.5)
+	game.damage_player(d, true)
 
 func _fire() -> void:
 	# Ziel: nächster Gegner vor dem Schiff (Auto-Zielen light)
@@ -773,14 +776,6 @@ func _spawn_world() -> void:
 			_add_crystal_cluster(sv, x, y, r)
 		else:
 			_add_rock(sv, x, y, r, inside)
-	while next_enemy_s < s + 260.0:
-		var sv2 := next_enemy_s
-		next_enemy_s += rng.randf_range(28.0, 55.0)
-		if not _in_tunnel(sv2).is_empty():
-			continue
-		var n := 1 + rng.randi() % 3
-		for i in n:
-			_add_enemy(sv2 + i * 6.0)
 
 func _near_tunnel(sv: float, m: float) -> bool:
 	for t in tunnels:
@@ -1700,12 +1695,16 @@ func _update_camera(dt: float) -> void:
 	cam.global_position = cam.global_position.lerp(target, minf(1.0, dt * 8.0)) if t_game > 0.2 else target
 	var look := l2w(s + 25.0, ship_x * 0.6, ship_y * 0.6)
 	cam.look_at(look, tr.basis.y)
+	var sh: float = game.trauma * game.trauma
+	if sh > 0.0:
+		cam.global_position += tr.basis.y * rng.randf_range(-1, 1) * sh * 0.7
+		cam.rotate_object_local(Vector3.FORWARD, rng.randf_range(-1, 1) * sh * 0.03)
 
 func _update_hud(dt: float) -> void:
-	hud_score.text = "%08d" % score
+	hud_score.text = "%08d" % game.score
 	hud_hull.value = hull
 	hud_shield.value = shield
-	hud_info.text = "FPS %d  ·  Objekte %d  ·  Gegner %d" % [int(Engine.get_frames_per_second()), rocks.size(), enemies.size()]
+	hud_info.text = "FPS %d  ·  Objekte %d  ·  Gegner %d" % [int(Engine.get_frames_per_second()), rocks.size(), game.enemies.size()]
 	if msg_t > 0.0:
 		msg_t -= dt
 		hud_msg.modulate.a = clampf(msg_t, 0.0, 1.0)
@@ -1717,6 +1716,14 @@ func log_at(t: String) -> void:
 
 func _autotest_step(dt: float) -> void:
 	at_frames += 1
+	if absf(t_game - 8.0) < dt * 0.5:
+		game.fire_missiles()
+		log_at("Raketen abgefeuert")
+	if absf(t_game - 14.0) < dt * 0.5:
+		game.do_roll()
+	if absf(t_game - 20.0) < dt * 0.5:
+		game.fire_nuke()
+		log_at("Atombombe gezündet")
 	at_fps_sum += Engine.get_frames_per_second()
 	at_shot_t -= dt
 	var near_tunnel := false
@@ -1735,6 +1742,7 @@ func _autotest_step(dt: float) -> void:
 		at_shot_t = 3.0
 		_screenshot("flug")
 	if t_game > 26.0 or Time.get_ticks_msec() > 330000:
+		log_at("Spiel: Welle %d, Punkte %d, Gegner aktiv %d, Schüsse %d" % [game.wave, game.score, game.enemies.size(), game.ebullets.size()])
 		log_at("Fertig. Frames: %d, mittlere FPS: %.1f, Strecke: %.0f, Tunnel: %d" % [at_frames, at_fps_sum / maxf(1, at_frames), s, tunnels.size()])
 		var f := FileAccess.open(at_dir + "/bericht.txt", FileAccess.WRITE)
 		if f:
