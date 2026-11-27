@@ -15,7 +15,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -71,10 +71,15 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libvulkan1 > /dev/null
           mkdir -p autotest
-          for w in 0 1 2; do
-            mkdir -p autotest/welt$w
-            timeout 420 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --world=$w --out=$PWD/autotest/welt$w 2>&1 | grep -v ALSA | tee autotest/welt$w/log.txt || true
+          run_world() {
+            mkdir -p autotest/welt$1
+            timeout 420 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --world=$1 --out=$PWD/autotest/welt$1 > autotest/welt$1/log.txt 2>&1 || true
+          }
+          for pair in "0 1" "2 3" "4 5" "6 7"; do
+            set -- $pair
+            run_world $1 & sleep 3; run_world $2 & wait
           done
+          grep -h "AUTOTEST: \(Welt\|Fertig\)\|SCRIPT ERROR" autotest/welt*/log.txt || true
           cp check.txt autotest/ || true
           ls autotest
           zip -q -r autotest.zip autotest

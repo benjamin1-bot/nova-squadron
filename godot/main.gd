@@ -21,8 +21,33 @@ const WORLDS := [
 	 "fog": Color(0.28, 0.1, 0.05), "fogd": 0.0042, "sun": Color(1.0, 0.78, 0.6), "rock": Color(0.36, 0.29, 0.26), "glow": Color(1.0, 0.45, 0.1),
 	 "pal": {"base": Color("1a1210"), "base2": Color("2a1a14"), "mid": Color("3a2a22"), "rock": Color("4a3a34"), "rock2": Color("5a3020"), "snow": Color("ff6a20"), "snow_on": false},
 	 "liquid": Color(1.0, 0.38, 0.06), "liquid_glow": 2.6, "liquid_y": -1.6, "floor_off": 0.0, "tname": "LAVAHÖHLE"},
+	{"name": "KRISTALLNEBEL", "planet": false, "neb1": Color(0.55, 0.15, 0.6), "neb2": Color(0.8, 0.35, 0.85), "base": Color(0.02, 0.008, 0.05),
+	 "fog": Color(0.18, 0.06, 0.27), "fogd": 0.0034, "sun": Color(1.0, 0.86, 1.0), "rock": Color(0.66, 0.6, 0.76), "glow": Color(1.0, 0.45, 1.0),
+	 "tin": [Color(0.4, 0.32, 0.48), Color(0.18, 0.12, 0.26)], "tout": [Color(0.55, 0.48, 0.64), Color(0.34, 0.28, 0.42)], "tname": "KRISTALLTUNNEL", "crystals": 0.45},
+	{"name": "OZEANWELT THALASSA", "planet": true, "zenith": Color(0.1, 0.35, 0.66), "horizon": Color(0.66, 0.84, 0.95), "neb1": Color(0.8, 0.9, 1.0),
+	 "fog": Color(0.58, 0.74, 0.87), "fogd": 0.0028, "sun": Color(1.0, 0.97, 0.88), "rock": Color(0.56, 0.52, 0.46), "glow": Color(0.4, 1.0, 0.9),
+	 "pal": {"base": Color("2a5a2a"), "base2": Color("3a6a30"), "mid": Color("6a7a40"), "rock": Color("7a7066"), "rock2": Color("5e5650"), "snow": Color("f0f4ff"), "snow_on": false},
+	 "liquid": Color(0.05, 0.3, 0.5), "liquid_glow": 0.0, "liquid_y": 0.5, "floor_off": -6.0, "tname": "FELSGROTTE", "stacks": 0.35},
+	{"name": "PILZWALD MYKOS", "planet": true, "zenith": Color(0.04, 0.015, 0.08), "horizon": Color(0.32, 0.12, 0.42), "neb1": Color(0.5, 0.2, 0.8),
+	 "fog": Color(0.17, 0.06, 0.23), "fogd": 0.0045, "sun": Color(0.85, 0.75, 1.0), "rock": Color(0.32, 0.36, 0.34), "glow": Color(0.4, 1.0, 0.85),
+	 "pal": {"base": Color("2a2434"), "base2": Color("3a3046"), "mid": Color("4a5a52"), "rock": Color("5a645e"), "rock2": Color("464e4a"), "snow": Color("7affd8"), "snow_on": false},
+	 "liquid": Color(0.2, 0.95, 0.65), "liquid_glow": 1.3, "liquid_y": -2.2, "floor_off": 0.0, "tname": "SPORENHÖHLE", "mush": 0.55},
+	{"name": "WÜSTENPLANET ARRAKON", "planet": true, "zenith": Color(0.17, 0.33, 0.58), "horizon": Color(0.88, 0.72, 0.52), "neb1": Color(1.0, 0.9, 0.7),
+	 "fog": Color(0.72, 0.57, 0.4), "fogd": 0.0026, "sun": Color(1.0, 0.93, 0.8), "rock": Color(0.85, 0.7, 0.48), "glow": Color(1.0, 0.75, 0.3),
+	 "pal": {"base": Color("7a4a26"), "base2": Color("8a5a30"), "mid": Color("a87040"), "rock": Color("c08a52"), "rock2": Color("9a6a3e"), "snow": Color("e8c890"), "snow_on": true},
+	 "liquid": Color(0, 0, 0), "liquid_glow": 0.0, "liquid_y": -999.0, "floor_off": 0.0, "tname": "SANDSTEINSCHLUCHT", "stacks": 0.2},
+	{"name": "SMARAGDGÜRTEL", "planet": false, "neb1": Color(0.1, 0.55, 0.25), "neb2": Color(0.3, 0.75, 0.35), "base": Color(0.005, 0.02, 0.01),
+	 "fog": Color(0.08, 0.25, 0.12), "fogd": 0.0032, "sun": Color(0.95, 1.0, 0.9), "rock": Color(0.42, 0.47, 0.42), "glow": Color(0.1, 1.0, 0.5),
+	 "tin": [Color(0.26, 0.32, 0.27), Color(0.1, 0.14, 0.11)], "tout": [Color(0.4, 0.46, 0.4), Color(0.24, 0.3, 0.25)], "tname": "SMARAGDTUNNEL", "crystals": 0.3},
 ]
 var W: Dictionary
+var env: Environment
+var amb_base := 0.7
+var fog_base := 0.003
+var crystal_mat: StandardMaterial3D
+var crystal_mesh: CylinderMesh
+var mush_stem: StandardMaterial3D
+var mush_cap: StandardMaterial3D
 const GY := -18.0
 var ground_mat: StandardMaterial3D
 var mount_mat: StandardMaterial3D
@@ -244,6 +269,27 @@ func _make_materials() -> void:
 	mount_mat = ground_mat.duplicate() as StandardMaterial3D
 	mount_mat.uv1_scale = Vector3(0.035, 0.035, 0.035)
 	mount_mat.next_pass = outline_mat
+	crystal_mat = StandardMaterial3D.new()
+	crystal_mat.albedo_color = W.glow.lerp(Color.WHITE, 0.35)
+	crystal_mat.emission_enabled = true
+	crystal_mat.emission = W.glow
+	crystal_mat.emission_energy_multiplier = 1.4
+	crystal_mat.roughness = 0.15
+	crystal_mat.metallic = 0.4
+	crystal_mat.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
+	crystal_mat.specular_mode = BaseMaterial3D.SPECULAR_TOON
+	crystal_mat.next_pass = outline_mat
+	crystal_mesh = CylinderMesh.new()
+	crystal_mesh.radial_segments = 6
+	crystal_mesh.rings = 1
+	crystal_mesh.top_radius = 0.05
+	crystal_mesh.bottom_radius = 0.7
+	crystal_mesh.height = 5.0
+	mush_stem = _toon(Color(0.82, 0.78, 0.86), 0.7)
+	mush_cap = _toon(Color(0.55, 0.2, 0.7), 0.5)
+	mush_cap.emission_enabled = true
+	mush_cap.emission = W.glow
+	mush_cap.emission_energy_multiplier = 0.5
 	liquid_mat = StandardMaterial3D.new()
 	if W.planet:
 		liquid_mat.albedo_color = W.liquid
@@ -256,12 +302,12 @@ func _make_materials() -> void:
 			lfn.fractal_octaves = 4
 			lt.noise = lfn
 			var lg := Gradient.new()
-			lg.set_color(0, Color(0.55, 0.08, 0.02))
-			lg.set_color(1, Color(1.0, 0.85, 0.3))
-			lg.add_point(0.55, Color(1.0, 0.4, 0.05))
+			lg.set_color(0, W.liquid.darkened(0.5))
+			lg.set_color(1, W.liquid.lightened(0.6))
+			lg.add_point(0.55, W.liquid)
 			lt.color_ramp = lg
 			liquid_mat.albedo_texture = lt
-			liquid_mat.albedo_color = Color(1.6, 1.2, 1.0)
+			liquid_mat.albedo_color = Color.WHITE * (0.7 + W.liquid_glow * 0.35)
 			liquid_mat.uv1_triplanar = true
 			liquid_mat.uv1_scale = Vector3(0.03, 0.03, 0.03)
 		else:
@@ -366,6 +412,9 @@ func _make_environment() -> void:
 	env.adjustment_enabled = true
 	env.adjustment_saturation = 1.12
 	env.adjustment_contrast = 1.05
+	amb_base = env.ambient_light_energy
+	fog_base = env.fog_density
+	self.env = env
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -554,7 +603,11 @@ func _update_ship(dt: float) -> void:
 	shield_delay -= dt
 	if shield_delay <= 0.0:
 		shield = minf(100.0, shield + 17.0 * dt)
-	headlight.light_energy = lerpf(headlight.light_energy, 2.2 if not _in_tunnel(s + 20).is_empty() else 0.0, minf(1.0, dt * 3.0))
+	var in_t := not _in_tunnel(s + 20).is_empty()
+	headlight.light_energy = lerpf(headlight.light_energy, 2.2 if in_t else 0.0, minf(1.0, dt * 3.0))
+	var k_in := 1.0 if not _in_tunnel(s + 4).is_empty() else 0.0
+	env.ambient_light_energy = lerpf(env.ambient_light_energy, amb_base * (1.0 - 0.7 * k_in), minf(1.0, dt * 2.0))
+	env.fog_density = lerpf(env.fog_density, fog_base * (1.0 - 0.75 * k_in), minf(1.0, dt * 2.0))
 	fire_t -= dt
 	if fire_t <= 0.0:
 		fire_t = 0.11
@@ -637,7 +690,10 @@ func _spawn_world() -> void:
 			x = cos(a) * dist
 			y = sin(a) * dist * 0.75
 			r = rng.randf_range(2.0, 9.0) if dist < 60.0 else rng.randf_range(4.0, 22.0)
-		_add_rock(sv, x, y, r, inside)
+		if not inside and W.has("crystals") and rng.randf() < W.crystals and dist_ok(x, y):
+			_add_crystal_cluster(sv, x, y, r)
+		else:
+			_add_rock(sv, x, y, r, inside)
 	while next_enemy_s < s + 260.0:
 		var sv2 := next_enemy_s
 		next_enemy_s += rng.randf_range(28.0, 55.0)
@@ -793,8 +849,7 @@ func _add_tunnel(s0: float, tl: float) -> void:
 	gm.roughness = 0.2
 	gm.metallic = 0.3
 	gm.next_pass = outline_mat
-	var cm := PrismMesh.new()
-	cm.size = Vector3(1.5, 5.5, 1.5)
+	var cm := crystal_mesh
 	var cnt := 0
 	var sv := s0 + 14.0
 	while sv < s1 - 10.0:
@@ -812,7 +867,7 @@ func _add_tunnel(s0: float, tl: float) -> void:
 		for c in nn:
 			var mi := MeshInstance3D.new()
 			mi.mesh = cm
-			mi.material_override = gm
+			mi.material_override = crystal_mat
 			grp.add_child(mi)
 			var d := (inward + Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-0.5, 0.5), rng.randf_range(-0.5, 0.5))).normalized()
 			var up := d
@@ -934,6 +989,9 @@ func _add_chunk(sa: float) -> void:
 	add_child(m)
 	nodes.append(m)
 	# Flüssigkeit (Wasser / Lava) als Fläche, folgt der Bahn
+	if W.liquid_y < -100.0:
+		chunks.append({"s1": sa + CHUNK, "nodes": nodes})
+		return
 	var st2 := SurfaceTool.new()
 	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var lx := [-300.0, -150.0, -60.0, 0.0, 60.0, 150.0, 300.0]
@@ -1009,7 +1067,61 @@ func _add_mountain(sv: float) -> void:
 	m.scale = Vector3(rad / 100.0, hs * rad / 100.0 + 0.25, rad / 100.0)
 	rocks.append({"node": m, "s": sv + rad, "x": x, "y": 0.0, "r": rad, "hard": false, "big": true})
 
+func dist_ok(x: float, y: float) -> bool:
+	return absf(x) > BX + 6.0 or absf(y) > BY + 6.0
+
+func _add_crystal_cluster(sv: float, x: float, y: float, r: float) -> void:
+	var g := Node3D.new()
+	add_child(g)
+	place(g, sv, x, y)
+	g.rotate_object_local(Vector3(rng.randf(), rng.randf(), rng.randf()).normalized(), rng.randf() * TAU)
+	var base := MeshInstance3D.new()
+	base.mesh = rock_meshes[rng.randi() % rock_meshes.size()]
+	base.material_override = rock_mat
+	base.scale = Vector3.ONE * r * 0.35
+	g.add_child(base)
+	for i in 3 + rng.randi() % 4:
+		var c := MeshInstance3D.new()
+		c.mesh = crystal_mesh
+		c.material_override = crystal_mat
+		var d := Vector3(rng.randf_range(-1, 1), rng.randf_range(0.2, 1), rng.randf_range(-1, 1)).normalized()
+		var side := d.cross(Vector3(0.31, 0.2, 0.93)).normalized()
+		c.basis = Basis(side, d, side.cross(d)).scaled(Vector3.ONE * r * rng.randf_range(0.18, 0.4))
+		c.position = d * r * 0.35
+		g.add_child(c)
+	rocks.append({"node": g, "s": sv, "x": x, "y": y, "r": r, "hard": false, "still": true})
+
+func _add_mushroom(sv: float, x: float, big: bool) -> void:
+	var g := Node3D.new()
+	add_child(g)
+	var h := rng.randf_range(10.0, 26.0) if big else rng.randf_range(2.0, 6.0)
+	var cr := h * rng.randf_range(0.35, 0.55)
+	place(g, sv, x, GY + ground_h(x, sv) - 0.5)
+	g.rotate_object_local(Vector3.FORWARD, rng.randf_range(-0.2, 0.2))
+	var stem := CylinderMesh.new()
+	stem.top_radius = cr * 0.16
+	stem.bottom_radius = cr * 0.26
+	stem.height = h
+	stem.radial_segments = 10
+	g.add_child(_mi(stem, mush_stem, Vector3(0, h * 0.5, 0)))
+	var cap := SphereMesh.new()
+	cap.radius = cr
+	cap.height = cr * 2.0
+	cap.radial_segments = 16
+	cap.rings = 8
+	cap.is_hemisphere = true
+	g.add_child(_mi(cap, mush_cap, Vector3(0, h * 0.95, 0), Vector3(1, 0.55, 1)))
+	rocks.append({"node": g, "s": sv, "x": x, "y": 0.0, "r": cr, "hard": false, "still": true})
+
 func _add_ground_rock(sv: float) -> void:
+	if W.has("mush") and rng.randf() < W.mush:
+		var big := rng.randf() < 0.35
+		var mx := rng.randf_range(BX + 8.0, 140.0) if big else rng.randf_range(BX + 3.0, 90.0)
+		_add_mushroom(sv, mx * (-1.0 if rng.randf() < 0.5 else 1.0), big)
+		return
+	if W.has("stacks") and rng.randf() < W.stacks * 0.25:
+		_add_stack(sv)
+		return
 	var near := rng.randf() < 0.22
 	var x := rng.randf_range(-BX - 4.0, BX + 4.0) if near else (rng.randf_range(BX + 6.0, 120.0) * (-1.0 if rng.randf() < 0.5 else 1.0))
 	var r := rng.randf_range(1.6, 3.4) if near else rng.randf_range(2.5, 9.0)
@@ -1027,6 +1139,24 @@ func _add_ground_rock(sv: float) -> void:
 	var d := {"node": m, "s": sv, "x": x, "y": gy, "r": r, "hard": false, "still": true}
 	if near:
 		d["top"] = gy + r * 0.6 * tall + r * 0.3
+	rocks.append(d)
+
+func _add_stack(sv: float) -> void:
+	var inside := rng.randf() < 0.3
+	var x := rng.randf_range(-BX + 2.0, BX - 2.0) if inside else rng.randf_range(BX + 10.0, 150.0) * (-1.0 if rng.randf() < 0.5 else 1.0)
+	var r := rng.randf_range(4.0, 7.0) if inside else rng.randf_range(8.0, 22.0)
+	var tall := rng.randf_range(4.0, 7.0)
+	var m := MeshInstance3D.new()
+	m.mesh = rock_meshes[rng.randi() % rock_meshes.size()]
+	m.material_override = mount_mat
+	add_child(m)
+	var gy := GY + ground_h(x, sv) - 3.0
+	place(m, sv, x, gy + r * 0.45 * tall)
+	m.rotate_object_local(Vector3.UP, rng.randf() * TAU)
+	m.scale = Vector3(r * 0.5, r * 0.5 * tall, r * 0.5)
+	var d := {"node": m, "s": sv, "x": x, "y": gy, "r": r, "hard": false, "still": true}
+	if inside:
+		d["top"] = 99.0
 	rocks.append(d)
 
 # ======================= Updates =======================
@@ -1187,7 +1317,7 @@ func _autotest_step(dt: float) -> void:
 	if at_shot_t <= 0.0:
 		at_shot_t = 3.0
 		_screenshot("flug")
-	if t_game > 36.0 or Time.get_ticks_msec() > 330000:
+	if t_game > 30.0 or Time.get_ticks_msec() > 330000:
 		log_at("Fertig. Frames: %d, mittlere FPS: %.1f, Strecke: %.0f, Tunnel: %d" % [at_frames, at_fps_sum / maxf(1, at_frames), s, tunnels.size()])
 		var f := FileAccess.open(at_dir + "/bericht.txt", FileAccess.WRITE)
 		if f:
