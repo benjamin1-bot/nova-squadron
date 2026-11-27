@@ -785,7 +785,14 @@ func _add_tunnel(s0: float, tl: float) -> void:
 						st2.add_vertex(p[j])
 		nodes.append(_commit(st2))
 	# leuchtende Kristalle an der Innenwand, dazu Lichter
-	var gm := _glow(W.glow, 3.0)
+	var gm := StandardMaterial3D.new()
+	gm.albedo_color = W.glow.lerp(Color.WHITE, 0.3)
+	gm.emission_enabled = true
+	gm.emission = W.glow
+	gm.emission_energy_multiplier = 1.6
+	gm.roughness = 0.2
+	gm.metallic = 0.3
+	gm.next_pass = outline_mat
 	var cm := PrismMesh.new()
 	cm.size = Vector3(1.5, 5.5, 1.5)
 	var cnt := 0
@@ -917,7 +924,7 @@ func _add_chunk(sa: float) -> void:
 			var B = grid[r][k + 1]
 			var C = grid[r + 1][k]
 			var D = grid[r + 1][k + 1]
-			for v in [A, B, C, B, D, C]:
+			for v in [A, C, B, B, C, D]:
 				st.set_color(v[1])
 				st.add_vertex(v[0])
 	st.generate_normals()
@@ -940,7 +947,7 @@ func _add_chunk(sa: float) -> void:
 			var p2: Vector3 = fa.origin + fa.basis.x * lx[k + 1] + fa.basis.y * ly
 			var p3: Vector3 = fb.origin + fb.basis.x * lx[k] + fb.basis.y * ly
 			var p4: Vector3 = fb.origin + fb.basis.x * lx[k + 1] + fb.basis.y * ly
-			for v in [p1, p2, p3, p2, p4, p3]:
+			for v in [p1, p3, p2, p2, p3, p4]:
 				st2.set_normal(fa.basis.y)
 				st2.add_vertex(v)
 	var lm := MeshInstance3D.new()
