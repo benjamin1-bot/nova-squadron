@@ -76,6 +76,12 @@ func setup(main) -> void:
 	rng.seed = 4711
 	_make_assets()
 	_make_hud()
+	nmis = 6 + M.upl("mis") * 2
+	nukes = 1 + M.upl("nuke") / 2
+	if M.menu_mode:
+		state = "menu"
+		hud.visible = false
+		return
 	wave = M.start_wave - 1
 	var c: Dictionary = M.get_carry()
 	if not c.is_empty():
@@ -99,7 +105,7 @@ func later(t: float, f: Callable) -> void:
 	timers.append({"t": t, "f": f})
 
 func diff() -> float:
-	return 1.0 + wave * 0.07
+	return (1.0 + wave * 0.07) * [0.7, 1.0, 1.3][M.diff]
 
 func bullet_speed() -> float:
 	return minf(80.0, 44.0 + wave * 2.2)
@@ -1345,6 +1351,7 @@ func hit_enemy(e: Dictionary, dmg: float, at: Vector3) -> void:
 		return
 	e.hp -= dmg
 	e.flash = 1.0
+	M.audio.sfx("hit", -14.0, 0.15, 0.05)
 	sparks(at, Color(1.0, 0.75, 0.4), 5)
 	if has_method("on_boss_hit") and e.has("boss"):
 		call("on_boss_hit", e, dmg)
@@ -1375,6 +1382,7 @@ func add_score(n: int) -> void:
 
 # ======================= Effekte (ARC-Stil) =======================
 func boom(pos: Vector3, size: float) -> void:
+	M.audio.sfx("boom_big" if size > 2.2 else "boom", -6.0 + minf(size, 3.0) * 1.5, 0.12, 0.04)
 	# Feuerball aus mehreren Leuchtkugeln
 	for i in 5:
 		var gl := glow(Color(1.0, 0.55 + rng.randf() * 0.3, 0.2), 1.0, 0.95)
@@ -1570,6 +1578,7 @@ func collect(p: Dictionary) -> void:
 			wdmg = 0.0
 			msg = String(d.label).replace(" +", "") + " STUFE " + str(wlv)
 	toast(msg, d.col)
+	M.audio.sfx("pickup", -4.0, 0.0)
 	sparks(w_of(M.ship_x, M.ship_y, 0), d.col, 16)
 
 # ======================= Spieler =======================
@@ -1590,7 +1599,10 @@ func damage_player(d: float, force := false) -> void:
 		M.shield -= s
 		rem -= s
 		M.shield_fx = 1.0
+		M.audio.sfx("shield", -8.0, 0.05, 0.1)
 	if rem > 0:
+		rem *= [0.55, 1.0, 1.35][M.diff] * (1.0 - M.upl("armor") * 0.1)
+		M.audio.sfx("hurt", -4.0, 0.05, 0.1)
 		M.hull -= rem
 		M.dmg_fx = 1.0
 		invul = maxf(invul, 0.4)
@@ -1642,19 +1654,28 @@ func show_over() -> void:
 	t.position = Vector2(0, 40)
 	t.size = Vector2(600, 220)
 	over_panel.add_child(t)
+	M.record_score(score, wave)
 	var b := Button.new()
 	b.text = "NOCHMAL"
 	b.add_theme_font_size_override("font_size", 30)
-	b.position = Vector2(180, 290)
-	b.size = Vector2(240, 70)
-	b.pressed.connect(func(): get_tree().reload_current_scene())
+	b.position = Vector2(60, 290)
+	b.size = Vector2(230, 70)
+	b.pressed.connect(func(): M.start_game(M.widx))
 	over_panel.add_child(b)
+	var b2 := Button.new()
+	b2.text = "HAUPTMENÜ"
+	b2.add_theme_font_size_override("font_size", 30)
+	b2.position = Vector2(310, 290)
+	b2.size = Vector2(230, 70)
+	b2.pressed.connect(func(): M.to_menu())
+	over_panel.add_child(b2)
 
 func do_roll() -> void:
 	if state != "play" or roll_cd > 0:
 		return
 	roll_t = ROLL
-	roll_cd = 1.15
+	roll_cd = 1.15 * (1.0 - M.upl("roll") * 0.2)
+	M.audio.sfx("roll", -8.0)
 	var dir := 1.0 if M.ship_vx > 1.5 else (-1.0 if M.ship_vx < -1.5 else (-1.0 if M.ship_x > 0 else 1.0))
 	roll_dir = -dir
 	M.ship_x = clampf(M.ship_x + dir * 4, -BX, BX)
@@ -1682,6 +1703,7 @@ func fire_missiles() -> void:
 			"target": cand[i % cand.size()] if cand.size() > 0 else null, "life": 5.0, "speed": 45.0})
 	nmis -= n
 	mis_cd = 0.55
+	M.audio.sfx("missile", -6.0)
 
 func fire_nuke() -> void:
 	if state != "play":
@@ -1691,6 +1713,7 @@ func fire_nuke() -> void:
 		return
 	nukes -= 1
 	trauma = 1.0
+	M.audio.sfx("boom_big", 0.0, 0.0)
 	M.flash_fx = 1.2
 	for k in 3:
 		var p := w_of(M.ship_x, M.ship_y, -20 - k * 25)
@@ -1773,7 +1796,8 @@ func _fire(dt: float) -> void:
 			d = (aim_pt - from).normalized()
 		if a != 0.0:
 			d = d.rotated(tr.basis.y, a)
-		_spawn_pbullet(from, d, col, dmg, big)
+		_spawn_pbullet(from, d, col, dmg * (1 + M.upl("gun") * 0.15), big)
+	M.audio.sfx("laser", -17.0, 0.06, 0.07)
 
 var _pb_mats := {}
 func _spawn_pbullet(from: Vector3, d: Vector3, col: Color, dmg: float, big: float) -> void:
@@ -1913,7 +1937,8 @@ func update(dt: float) -> void:
 	if alive:
 		lock = find_lock()
 		_fire(dt)
-	_update_waves(dt)
+	if state != "menu":
+		_update_waves(dt)
 	if has_method("update_boss"):
 		call("update_boss", dt)
 	for e in enemies:

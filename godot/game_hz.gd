@@ -1110,6 +1110,7 @@ func _update_cubes(dt: float) -> void:
 			rm = true
 			c.set.got += 1
 			add_score(50 * mult)
+			M.audio.sfx("cube", -6.0, 0.0)
 			sparks(c.n.global_position, Color(0.5, 0.96, 1.0), 10)
 			if c.set.got == c.set.n and not c.set.missed:
 				add_score(1000)
@@ -1141,6 +1142,7 @@ func update(dt: float) -> void:
 		for o in obst:
 			if absf(M.s - o.s) < o.hz + 0.8 and absf(M.ship_x - o.x) < o.hx + 0.8 and absf(M.ship_y - o.y) < o.hy + 0.6:
 				damage_player(22, true)
+				M.audio.sfx("clang", -4.0)
 				invul = 0.8
 				if o.hx > o.hy:
 					M.ship_y += (1.0 if M.ship_y > o.y else -1.0) * 1.5

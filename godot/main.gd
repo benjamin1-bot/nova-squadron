@@ -10,6 +10,39 @@ const BULLET_SPEED := 170.0
 
 static var world_idx := 0
 static var carry := {}
+static var playing := false
+var menu_mode := false
+var audio
+var menu
+var hud_layer: CanvasLayer
+var diff := 1
+
+var ups := {}
+func upl(k: String) -> int:
+	return int(ups.get(k, 0))
+
+func record_score(sc: int, wv: int) -> void:
+	var sv := get_save()
+	if sc > int(sv.get("hs", 0)):
+		put_save("hs", sc)
+	var hs: Array = sv.get("hst", [])
+	hs.append([sc, wv])
+	hs.sort_custom(func(a, b): return a[0] > b[0])
+	put_save("hst", hs.slice(0, 10))
+
+func start_game(idx: int) -> void:
+	playing = true
+	carry = {}
+	world_idx = idx
+	put_save("world", idx)
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+func to_menu() -> void:
+	playing = false
+	carry = {}
+	get_tree().paused = false
+	get_tree().reload_current_scene()
 
 func get_carry() -> Dictionary:
 	return carry
@@ -232,9 +265,29 @@ func _ready() -> void:
 	_make_environment()
 	_make_ship()
 	_make_hud()
+	var sv := get_save()
+	diff = int(sv.get("diff", 1))
+	ups = sv.get("up", {})
+	menu_mode = not autotest and not playing and carry.is_empty()
+	audio = load("res://audio.gd").new()
+	add_child(audio)
+	audio.music_on = sv.get("music", true)
+	audio.sfx_on = sv.get("sound", true)
+	menu = load("res://menu.gd").new()
+	add_child(menu)
+	menu.setup(self)
+	if autotest:
+		audio.music_on = false
+		audio.sfx_on = false
 	game = load("res://game_hz.gd").new()
 	add_child(game)
 	game.setup(self)
+	if menu_mode:
+		hud_layer.visible = false
+		menu.show_main()
+		audio.play_music("menu")
+	else:
+		audio.play_music("play")
 	if autotest:
 		next_tunnel_s = 260.0
 	show_msg(W.name, 3.0)
@@ -610,15 +663,17 @@ func _make_hud() -> void:
 	hud_info.modulate = Color(1, 1, 1, 0.6)
 	cl.add_child(hud_info)
 	var wb := Button.new()
-	wb.text = "WELT ▶"
-	wb.position = Vector2(1130, 14)
-	wb.size = Vector2(130, 54)
-	wb.add_theme_font_size_override("font_size", 22)
+	wb.text = "II"
+	wb.position = Vector2(1180, 14)
+	wb.size = Vector2(80, 60)
+	wb.add_theme_font_size_override("font_size", 28)
 	wb.focus_mode = Control.FOCUS_NONE
 	wb.pressed.connect(func():
-		world_idx = (world_idx + 1) % WORLDS.size()
-		get_tree().reload_current_scene())
+		if game.state == "play":
+			get_tree().paused = true
+			menu.show_pause())
 	cl.add_child(wb)
+	hud_layer = cl
 	hud_msg = Label.new()
 	hud_msg.add_theme_font_size_override("font_size", 34)
 	hud_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -690,7 +745,7 @@ func _update_ship(dt: float) -> void:
 	var v := _input_vec()
 	if game.state != "play":
 		v = Vector2.ZERO
-	if autotest:
+	if autotest or menu_mode:
 		var ty := sin(t_game * 0.7) * BY * 0.5
 		var tx := sin(t_game * 0.45) * BX * 0.55
 		var tn := _in_tunnel(s)
@@ -721,7 +776,7 @@ func _update_ship(dt: float) -> void:
 	invul = maxf(0.0, invul - dt)
 	shield_delay -= dt
 	if shield_delay <= 0.0:
-		shield = minf(100.0, shield + 17.0 * dt)
+		shield = minf(100.0, shield + 17.0 * (1.0 + upl("regen") * 0.25) * dt)
 	var in_t := not _in_tunnel(s + 20).is_empty()
 	headlight.light_energy = lerpf(headlight.light_energy, 2.2 if in_t else 0.0, minf(1.0, dt * 3.0))
 	var k_in := 1.0 if not _in_tunnel(s + 4).is_empty() else 0.0

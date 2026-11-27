@@ -512,6 +512,8 @@ func spawn_boss() -> void:
 	g.add_child(warn)
 	b.warn = warn
 	boss = b
+	M.audio.sfx("alarm", -6.0, 0.0)
+	M.audio.play_music("boss")
 	place(g, b.p.x, b.p.y, b.p.z, b.rot, sc)
 	boss_bar.visible = true
 	boss_lbl.visible = true
@@ -856,6 +858,7 @@ func boss_defeated(b: Dictionary) -> void:
 			if e.has("minion") and e.alive:
 				kill_enemy(e, false)
 		add_score(bonus)
+		M.audio.play_music("play")
 		banner(b.def.name, "ZERSTÖRT  +%d" % bonus)
 		later(3.0, world_cleared))
 
@@ -880,6 +883,7 @@ func world_cleared() -> void:
 	if state != "play":
 		return
 	banner("WELT GESCHAFFT!", "SPRUNG ZUR NÄCHSTEN WELT …", true)
+	M.put_save("world", (M.widx + 1) % M.WORLDS.size())
 	M.set_carry({"score": score, "wave": wave, "nmis": nmis, "nukes": nukes, "wpn": wpn, "wlv": wlv, "hull": M.hull})
 	later(2.5, func(): M.goto_next_world())
 
