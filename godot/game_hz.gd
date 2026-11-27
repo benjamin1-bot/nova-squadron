@@ -287,7 +287,7 @@ func spawn_hazard(type: String, sv: float) -> void:
 					"d0": rand(-BY * 0.5, BY * 0.5) if mode == "static" else 0.0, "on": true})
 		else:
 			var a0 := rand(0, PI)
-			var w2 := (pick([-1.0, 1.0]) * 0.25) if rng.randf() < 0.5 else 0.0
+			var w2: float = (pick([-1.0, 1.0]) * 0.25) if rng.randf() < 0.5 else 0.0
 			for i in 4:
 				h.lines.append({"mode": "rot" if w2 != 0.0 else "static", "a0": a0, "w": w2, "d0": (i - 1.5) * 5.2, "on": true})
 			for i in 3:
