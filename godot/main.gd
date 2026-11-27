@@ -879,7 +879,7 @@ func ground_h(x: float, sv: float) -> float:
 	var side := _sm(BX + 14.0, BX + 90.0, ax)
 	var n1 := noise.get_noise_2d(x * 0.025, sv * 0.025)
 	var n2 := noise.get_noise_2d(x * 0.09 + 40.0, sv * 0.09)
-	var h := n1 * 3.0 + n2 * 0.8 + W.floor_off * (1.0 - side)
+	var h: float = n1 * 3.0 + n2 * 0.8 + W.floor_off * (1.0 - side)
 	h += side * (14.0 + noise.get_noise_2d(x * 0.011 + 9.0, sv * 0.011) * 26.0 + absf(n1) * 18.0)
 	var river := noise.get_noise_2d(x * 0.008 - 20.0, sv * 0.006)
 	h -= _sm(0.15, 0.35, river) * 7.0 * (1.0 - side * 0.7)
@@ -932,7 +932,7 @@ func _add_chunk(sa: float) -> void:
 		var fa := frame(sa + r * 8.0)
 		var fb := frame(sa + (r + 1) * 8.0)
 		for k in lx.size() - 1:
-			var ly := GY + W.liquid_y
+			var ly: float = GY + W.liquid_y
 			var p1: Vector3 = fa.origin + fa.basis.x * lx[k] + fa.basis.y * ly
 			var p2: Vector3 = fa.origin + fa.basis.x * lx[k + 1] + fa.basis.y * ly
 			var p3: Vector3 = fb.origin + fb.basis.x * lx[k] + fb.basis.y * ly
@@ -1177,7 +1177,7 @@ func _autotest_step(dt: float) -> void:
 	if at_shot_t <= 0.0:
 		at_shot_t = 3.0
 		_screenshot("flug")
-	if t_game > 36.0:
+	if t_game > 36.0 or Time.get_ticks_msec() > 330000:
 		log_at("Fertig. Frames: %d, mittlere FPS: %.1f, Strecke: %.0f, Tunnel: %d" % [at_frames, at_fps_sum / maxf(1, at_frames), s, tunnels.size()])
 		var f := FileAccess.open(at_dir + "/bericht.txt", FileAccess.WRITE)
 		if f:

@@ -60,6 +60,7 @@ jobs:
       - name: Skripte prüfen
         run: |
           timeout 120 ./godot-bin --headless --path godot --check-only --script res://main.gd 2>&1 | tee check.txt || true
+          if grep -q "SCRIPT ERROR" check.txt; then echo "::error::Skriptfehler"; exit 1; fi
 
       - name: APK exportieren
         run: |
@@ -72,7 +73,7 @@ jobs:
           mkdir -p autotest
           for w in 0 1 2; do
             mkdir -p autotest/welt$w
-            timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --world=$w --out=$PWD/autotest/welt$w 2>&1 | grep -v ALSA | tee autotest/welt$w/log.txt || true
+            timeout 420 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --world=$w --out=$PWD/autotest/welt$w 2>&1 | grep -v ALSA | tee autotest/welt$w/log.txt || true
           done
           cp check.txt autotest/ || true
           ls autotest
