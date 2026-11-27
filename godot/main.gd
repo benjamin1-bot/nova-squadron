@@ -51,7 +51,7 @@ const WORLDS := [
 	{"name": "NEONSTADT VEGA-9", "planet": true, "zenith": Color(0.01, 0.01, 0.05), "horizon": Color(0.22, 0.06, 0.3), "neb1": Color(0.4, 0.1, 0.6),
 	 "fog": Color(0.06, 0.04, 0.14), "fogd": 0.0036, "sun": Color(0.7, 0.6, 1.0), "rock": Color(0.35, 0.35, 0.42), "glow": Color(1.0, 0.2, 0.75),
 	 "pal": {"base": Color("10101c"), "base2": Color("181828"), "mid": Color("1a1a2a"), "rock": Color("22223a"), "rock2": Color("1c1c30"), "snow": Color("ff30c0"), "snow_on": false},
-	 "liquid": Color(0, 0, 0), "liquid_glow": 0.0, "liquid_y": -999.0, "floor_off": 0.0, "tname": "UNTERFÜHRUNG", "city": true},
+	 "liquid": Color(0, 0, 0), "liquid_glow": 0.0, "liquid_y": -999.0, "floor_off": 0.0, "tname": "CYBER-TUNNEL – GEGENVERKEHR!", "city": true},
 	{"name": "EREIGNISHORIZONT", "planet": false, "neb1": Color(0.4, 0.15, 0.45), "neb2": Color(0.15, 0.08, 0.3), "base": Color(0.004, 0.002, 0.008),
 	 "fog": Color(0.07, 0.04, 0.12), "fogd": 0.0026, "sun": Color(1.0, 0.75, 0.5), "rock": Color(0.55, 0.5, 0.47), "glow": Color(1.0, 0.6, 0.25),
 	 "tin": [Color(0.34, 0.3, 0.28), Color(0.14, 0.12, 0.12)], "tout": [Color(0.46, 0.42, 0.39), Color(0.27, 0.24, 0.22)], "tname": "GRAVITATIONSSCHACHT", "hole": true},
@@ -68,6 +68,15 @@ var metal_mat: StandardMaterial3D
 var panel_mat: StandardMaterial3D
 var city_mat: StandardMaterial3D
 var neon_mats: Array = []
+var cars: Array = []
+var next_car_s := 140.0
+var car_mats: Array = []
+var head_mat: StandardMaterial3D
+var line_mat: StandardMaterial3D
+var block_mat: StandardMaterial3D
+const TIX := BX + 8.0
+const TIY0 := -(BY + 5.0)
+const TIY1 := BY + 7.0
 var env: Environment
 var amb_base := 0.7
 var fog_base := 0.003
@@ -306,6 +315,17 @@ func _make_materials() -> void:
 	neon_mats.append(win_mat)
 	for nc in [Color(1.0, 0.2, 0.75), Color(0.2, 0.9, 1.0), Color(1.0, 0.45, 0.1)]:
 		neon_mats.append(_glow(nc, 3.0))
+	for cc in [Color(0.75, 0.1, 0.15), Color(0.9, 0.85, 0.2), Color(0.15, 0.35, 0.8), Color(0.85, 0.86, 0.9), Color(0.1, 0.1, 0.12)]:
+		car_mats.append(_toon(cc, 0.3, 0.6))
+	head_mat = _glow(Color(1.0, 0.97, 0.85), 4.0)
+	line_mat = StandardMaterial3D.new()
+	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	line_mat.vertex_color_use_as_albedo = true
+	line_mat.albedo_color = Color(2.6, 2.6, 2.6)
+	line_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	block_mat = _toon(Color(0.12, 0.12, 0.17), 0.4, 0.55)
+	block_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	block_mat.next_pass = null
 	crystal_mat = StandardMaterial3D.new()
 	crystal_mat.albedo_color = W.glow.lerp(Color.WHITE, 0.35)
 	crystal_mat.emission_enabled = true
@@ -601,6 +621,8 @@ func _process(delta: float) -> void:
 	_update_enemies(dt)
 	_update_bullets(dt)
 	_update_tunnels()
+	if W.has("city"):
+		_update_cars(dt)
 	_update_camera(dt)
 	_update_hud(dt)
 	if W.has("storm"):
@@ -630,7 +652,10 @@ func _update_ship(dt: float) -> void:
 	ship_y = clampf(ship_y + ship_vy * dt, -BY, BY)
 	# Tunnelwand: im Tunnel innerhalb der Ellipse bleiben
 	var tn2 := _in_tunnel(s)
-	if not tn2.is_empty():
+	if not tn2.is_empty() and W.has("city"):
+		ship_x = clampf(ship_x, -TIX + 2.5, TIX - 2.5)
+		ship_y = clampf(ship_y, TIY0 + 2.0, TIY1 - 2.0)
+	elif not tn2.is_empty():
 		var ex := (BX + 7.0) * 0.8
 		var ey := (BY + 6.0) * 0.8
 		var q := pow(ship_x / ex, 2) + pow(ship_y / ey, 2)
@@ -838,6 +863,9 @@ func _col_out(a: float, sv: float) -> Color:
 	return W.tout[0].lerp(W.tout[1], n)
 
 func _add_tunnel(s0: float, tl: float) -> void:
+	if W.has("city"):
+		_add_city_tunnel(s0, tl)
+		return
 	var s1 := s0 + tl
 	var SEG := 40
 	var STEPT := 2.6
@@ -988,6 +1016,8 @@ func _tunnel_sink(sv: float) -> float:
 	return k
 
 func ground_h(x: float, sv: float) -> float:
+	if W.has("city"):
+		return 0.7 if absf(x) > BX + 12.0 else 0.0
 	var ax := absf(x)
 	var side := _sm(BX + 14.0, BX + 90.0, ax)
 	var n1 := noise.get_noise_2d(x * 0.025, sv * 0.025)
@@ -1036,6 +1066,8 @@ func _add_chunk(sa: float) -> void:
 	m.material_override = ground_mat
 	add_child(m)
 	nodes.append(m)
+	if W.has("city"):
+		nodes.append(_street_lines(sa))
 	# Flüssigkeit (Wasser / Lava) als Fläche, folgt der Bahn
 	if W.liquid_y < -100.0:
 		chunks.append({"s1": sa + CHUNK, "nodes": nodes})
@@ -1277,7 +1309,9 @@ func _add_building(sv: float) -> void:
 	var side := -1.0 if rng.randf() < 0.5 else 1.0
 	var w := rng.randf_range(16.0, 40.0)
 	var h := rng.randf_range(40.0, 190.0)
-	var x := side * (BX + 18.0 + w * 0.5 + rng.randf_range(0.0, 200.0))
+	var x := side * (BX + 16.0 + w * 0.5 + (rng.randf_range(0.0, 30.0) if rng.randf() < 0.55 else rng.randf_range(30.0, 200.0)))
+	if _near_tunnel(sv, 40.0) and absf(x) < 110.0:
+		return
 	var g := Node3D.new()
 	add_child(g)
 	place(g, sv, x, GY + ground_h(x, sv) - 2.0)
@@ -1331,6 +1365,210 @@ func _update_storm(dt: float) -> void:
 			bolt.add_child(seg)
 			seg.look_at_from_position((a + b) * 0.5, b, Vector3.UP if absf((b - a).normalized().y) < 0.99 else Vector3.RIGHT)
 		get_tree().create_timer(0.22).timeout.connect(bolt.queue_free)
+
+# ======================= Neonstadt: Straße, Megablock-Tunnel, Verkehr =======================
+func _ribbon(st: SurfaceTool, sa: float, sb: float, x0: float, x1: float, y: float, col: Color, step := 4.0) -> void:
+	var sv := sa
+	while sv < sb - 0.01:
+		var se := minf(sb, sv + step)
+		var fa := frame(sv)
+		var fb := frame(se)
+		var p1 := fa.origin + fa.basis.x * x0 + fa.basis.y * y
+		var p2 := fa.origin + fa.basis.x * x1 + fa.basis.y * y
+		var p3 := fb.origin + fb.basis.x * x0 + fb.basis.y * y
+		var p4 := fb.origin + fb.basis.x * x1 + fb.basis.y * y
+		for v in [p1, p3, p2, p2, p3, p4]:
+			st.set_color(col)
+			st.add_vertex(v)
+		sv = se
+
+func _wall_ribbon(st: SurfaceTool, sa: float, sb: float, x: float, y0: float, y1: float, col: Color) -> void:
+	var sv := sa
+	while sv < sb - 0.01:
+		var se := minf(sb, sv + 4.0)
+		var fa := frame(sv)
+		var fb := frame(se)
+		var p1 := fa.origin + fa.basis.x * x + fa.basis.y * y0
+		var p2 := fa.origin + fa.basis.x * x + fa.basis.y * y1
+		var p3 := fb.origin + fb.basis.x * x + fb.basis.y * y0
+		var p4 := fb.origin + fb.basis.x * x + fb.basis.y * y1
+		for v in [p1, p3, p2, p2, p3, p4]:
+			st.set_color(col)
+			st.add_vertex(v)
+		sv = se
+
+func _street_lines(sa: float) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var y := GY + 0.06
+	var cy := Color(0.2, 0.9, 1.0)
+	var pk := Color(1.0, 0.2, 0.75)
+	_ribbon(st, sa, sa + CHUNK, BX + 11.4, BX + 12.0, y, cy)
+	_ribbon(st, sa, sa + CHUNK, -BX - 12.0, -BX - 11.4, y, cy)
+	_ribbon(st, sa, sa + CHUNK, BX + 12.0, BX + 12.2, GY + 0.76, pk)
+	_ribbon(st, sa, sa + CHUNK, -BX - 12.2, -BX - 12.0, GY + 0.76, pk)
+	var d := sa
+	while d < sa + CHUNK:
+		for lx in [-7.0, 0.0, 7.0]:
+			var c := Color(1.0, 0.8, 0.3) if lx == 0.0 else Color(0.85, 0.85, 0.95)
+			_ribbon(st, d, d + 4.0, lx - 0.18, lx + 0.18, y, c * 0.6)
+		d += 10.0
+	var m := MeshInstance3D.new()
+	m.mesh = st.commit()
+	m.material_override = line_mat
+	add_child(m)
+	return m
+
+func _add_city_tunnel(s0: float, tl: float) -> void:
+	var s1 := s0 + tl
+	var nodes: Array = []
+	var OX := rng.randf_range(80.0, 110.0)
+	var OY1 := rng.randf_range(70.0, 130.0)
+	var OY0 := GY - 3.0
+	# Innenröhre (eckig), Außenblock und Fassaden – mit festen Normalen
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var faces_in := [[Vector2(-TIX, TIY0), Vector2(TIX, TIY0), Vector2.UP], [Vector2(TIX, TIY0), Vector2(TIX, TIY1), Vector2.LEFT],
+		[Vector2(TIX, TIY1), Vector2(-TIX, TIY1), Vector2.DOWN], [Vector2(-TIX, TIY1), Vector2(-TIX, TIY0), Vector2.RIGHT]]
+	var faces_out := [[Vector2(OX, OY0), Vector2(OX, OY1), Vector2.RIGHT], [Vector2(OX, OY1), Vector2(-OX, OY1), Vector2.UP], [Vector2(-OX, OY1), Vector2(-OX, OY0), Vector2.LEFT]]
+	var sv := s0
+	while sv < s1 - 0.01:
+		var se := minf(s1, sv + 4.0)
+		var fa := frame(sv)
+		var fb := frame(se)
+		for f in faces_in + faces_out:
+			var a: Vector2 = f[0]
+			var b: Vector2 = f[1]
+			var n2: Vector2 = f[2]
+			var nn := (fa.basis.x * n2.x + fa.basis.y * n2.y).normalized()
+			var p1 := fa.origin + fa.basis.x * a.x + fa.basis.y * a.y
+			var p2 := fa.origin + fa.basis.x * b.x + fa.basis.y * b.y
+			var p3 := fb.origin + fb.basis.x * a.x + fb.basis.y * a.y
+			var p4 := fb.origin + fb.basis.x * b.x + fb.basis.y * b.y
+			for v in [p1, p3, p2, p2, p3, p4]:
+				st.set_normal(nn)
+				st.add_vertex(v)
+		sv = se
+	# Fassaden an beiden Enden: Ring zwischen Öffnung und Außenkante
+	for end in [[s0, 1.0], [s1, -1.0]]:
+		var fr := frame(end[0])
+		var nf: Vector3 = fr.basis.z * end[1]
+		var inner := [Vector2(-TIX, TIY0), Vector2(TIX, TIY0), Vector2(TIX, TIY1), Vector2(-TIX, TIY1)]
+		var outer := [Vector2(-OX, OY0), Vector2(OX, OY0), Vector2(OX, OY1), Vector2(-OX, OY1)]
+		for k in 4:
+			var k2 := (k + 1) % 4
+			var q := [inner[k], inner[k2], outer[k], outer[k2]]
+			var pts: Array = []
+			for v2 in q:
+				pts.append(fr.origin + fr.basis.x * v2.x + fr.basis.y * v2.y)
+			for idx in [0, 2, 1, 1, 2, 3]:
+				st.set_normal(nf)
+				st.add_vertex(pts[idx])
+	var m := MeshInstance3D.new()
+	m.mesh = st.commit()
+	m.material_override = block_mat
+	add_child(m)
+	nodes.append(m)
+	# Neonbänder innen + Fensterbänder außen
+	var nl := SurfaceTool.new()
+	nl.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pk := Color(1.0, 0.2, 0.75)
+	var cy := Color(0.2, 0.9, 1.0)
+	_wall_ribbon(nl, s0, s1, TIX - 0.05, TIY0 + 4.0, TIY0 + 4.5, cy)
+	_wall_ribbon(nl, s0, s1, -TIX + 0.05, TIY0 + 4.0, TIY0 + 4.5, cy)
+	_wall_ribbon(nl, s0, s1, TIX - 0.05, TIY1 - 2.0, TIY1 - 1.6, pk)
+	_wall_ribbon(nl, s0, s1, -TIX + 0.05, TIY1 - 2.0, TIY1 - 1.6, pk)
+	_ribbon(nl, s0, s1, -0.4, 0.4, TIY1 - 0.05, Color(0.9, 0.9, 1.0) * 0.7)
+	var d := s0
+	while d < s1:
+		_ribbon(nl, d, d + 3.0, -0.25, 0.25, TIY0 + 0.05, Color(1.0, 0.8, 0.3) * 0.6)
+		d += 9.0
+	var fy := 8.0
+	while fy < OY1 - 6.0:
+		if rng.randf() < 0.55:
+			var a0 := rng.randf_range(s0, s1 - 30.0)
+			_wall_ribbon(nl, a0, minf(s1, a0 + rng.randf_range(15.0, 80.0)), OX + 0.1, GY + fy, GY + fy + 1.3, Color(1.0, 0.82, 0.55) * 0.55)
+			var b0 := rng.randf_range(s0, s1 - 30.0)
+			_wall_ribbon(nl, b0, minf(s1, b0 + rng.randf_range(15.0, 80.0)), -OX - 0.1, GY + fy, GY + fy + 1.3, Color(1.0, 0.82, 0.55) * 0.55)
+		fy += 5.0
+	var lm := MeshInstance3D.new()
+	lm.mesh = nl.commit()
+	lm.material_override = line_mat
+	add_child(lm)
+	nodes.append(lm)
+	# Leuchtrahmen um die Einfahrt + Fassadenleuchtschrift-Balken
+	var gx := TIX + 0.8
+	var fr0 := Node3D.new()
+	add_child(fr0)
+	place(fr0, s0 - 0.3, 0, 0)
+	fr0.add_child(_box(Vector3(gx * 2.0, 0.8, 0.4), neon_mats[1], Vector3(0, TIY1 + 0.6, 0)))
+	fr0.add_child(_box(Vector3(0.8, TIY1 - TIY0, 0.4), neon_mats[1], Vector3(-gx, (TIY1 + TIY0) * 0.5, 0)))
+	fr0.add_child(_box(Vector3(0.8, TIY1 - TIY0, 0.4), neon_mats[1], Vector3(gx, (TIY1 + TIY0) * 0.5, 0)))
+	for i in 5:
+		var bw := rng.randf_range(10.0, 34.0)
+		fr0.add_child(_box(Vector3(bw, rng.randf_range(2.0, 5.0), 0.4), neon_mats[1 + rng.randi() % 3], Vector3(rng.randf_range(-OX + bw, OX - bw) * 0.9, rng.randf_range(TIY1 + 6.0, OY1 - 8.0), 0)))
+	for i in 10:
+		fr0.add_child(_box(Vector3(rng.randf_range(8.0, 30.0), 1.3, 0.3), neon_mats[0], Vector3(rng.randf_range(-OX + 15.0, OX - 15.0), rng.randf_range(TIY1 + 4.0, OY1 - 4.0), 0.1)))
+	nodes.append(fr0)
+	# Lichter im Tunnel
+	var ls := s0 + 12.0
+	var li := 0
+	while ls < s1 - 6.0:
+		var ol := OmniLight3D.new()
+		ol.light_color = cy if li % 2 == 0 else pk
+		ol.light_energy = 2.0
+		ol.omni_range = 26.0
+		add_child(ol)
+		ol.global_position = l2w(ls, 0.0, TIY1 - 3.0)
+		nodes.append(ol)
+		ls += 26.0
+		li += 1
+	tunnels.append({"s0": s0, "s1": s1, "nodes": nodes, "told": false})
+
+func _make_car(oncoming: bool) -> Node3D:
+	var g := Node3D.new()
+	var body: Material = car_mats[rng.randi() % car_mats.size()]
+	g.add_child(_box(Vector3(3.0, 0.9, 6.2), body, Vector3.ZERO))
+	g.add_child(_box(Vector3(2.5, 0.75, 3.0), ship_dark, Vector3(0, 0.78, 0.5)))
+	g.add_child(_box(Vector3(3.3, 0.25, 1.2), body, Vector3(0, 0.05, 2.9)))
+	for sx in [-1.0, 1.0]:
+		g.add_child(_box(Vector3(0.7, 0.28, 0.12), head_mat, Vector3(sx * 1.0, 0.1, -3.12)))
+		g.add_child(_box(Vector3(0.8, 0.22, 0.12), glow_red, Vector3(sx * 1.0, 0.15, 3.12)))
+	g.add_child(_box(Vector3(2.6, 0.1, 5.4), neon_mats[1 + rng.randi() % 3], Vector3(0, -0.5, 0)))
+	add_child(g)
+	return g
+
+func _update_cars(dt: float) -> void:
+	while next_car_s < s + 300.0:
+		var sv := next_car_s
+		var in_t := not _in_tunnel(sv).is_empty()
+		next_car_s += rng.randf_range(6.0, 11.0) if in_t else rng.randf_range(14.0, 26.0)
+		if rng.randf() < (0.8 if in_t else 0.5):
+			var lane := rng.randi() % 4
+			var lx: float = [-10.5, -3.5, 3.5, 10.5][lane]
+			var ly: float = [-8.5, -2.5, 3.5, 9.5][rng.randi() % 4] if in_t else rng.randf_range(-6.0, BY)
+			var onc := lane < 2
+			var n := _make_car(onc)
+			cars.append({"node": n, "s": sv, "x": lx, "y": ly, "v": -26.0 if onc else 16.0, "onc": onc, "hp": 2.0, "bob": rng.randf() * TAU})
+	for i in range(cars.size() - 1, -1, -1):
+		var c: Dictionary = cars[i]
+		c.s += c.v * dt
+		c.bob += dt * 2.0
+		place(c.node, c.s, c.x, c.y + sin(c.bob) * 0.15)
+		if c.onc:
+			c.node.rotate_object_local(Vector3.UP, PI)
+		var ds: float = c.s - s
+		var gone := ds < -20.0
+		if absf(ds) < 3.4 and absf(c.x - ship_x) < 2.5 and absf(c.y - ship_y) < 1.6:
+			damage(20.0)
+			c.hp = 0.0
+		if c.hp <= 0.0:
+			_explode(l2w(c.s, c.x, c.y), Color(1.0, 0.5, 0.2), 1.4)
+			score += 50
+			gone = true
+		if gone:
+			c.node.queue_free()
+			cars.remove_at(i)
 
 # ======================= Updates =======================
 func _update_rocks(dt: float) -> void:
@@ -1399,6 +1637,12 @@ func _update_bullets(dt: float) -> void:
 				e.hp -= 1.0
 				hit = true
 				break
+		if not hit:
+			for c in cars:
+				if absf(c.s - b.s) < 3.5 and absf(c.x - b.x) < 1.9 and absf(c.y - b.y) < 1.3:
+					c.hp -= 1.0
+					hit = true
+					break
 		if not hit:
 			for r in rocks:
 				if r.has("top"):
