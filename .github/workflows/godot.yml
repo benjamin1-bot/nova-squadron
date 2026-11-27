@@ -6,6 +6,10 @@ on:
     paths: [ 'godot/**', '.github/workflows/godot.yml' ]
   workflow_dispatch:
 
+concurrency:
+  group: godot
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
