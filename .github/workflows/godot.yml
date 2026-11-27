@@ -73,6 +73,7 @@ jobs:
           timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" ./godot-bin --path godot --rendering-method mobile --resolution 1280x720 -- --autotest --out=$PWD/autotest 2>&1 | tee autotest/log.txt || true
           cp check.txt autotest/ || true
           ls autotest
+          zip -q -r autotest.zip autotest
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -81,12 +82,15 @@ jobs:
           path: autotest
 
       - name: Als Release veröffentlichen
-        if: hashFiles('Prismwing-Godot.apk') != ''
+        if: always()
         uses: softprops/action-gh-release@v2
         with:
           tag_name: godot-${{ github.run_number }}
           name: Prismwing Godot – Testbuild ${{ github.run_number }}
           body: |
             Godot-4-Version von Prismwing (in Arbeit). APK unten antippen zum Installieren.
-          files: Prismwing-Godot.apk
+          files: |
+            Prismwing-Godot.apk
+            autotest.zip
+          fail_on_unmatched_files: false
           make_latest: false
