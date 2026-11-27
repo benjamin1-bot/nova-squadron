@@ -997,6 +997,8 @@ func _add_chunk(sa: float) -> void:
 	var lx := [-300.0, -150.0, -60.0, 0.0, 60.0, 150.0, 300.0]
 	var rows2 := int(CHUNK / 8.0)
 	for r in rows2:
+		if _tunnel_sink(sa + r * 8.0 + 4.0) > 0.0 and _tunnel_sink(sa + r * 8.0 - 4.0) > 0.0 and _tunnel_sink(sa + r * 8.0 + 12.0) > 0.0:
+			continue
 		var fa := frame(sa + r * 8.0)
 		var fb := frame(sa + (r + 1) * 8.0)
 		for k in lx.size() - 1:
@@ -1148,7 +1150,7 @@ func _add_stack(sv: float) -> void:
 	var tall := rng.randf_range(4.0, 7.0)
 	var m := MeshInstance3D.new()
 	m.mesh = rock_meshes[rng.randi() % rock_meshes.size()]
-	m.material_override = mount_mat
+	m.material_override = rock_mat
 	add_child(m)
 	var gy := GY + ground_h(x, sv) - 3.0
 	place(m, sv, x, gy + r * 0.45 * tall)

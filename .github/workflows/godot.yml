@@ -67,6 +67,16 @@ jobs:
           ./godot-bin --headless --path godot --export-debug "Android" ../Prismwing-Godot.apk 2>&1 | tail -40
           ls -la Prismwing-Godot.apk
 
+      - name: APK sofort veröffentlichen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: godot-${{ github.run_number }}
+          name: Prismwing Godot – Testbuild ${{ github.run_number }}
+          body: |
+            Godot-4-Version von Prismwing (in Arbeit). APK unten antippen zum Installieren.
+          files: Prismwing-Godot.apk
+          make_latest: false
+
       - name: Testpilot (Screenshots + Protokoll)
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-vulkan-drivers libvulkan1 > /dev/null
