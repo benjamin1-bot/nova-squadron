@@ -17,6 +17,23 @@ func get_carry() -> Dictionary:
 func set_carry(d: Dictionary) -> void:
 	carry = d
 
+func get_save() -> Dictionary:
+	var cf := ConfigFile.new()
+	var d := {}
+	if cf.load("user://prismwing.cfg") == OK:
+		for k in cf.get_section_keys("save"):
+			d[k] = cf.get_value("save", k)
+	return d
+
+func put_save(k: String, v) -> void:
+	var cf := ConfigFile.new()
+	cf.load("user://prismwing.cfg")
+	cf.set_value("save", k, v)
+	cf.save("user://prismwing.cfg")
+
+func save_crystals(n: int) -> void:
+	put_save("cr", n)
+
 func goto_next_world() -> void:
 	world_idx = (world_idx + 1) % WORLDS.size()
 	get_tree().reload_current_scene()
@@ -196,6 +213,8 @@ func _ready() -> void:
 		elif a.begins_with("--boss="):
 			set_meta("force_boss", int(a.substr(7)))
 			start_wave = 4
+		elif a == "--passage":
+			set_meta("passage", true)
 		elif a.begins_with("--wave="):
 			start_wave = int(a.substr(7))
 		elif a.begins_with("--world="):
@@ -213,7 +232,7 @@ func _ready() -> void:
 	_make_environment()
 	_make_ship()
 	_make_hud()
-	game = load("res://game_boss.gd").new()
+	game = load("res://game_hz.gd").new()
 	add_child(game)
 	game.setup(self)
 	if autotest:
@@ -741,6 +760,8 @@ func _fire() -> void:
 
 # ======================= Welt erzeugen =======================
 func _spawn_world() -> void:
+	if game != null and (game.boss != null or game.wave % 4 == 0 or game.passage != null):
+		next_tunnel_s = maxf(next_tunnel_s, s + 900.0)
 	if next_tunnel_s < s + 900.0:
 		var tl := rng.randf_range(220.0, 320.0)
 		_add_tunnel(next_tunnel_s, tl)

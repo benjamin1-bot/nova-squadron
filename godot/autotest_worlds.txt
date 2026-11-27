@@ -1,1 +1,1 @@
-0 2:--boss=16 11:--boss=17
+0:--passage 2:--passage 11:--passage 9:--passage 6:--passage 4
