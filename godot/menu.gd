@@ -171,7 +171,7 @@ func show_worlds() -> void:
 	g.add_theme_constant_override("v_separation", 10)
 	v.add_child(g)
 	for i in M.WORLDS.size():
-		var idx := i
+		var idx: int = i
 		g.add_child(btn(M.WORLDS[i].name, func(): M.start_game(idx), 310, 62, 17))
 	_back(v)
 
