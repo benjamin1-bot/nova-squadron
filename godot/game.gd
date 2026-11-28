@@ -45,6 +45,7 @@ var trauma := 0.0
 var lock = null
 var boss = null
 var boss_count := 0
+var shown_world := false
 
 const ROLL := 0.55
 var rng := RandomNumberGenerator.new()
@@ -1877,7 +1878,8 @@ func start_wave() -> void:
 		queue = [{"t": 2.5, "f": Callable(self, "spawn_boss")}]
 	else:
 		queue = build_wave(wave)
-		banner("WELLE " + str(wave), pick(["FEINDLICHE STAFFEL", "FEINDKONTAKT", "JÄGER IM ANFLUG"]))
+		banner("WELLE " + str(wave), M.W.name if not shown_world else pick(["FEINDLICHE STAFFEL", "FEINDKONTAKT", "JÄGER IM ANFLUG"]))
+		shown_world = true
 
 func _update_waves(dt: float) -> void:
 	wave_clock += dt

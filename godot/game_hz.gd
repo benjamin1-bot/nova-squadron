@@ -675,7 +675,8 @@ func _update_popups(dt: float) -> void:
 func _world_events(dt: float) -> void:
 	if state != "play" or boss != null or passage != null:
 		return
-	if not M._in_tunnel(M.s + 20).is_empty() and not M.W.has("city"):
+	var tn: Dictionary = M._in_tunnel(M.s + 20)
+	if not tn.is_empty() and not M.W.has("city") and not tn.has("hangar"):
 		col_t -= dt
 		if col_t <= 0:
 			col_t = rand(5, 8)

@@ -175,6 +175,8 @@ var shield_delay := 0.0
 var invul := 0.0
 var score := 0
 var game
+var wrecks
+var next_derelict_s := 260.0
 var widx := 0
 var start_wave := 1
 var shield_fx := 0.0
@@ -269,6 +271,9 @@ func _ready() -> void:
 	diff = int(sv.get("diff", 1))
 	ups = sv.get("up", {})
 	menu_mode = not autotest and not playing and carry.is_empty()
+	wrecks = load("res://wrecks.gd").new()
+	add_child(wrecks)
+	wrecks.setup(self)
 	audio = load("res://audio.gd").new()
 	add_child(audio)
 	audio.music_on = sv.get("music", true)
@@ -290,7 +295,6 @@ func _ready() -> void:
 		audio.play_music("play")
 	if autotest:
 		next_tunnel_s = 260.0
-	show_msg(W.name, 3.0)
 	if autotest:
 		log_at("Welt: " + W.name)
 
@@ -841,6 +845,10 @@ func _spawn_world() -> void:
 		var tl := rng.randf_range(220.0, 320.0)
 		_add_tunnel(next_tunnel_s, tl)
 		next_tunnel_s += tl + rng.randf_range(900.0, 1400.0)
+	if not W.planet and not W.has("station") and next_derelict_s < s + 700.0:
+		if not _near_tunnel(next_derelict_s, 150.0):
+			wrecks.spawn_derelict(next_derelict_s)
+		next_derelict_s += rng.randf_range(260.0, 420.0) if W.has("wrecks") else rng.randf_range(900.0, 1500.0)
 	if W.planet:
 		while next_chunk_s < s + 720.0:
 			_add_chunk(next_chunk_s)
@@ -976,6 +984,10 @@ func _col_out(a: float, sv: float) -> Color:
 	return W.tout[0].lerp(W.tout[1], n)
 
 func _add_tunnel(s0: float, tl: float) -> void:
+	if W.has("wrecks"):
+		var hn: Array = wrecks.spawn_hangar(s0, tl)
+		tunnels.append({"s0": s0, "s1": s0 + tl, "nodes": hn, "told": false, "hangar": true})
+		return
 	if W.has("city"):
 		_add_city_tunnel(s0, tl)
 		return
