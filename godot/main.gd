@@ -529,7 +529,7 @@ func _cut_rock(seed_v: int, detail: int) -> ArrayMesh:
 	for i in verts.size():
 		var v := verts[i]
 		var hh := v.dot(tilt) * lay + noise.get_noise_2d(v.x * 0.6, v.z * 0.6) * 0.35
-		var f := hh - floor(hh)
+		var f := hh - floorf(hh)
 		var step := _sm(0.78, 1.0, f) * 0.07
 		verts[i] = Vector3(v.x * (1.0 - step), v.y, v.z * (1.0 - step))
 	var st := SurfaceTool.new()
@@ -1288,7 +1288,7 @@ func _mountain_mesh(rad: float, hgt: float, sd: int) -> ArrayMesh:
 			y -= gully * gully * hgt * 0.035 * (1.0 - t)
 			y += noise.get_noise_3d(bx * 0.06, y * 0.06, bz * 0.06 + sd + 13) * hgt * 0.025
 			var terr := 9.0
-			y += (round(y / terr) * terr - y) * 0.28
+			y += (roundf(y / terr) * terr - y) * 0.28
 			var x := bx + noise.get_noise_3d(bz * 0.012, y * 0.012, sd) * rad * 0.05 * t
 			var z := bz + noise.get_noise_3d(y * 0.012, bx * 0.012, sd + 3) * rad * 0.05 * t
 			row.append(Vector3(x, y, z))
