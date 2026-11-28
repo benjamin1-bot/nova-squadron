@@ -983,8 +983,9 @@ func _update_spouts(dt: float) -> void:
 		var z: float = M.s - w.s
 		var gy: float = M.GY + M.W.get("liquid_y", 0.0)
 		place(w.g, w.x + sin(w.t * 1.3) * 0.8, gy, z, Vector3(0, 0, sin(w.t * 0.9) * 0.08))
+		w.g.visible = M._in_tunnel(w.s).is_empty()
 		w.o.rotation.y += dt * 3.2
-		if not w.hit and state == "play" and absf(z) < 3 and absf(M.ship_x - w.x) < 3.6:
+		if w.g.visible and not w.hit and state == "play" and absf(z) < 3 and absf(M.ship_x - w.x) < 3.6:
 			w.hit = true
 			damage_player(20, true)
 			M.ship_vx += signf(M.ship_x - w.x if M.ship_x != w.x else 1.0) * 14

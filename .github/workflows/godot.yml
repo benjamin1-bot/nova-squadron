@@ -122,6 +122,5 @@ jobs:
           files: |
             Prismwing-Godot.apk
             autotest.zip
-            Godot_v4.3-stable_linux.x86_64.zip
           fail_on_unmatched_files: false
           make_latest: false
