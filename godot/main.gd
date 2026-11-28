@@ -284,7 +284,7 @@ func _ready() -> void:
 	if autotest:
 		audio.music_on = false
 		audio.sfx_on = false
-	game = load("res://game_hz.gd").new()
+	game = load("res://game_x.gd").new()
 	add_child(game)
 	game.setup(self)
 	if menu_mode:
@@ -623,36 +623,142 @@ func _mi(mesh: Mesh, mat: Material, pos: Vector3, scl := Vector3.ONE, rot := Vec
 	m.rotation = rot
 	return m
 
-func _make_ship() -> void:
-	ship = Node3D.new()
-	add_child(ship)
-	var body := CapsuleMesh.new()
-	body.radius = 0.55
-	body.height = 4.2
-	ship.add_child(_mi(body, ship_mat, Vector3(0, 0, 0), Vector3(1, 0.7, 1), Vector3(PI / 2, 0, 0)))
-	var cockpit := SphereMesh.new()
-	cockpit.radius = 0.42
-	cockpit.height = 0.84
-	ship.add_child(_mi(cockpit, ship_dark, Vector3(0, 0.38, -0.6), Vector3(1, 0.7, 1.6)))
-	var wing := PrismMesh.new()
-	wing.size = Vector3(2.4, 2.0, 0.14)
+func _lathe(prof: Array, segs: int, sy: float) -> ArrayMesh:
+	# Rotationskörper entlang z: prof = [[z, r], ...]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in prof.size() - 1:
+		var z0: float = prof[i][0]
+		var r0: float = prof[i][1]
+		var z1: float = prof[i + 1][0]
+		var r1: float = prof[i + 1][1]
+		for k in segs:
+			var a0 := float(k) / segs * TAU
+			var a1 := float(k + 1) / segs * TAU
+			var p := [Vector3(cos(a0) * r0, sin(a0) * r0 * sy, z0), Vector3(cos(a1) * r0, sin(a1) * r0 * sy, z0), Vector3(cos(a0) * r1, sin(a0) * r1 * sy, z1), Vector3(cos(a1) * r1, sin(a1) * r1 * sy, z1)]
+			var slope := -(r1 - r0) / maxf(0.001, z1 - z0)
+			var nr := [Vector3(cos(a0), sin(a0) / sy, slope).normalized(), Vector3(cos(a1), sin(a1) / sy, slope).normalized()]
+			for j in [0, 1, 2, 1, 3, 2]:
+				st.set_normal(nr[j % 2])
+				st.add_vertex(p[j])
+	return st.commit()
+
+func _plate(poly: PackedVector2Array, th: float) -> ArrayMesh:
+	# flache Platte (Flügel) aus einem Umriss in der x/z-Ebene, Dicke th
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var tri := Geometry2D.triangulate_polygon(poly)
+	for i in range(0, tri.size(), 3):
+		for j in [0, 1, 2]:
+			var v: Vector2 = poly[tri[i + j]]
+			st.set_normal(Vector3.UP)
+			st.add_vertex(Vector3(v.x, th * 0.5, v.y))
+		for j in [0, 2, 1]:
+			var v2: Vector2 = poly[tri[i + j]]
+			st.set_normal(Vector3.DOWN)
+			st.add_vertex(Vector3(v2.x, -th * 0.5, v2.y))
+	for i in poly.size():
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % poly.size()]
+		var q := [Vector3(a.x, th * 0.5, a.y), Vector3(b.x, th * 0.5, b.y), Vector3(a.x, -th * 0.5, a.y), Vector3(b.x, -th * 0.5, b.y)]
+		var sn := Vector3(b.y - a.y, 0, -(b.x - a.x)).normalized()
+		for j in [0, 2, 1, 1, 2, 3]:
+			st.set_normal(sn)
+			st.add_vertex(q[j])
+	return st.commit()
+
+## Jäger im ARC-Squadron-Stil: schlanker Rumpf, gepfeilte Flügel, zwei Triebwerke, Glaskanzel – mit Cel-Shading
+func build_ship_model(accent: Color) -> Node3D:
+	var g := Node3D.new()
+	var hull := _toon(Color(0.9, 0.92, 0.95), 0.3, 0.55)
+	var dark := _toon(Color(0.14, 0.15, 0.19), 0.45, 0.6)
+	var acc := _toon(accent, 0.4, 0.4)
+	acc.emission_enabled = true
+	acc.emission = accent
+	acc.emission_energy_multiplier = 0.35
+	var glass := _toon(Color(0.06, 0.16, 0.32), 0.05, 0.9)
+	glass.rim = 0.8
+	glass.rim_tint = 0.2
+	for mm in [hull, dark, acc, glass]:
+		mm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var body := MeshInstance3D.new()
+	body.mesh = _lathe([[-2.6, 0.0], [-2.2, 0.18], [-1.6, 0.36], [-0.8, 0.52], [0.2, 0.6], [1.2, 0.58], [1.9, 0.46], [2.2, 0.3]], 14, 0.72)
+	body.material_override = hull
+	g.add_child(body)
+	var can := MeshInstance3D.new()
+	can.mesh = _lathe([[-1.5, 0.0], [-1.2, 0.18], [-0.6, 0.3], [0.1, 0.3], [0.6, 0.18], [0.9, 0.0]], 12, 0.8)
+	can.material_override = glass
+	can.position = Vector3(0, 0.32, 0)
+	g.add_child(can)
+	var stripe := BoxMesh.new()
+	stripe.size = Vector3(0.12, 0.05, 2.6)
+	g.add_child(_mi(stripe, acc, Vector3(0, 0.44, 0.6), Vector3.ONE, Vector3.ZERO))
+	var wing := _plate(PackedVector2Array([Vector2(0.3, -0.6), Vector2(2.7, 0.9), Vector2(2.8, 1.5), Vector2(0.4, 1.6)]), 0.12)
+	var wtip := _plate(PackedVector2Array([Vector2(2.55, 0.8), Vector2(2.9, 1.05), Vector2(2.95, 1.55), Vector2(2.6, 1.5)]), 0.14)
+	var can2 := _plate(PackedVector2Array([Vector2(0.25, -1.9), Vector2(0.95, -1.45), Vector2(0.95, -1.2), Vector2(0.25, -1.25)]), 0.08)
+	var fin := _plate(PackedVector2Array([Vector2(0.0, 0.6), Vector2(0.9, 1.6), Vector2(0.9, 2.1), Vector2(0.0, 2.0)]), 0.08)
+	var eng := CylinderMesh.new()
+	eng.top_radius = 0.3
+	eng.bottom_radius = 0.36
+	eng.height = 2.0
+	eng.radial_segments = 14
+	var ring := CylinderMesh.new()
+	ring.top_radius = 0.39
+	ring.bottom_radius = 0.39
+	ring.height = 0.18
+	ring.radial_segments = 14
+	var core := SphereMesh.new()
+	core.radius = 0.26
+	core.height = 0.52
+	var flame := CylinderMesh.new()
+	flame.top_radius = 0.24
+	flame.bottom_radius = 0.0
+	flame.height = 1.6
 	for sx in [-1.0, 1.0]:
-		ship.add_child(_mi(wing, ship_mat, Vector3(sx * 1.35, -0.08, 0.5), Vector3(1, 1, 1), Vector3(PI / 2, 0, -sx * PI / 2)))
-		var eng := CylinderMesh.new()
-		eng.top_radius = 0.28
-		eng.bottom_radius = 0.34
-		eng.height = 1.6
-		ship.add_child(_mi(eng, ship_dark, Vector3(sx * 0.95, -0.05, 1.3), Vector3.ONE, Vector3(PI / 2, 0, 0)))
-		var fl := SphereMesh.new()
-		fl.radius = 0.24
-		fl.height = 0.48
-		ship.add_child(_mi(fl, glow_cyan, Vector3(sx * 0.95, -0.05, 2.15), Vector3(1, 1, 1.6)))
-		var tip := BoxMesh.new()
-		tip.size = Vector3(0.12, 0.12, 0.5)
-		ship.add_child(_mi(tip, glow_red if sx < 0 else glow_cyan, Vector3(sx * 2.45, -0.08, 0.9)))
-	var fin := PrismMesh.new()
-	fin.size = Vector3(1.2, 1.0, 0.1)
-	ship.add_child(_mi(fin, ship_mat, Vector3(0, 0.55, 1.1), Vector3.ONE, Vector3(0, PI / 2, 0)))
+		var w := MeshInstance3D.new()
+		w.mesh = wing
+		w.material_override = hull
+		w.scale = Vector3(sx, 1, 1)
+		w.rotation.z = sx * -0.08
+		w.position = Vector3(0, -0.12, 0)
+		g.add_child(w)
+		var wt := MeshInstance3D.new()
+		wt.mesh = wtip
+		wt.material_override = acc
+		wt.scale = Vector3(sx, 1, 1)
+		wt.position = Vector3(0, -0.12 - 0.22, 0)
+		g.add_child(wt)
+		var c2 := MeshInstance3D.new()
+		c2.mesh = can2
+		c2.material_override = hull
+		c2.scale = Vector3(sx, 1, 1)
+		g.add_child(c2)
+		var f := MeshInstance3D.new()
+		f.mesh = fin
+		f.material_override = hull
+		f.rotation = Vector3(0, 0, sx * (PI / 2 - 0.35))
+		f.position = Vector3(sx * 0.55, 0.25, 0)
+		g.add_child(f)
+		g.add_child(_mi(eng, dark, Vector3(sx * 0.95, -0.1, 1.2), Vector3.ONE, Vector3(PI / 2, 0, 0)))
+		g.add_child(_mi(ring, acc, Vector3(sx * 0.95, -0.1, 0.3), Vector3.ONE, Vector3(PI / 2, 0, 0)))
+		g.add_child(_mi(core, glow_cyan, Vector3(sx * 0.95, -0.1, 2.2), Vector3(1, 1, 0.6), Vector3.ZERO))
+		var fl := _mi(flame, glow_cyan, Vector3(sx * 0.95, -0.1, 3.0), Vector3.ONE, Vector3(-PI / 2, 0, 0))
+		fl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		g.add_child(fl)
+		var tipl := BoxMesh.new()
+		tipl.size = Vector3(0.1, 0.1, 0.35)
+		g.add_child(_mi(tipl, glow_red if sx < 0 else glow_cyan, Vector3(sx * 2.95, -0.32, 1.3), Vector3.ONE, Vector3.ZERO))
+		var gun := CylinderMesh.new()
+		gun.top_radius = 0.06
+		gun.bottom_radius = 0.08
+		gun.height = 1.2
+		g.add_child(_mi(gun, dark, Vector3(sx * 1.88, -0.2, -0.1), Vector3.ONE, Vector3(PI / 2, 0, 0)))
+	return g
+
+func _make_ship() -> void:
+	ship = build_ship_model(Color(1.0, 0.45, 0.12))
+	add_child(ship)
+	ship.scale = Vector3.ONE * 0.85
 	headlight = SpotLight3D.new()
 	headlight.spot_range = 70.0
 	headlight.spot_angle = 28.0
