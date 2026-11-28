@@ -770,6 +770,8 @@ func spawn_layer() -> void:
 	introduce("layer", "MINENLEGER – MINEN ABSCHIESSEN")
 
 func spawn_capital() -> void:
+	if not M._in_tunnel(M.s + 200.0).is_empty() or not M._in_tunnel(M.s).is_empty():
+		return
 	var sd := -1.0 if rng.randf() < 0.5 else 1.0
 	var g := Node3D.new()
 	g.add_child(mk("box", mats.eHull, 14, 10, 120))

@@ -495,33 +495,53 @@ func _cut_rock(seed_v: int, detail: int) -> ArrayMesh:
 	var r := RandomNumberGenerator.new()
 	r.seed = seed_v
 	var sm := SphereMesh.new()
-	sm.radial_segments = 10 + detail * 4
-	sm.rings = 6 + detail * 3
+	sm.radial_segments = 16 + detail * 6
+	sm.rings = 10 + detail * 4
 	var arr := sm.get_mesh_arrays()
 	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
 	var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
-	var sc := Vector3(r.randf_range(0.75, 1.5), r.randf_range(0.5, 1.05), r.randf_range(0.75, 1.4))
+	var sc := Vector3(r.randf_range(0.8, 1.5), r.randf_range(0.55, 1.05), r.randf_range(0.8, 1.4))
 	for i in verts.size():
-		verts[i] = verts[i] * 2.0 * sc
-	var cuts := 9 + r.randi() % 7
-	for c in cuts:
-		var n := Vector3(r.randf() - 0.5, (r.randf() - 0.5) * 1.2, r.randf() - 0.5).normalized()
-		var mx := -1e9
-		for v in verts:
-			mx = maxf(mx, v.dot(n))
-		var d := mx * r.randf_range(0.55, 0.9)
-		for i in verts.size():
-			var k := verts[i].dot(n) - d
-			if k > 0.0:
-				verts[i] = verts[i] - n * k
+		var v := verts[i] * 2.0 * sc
+		v += v.normalized() * noise.get_noise_3d(v.x * 0.9 + seed_v, v.y * 0.9, v.z * 0.9) * 0.18
+		verts[i] = v
+	# große Bruchflächen (Ebenen tangential an eine Kugel, wie beim Zuschneiden echter Steine)
+	var passes := [[10 + r.randi() % 5, 0.55, 0.88], [12 + r.randi() % 8, 0.9, 0.97]]
+	for pss in passes:
+		for c in int(pss[0]):
+			var n := Vector3(r.randf() - 0.5, (r.randf() - 0.5) * 1.3, r.randf() - 0.5).normalized()
+			var mx := -1e9
+			for v in verts:
+				mx = maxf(mx, v.dot(n))
+			var d := mx * r.randf_range(pss[1], pss[2])
+			for i in verts.size():
+				var k := verts[i].dot(n) - d
+				if k > 0.0:
+					verts[i] = verts[i] - n * k
+	# Gesteinsschichten: leichte Stufen/Simse entlang der Höhe
+	var ymin := 1e9
+	var ymax := -1e9
+	for v in verts:
+		ymin = minf(ymin, v.y)
+		ymax = maxf(ymax, v.y)
+	var lay := r.randf_range(2.2, 3.4)
+	var tilt := Vector3(r.randf_range(-0.25, 0.25), 1.0, r.randf_range(-0.25, 0.25)).normalized()
+	for i in verts.size():
+		var v := verts[i]
+		var hh := v.dot(tilt) * lay + noise.get_noise_2d(v.x * 0.6, v.z * 0.6) * 0.35
+		var f := hh - floor(hh)
+		var step := _sm(0.78, 1.0, f) * 0.07
+		verts[i] = Vector3(v.x * (1.0 - step), v.y, v.z * (1.0 - step))
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in range(0, idx.size(), 3):
 		for j in 3:
 			var v := verts[idx[i + j]]
 			var nv := noise.get_noise_3d(v.x * 1.7 + seed_v, v.y * 1.7, v.z * 1.7)
-			var g := 0.78 + nv * 0.22
-			st.set_color(Color(g, g * 0.97, g * 0.93))
+			var band := 0.9 + 0.1 * sin(v.dot(tilt) * lay * TAU + nv * 2.0)
+			var ao := 0.62 + 0.38 * clampf((v.y - ymin) / maxf(0.01, ymax - ymin), 0.0, 1.0)
+			var g := (0.8 + nv * 0.18) * band * ao
+			st.set_color(Color(g * 1.02, g, g * 0.95))
 			st.add_vertex(v)
 	st.generate_normals()
 	return st.commit()
@@ -943,8 +963,10 @@ func _col_in(a: float, sv: float) -> Color:
 	var n := noise.get_noise_3d(cos(a) * 7.0, sin(a) * 7.0, sv * 0.2) * 0.5 + 0.5
 	if W.planet:
 		var p: Dictionary = W.pal
-		return p.rock2.lerp(p.base2, n * 0.8).darkened(0.25)
-	return W.tin[0].lerp(W.tin[1], n)
+		var band := 0.86 + 0.14 * sin(sin(a) * 9.0 + noise.get_noise_2d(sv * 0.05, cos(a) * 3.0) * 2.5)
+		return p.rock2.lerp(p.base2, n * 0.8).darkened(0.25) * band
+	var band2 := 0.88 + 0.12 * sin(sin(a) * 8.0 + noise.get_noise_2d(sv * 0.04, cos(a) * 3.0) * 2.5)
+	return W.tin[0].lerp(W.tin[1], n) * band2
 
 func _col_out(a: float, sv: float) -> Color:
 	var n := noise.get_noise_3d(cos(a) * 3.0, sin(a) * 3.0, sv * 0.04) * 0.5 + 0.5
@@ -1053,6 +1075,54 @@ func _add_tunnel(s0: float, tl: float) -> void:
 			nodes.append(ol)
 		cnt += 1
 		sv += rng.randf_range(16.0, 26.0)
+	# Tropfsteine an Decke/Boden und Geröll an den Seiten (nur dort, wo nicht geflogen wird)
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 1.0
+	cone.height = 1.0
+	cone.radial_segments = 7
+	var stm := tunnel_mat.duplicate() as StandardMaterial3D
+	stm.vertex_color_use_as_albedo = false
+	stm.albedo_color = _col_in(PI / 2, s0)
+	var rbm := rock_mat.duplicate() as StandardMaterial3D
+	rbm.albedo_color = _col_in(PI * 1.5, s0) * 1.5
+	var rubble := Node3D.new()
+	add_child(rubble)
+	nodes.append(rubble)
+	var cr := s0 + 8.0
+	var clamp_x := (BX + 7.0) * 0.8
+	var clamp_y := (BY + 6.0) * 0.8
+	while cr < s1 - 8.0:
+		var top := rng.randf() < 0.6
+		var a := rng.randf_range(PI * 0.3, PI * 0.7) if top else rng.randf_range(PI * 1.25, PI * 1.75)
+		var ip := _inner(a, cr)
+		var dir2 := Vector2(cos(a), sin(a))
+		var wall := ip.length()
+		var lim := Vector2(clamp_x * cos(a), clamp_y * sin(a)).length() + 1.5
+		var ln := minf(rng.randf_range(2.0, 7.0), wall - lim)
+		if ln > 0.8:
+			var fr := frame(cr)
+			var basep := fr.origin + fr.basis.x * ip.x * 1.02 + fr.basis.y * ip.y * 1.02
+			var inward := -(fr.basis.x * dir2.x + fr.basis.y * dir2.y).normalized()
+			var mi := MeshInstance3D.new()
+			mi.mesh = cone
+			mi.material_override = stm
+			rubble.add_child(mi)
+			var side := inward.cross(fr.basis.z).normalized()
+			var rad := ln * rng.randf_range(0.18, 0.3)
+			mi.global_transform = Transform3D(Basis(side * rad, -inward * ln, side.cross(-inward) * rad), basep + inward * ln * 0.5)
+		if rng.randf() < 0.5:
+			var a2 := rng.randf_range(PI * 1.1, PI * 1.35) if rng.randf() < 0.5 else rng.randf_range(PI * 1.65, PI * 1.9)
+			var ip2 := _inner(a2, cr) * 0.96
+			var fr2 := frame(cr)
+			var rk := MeshInstance3D.new()
+			rk.mesh = rock_meshes[rng.randi() % rock_meshes.size()]
+			rk.material_override = rbm
+			rubble.add_child(rk)
+			rk.global_position = fr2.origin + fr2.basis.x * ip2.x + fr2.basis.y * ip2.y
+			rk.scale = Vector3.ONE * rng.randf_range(0.8, 1.6)
+			rk.rotation = Vector3(rng.randf() * TAU, rng.randf() * TAU, 0)
+		cr += rng.randf_range(5.0, 10.0)
 	tunnels.append({"s0": s0, "s1": s1, "nodes": nodes, "told": false})
 
 func _lip(a: float, se: float, t: float, dir: float, s0: float, s1: float, r0: float, sd: float) -> Vector3:
@@ -1114,7 +1184,8 @@ func ground_h(x: float, sv: float) -> float:
 	var n1 := noise.get_noise_2d(x * 0.025, sv * 0.025)
 	var n2 := noise.get_noise_2d(x * 0.09 + 40.0, sv * 0.09)
 	var h: float = 1.0 + n1 * 3.5 + n2 * 0.8 + W.floor_off * (1.0 - side)
-	h += side * (14.0 + noise.get_noise_2d(x * 0.011 + 9.0, sv * 0.011) * 26.0 + absf(n1) * 18.0)
+	var rn := 1.0 - absf(noise.get_noise_2d(x * 0.016 - 7.0, sv * 0.016))
+	h += side * (14.0 + noise.get_noise_2d(x * 0.011 + 9.0, sv * 0.011) * 26.0 + absf(n1) * 12.0 + rn * rn * rn * 26.0)
 	var river := noise.get_noise_2d(x * 0.008 - 20.0, sv * 0.006)
 	h -= _sm(0.1, 0.4, river) * 5.0 * (1.0 - side * 0.7)
 	return h - _tunnel_sink(sv) * 34.0
@@ -1138,6 +1209,14 @@ func _add_chunk(sa: float) -> void:
 			var p: Vector3 = fr.origin + fr.basis.x * xx + fr.basis.y * (GY + h)
 			var e := clampf((h + 4.0) / 70.0, 0.0, 1.2) + noise.get_noise_2d(xx * 0.05, sv * 0.05) * 0.12
 			var c := _pal_col(e, noise.get_noise_2d(xx * 0.03, sv * 0.03), noise.get_noise_2d(xx * 0.12, sv * 0.12))
+			if not W.has("city"):
+				var slope := (absf(ground_h(xx + 3.0, sv) - h) + absf(ground_h(xx, sv + 3.0) - h)) / 3.0
+				var rk := _sm(0.55, 1.3, slope)
+				if rk > 0.0:
+					var pal: Dictionary = W.pal
+					var rc: Color = pal.rock.lerp(pal.rock2, noise.get_noise_2d(xx * 0.2, sv * 0.2) * 0.5 + 0.5)
+					rc *= 0.86 + 0.14 * sin(h * 1.4 + noise.get_noise_2d(xx * 0.05, sv * 0.05) * 3.0)
+					c = c.lerp(rc, rk * 0.85)
 			row.append([p, c])
 		grid.append(row)
 	var st := SurfaceTool.new()
@@ -1190,35 +1269,58 @@ func _add_chunk(sa: float) -> void:
 
 ## Berg nach dem Vorbild aus Coin City (_mountain_mesh): Grat-Rauschen, Höhenstufen-Farben, Schnee
 func _mountain_mesh(rad: float, hgt: float, sd: int) -> ArrayMesh:
-	var rings := 18
-	var segs := 30
+	var rings := 24
+	var segs := 40
 	var grid: Array = []
 	for r in rings + 1:
 		var t := float(r) / rings
 		var row: Array = []
 		for k in segs:
 			var a := float(k) / segs * TAU
-			var ridge := 1.0 + 0.32 * noise.get_noise_3d(cos(a) * 0.72, sin(a) * 0.72, sd)
+			var spur := 1.0 - absf(noise.get_noise_3d(cos(a) * 1.6, sin(a) * 1.6, sd + 31))
+			var ridge := 1.0 + 0.28 * noise.get_noise_3d(cos(a) * 0.72, sin(a) * 0.72, sd) + 0.22 * spur * spur * spur
 			var radius := rad * pow(t, 0.92) * ridge
 			var bx := cos(a) * radius
 			var bz := sin(a) * radius
 			var y := hgt * pow(1.0 - t, 1.25)
 			y += noise.get_noise_3d(bx * 0.012, y * 0.012, bz * 0.012 + sd) * hgt * 0.14 * (1.0 - t * 0.5)
+			var gully := 1.0 - absf(noise.get_noise_3d(bx * 0.045, y * 0.02, bz * 0.045 + sd + 5))
+			y -= gully * gully * hgt * 0.035 * (1.0 - t)
 			y += noise.get_noise_3d(bx * 0.06, y * 0.06, bz * 0.06 + sd + 13) * hgt * 0.025
+			var terr := 9.0
+			y += (round(y / terr) * terr - y) * 0.28
 			var x := bx + noise.get_noise_3d(bz * 0.012, y * 0.012, sd) * rad * 0.05 * t
 			var z := bz + noise.get_noise_3d(y * 0.012, bx * 0.012, sd + 3) * rad * 0.05 * t
-			var e := clampf(y / 150.0, 0.0, 1.2) + noise.get_noise_3d(bx * 0.018, y * 0.027, bz * 0.018 + sd + 7) * 0.22
-			var c := _pal_col(e, noise.get_noise_3d(bx * 0.036, bz * 0.036, sd + 7), noise.get_noise_3d(bx * 0.06, y * 0.06, bz * 0.06 + sd + 13))
-			row.append([Vector3(x, y, z), c])
+			row.append(Vector3(x, y, z))
 		grid.append(row)
+	var cols: Array = []
+	for r in rings + 1:
+		var crow: Array = []
+		for k in segs:
+			var v: Vector3 = grid[r][k]
+			var vn: Vector3 = grid[mini(r + 1, rings)][k]
+			var dh := absf(v.y - vn.y)
+			var dxz := Vector2(v.x - vn.x, v.z - vn.z).length() + 0.01
+			var slope := dh / dxz
+			var e := clampf(v.y / 150.0, 0.0, 1.2) + noise.get_noise_3d(v.x * 0.018, v.y * 0.027, v.z * 0.018 + sd + 7) * 0.2
+			var c := _pal_col(e, noise.get_noise_3d(v.x * 0.036, v.z * 0.036, sd + 7), noise.get_noise_3d(v.x * 0.06, v.y * 0.06, v.z * 0.06 + sd + 13))
+			var pal: Dictionary = W.pal
+			var rk := _sm(0.9, 1.8, slope)
+			var rc: Color = pal.rock.lerp(pal.rock2, noise.get_noise_3d(v.x * 0.08, v.y * 0.08, v.z * 0.08) * 0.5 + 0.5)
+			rc *= 0.84 + 0.16 * sin(v.y * 0.7 + noise.get_noise_2d(v.x * 0.03, v.z * 0.03) * 2.0)
+			c = c.lerp(rc, rk * 0.8)
+			if pal.snow_on and e > 0.7:
+				c = c.lerp(pal.snow, _sm(0.72, 0.9, e) * (1.0 - _sm(1.2, 2.2, slope)))
+			crow.append(c)
+		cols.append(crow)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for r in rings:
 		for k in segs:
 			var k2 := (k + 1) % segs
-			for v in [grid[r][k], grid[r + 1][k], grid[r][k2], grid[r][k2], grid[r + 1][k], grid[r + 1][k2]]:
-				st.set_color(v[1])
-				st.add_vertex(v[0])
+			for q in [[r, k], [r + 1, k], [r, k2], [r, k2], [r + 1, k], [r + 1, k2]]:
+				st.set_color(cols[q[0]][q[1]])
+				st.add_vertex(grid[q[0]][q[1]])
 	st.generate_normals()
 	return st.commit()
 
@@ -1242,6 +1344,22 @@ func _add_mountain(sv: float) -> void:
 	var hs := rng.randf_range(0.45, 1.2)
 	m.scale = Vector3(rad / 100.0, hs * rad / 100.0 + 0.25, rad / 100.0)
 	rocks.append({"node": m, "s": sv + rad, "x": x, "y": 0.0, "r": rad, "hard": false, "big": true})
+	# Geröllhalde am Fuß des Berges
+	for i in 5:
+		var a := rng.randf() * TAU
+		var bx := x + cos(a) * rad * rng.randf_range(0.75, 1.0)
+		var bs := sv + sin(a) * rad * rng.randf_range(0.75, 1.0)
+		if absf(bx) < BX + 10.0:
+			continue
+		var b := MeshInstance3D.new()
+		b.mesh = rock_meshes[rng.randi() % rock_meshes.size()]
+		b.material_override = rock_mat
+		add_child(b)
+		var r2 := rng.randf_range(3.0, 9.0)
+		place(b, bs, bx, GY + ground_h(bx, bs) + r2 * 0.2)
+		b.rotate_object_local(Vector3.UP, rng.randf() * TAU)
+		b.scale = Vector3(r2, r2 * rng.randf_range(0.6, 1.0), r2) * 0.5
+		rocks.append({"node": b, "s": bs, "x": bx, "y": 0.0, "r": r2, "hard": false, "still": true})
 
 func dist_ok(x: float, y: float) -> bool:
 	return absf(x) > BX + 6.0 or absf(y) > BY + 6.0
